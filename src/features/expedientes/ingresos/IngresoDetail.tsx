@@ -1606,7 +1606,7 @@ const IngresoDetail = () => {
                         <div className="px-10 py-8 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
                             <div>
                                 <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Cargar Documentación</h2>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Legajo: {ingreso.expedientes?.numero}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Legajo: {ingreso.expediente_numero}</p>
                             </div>
                             <button onClick={() => !isUploading && setIsUploadModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
                                 <span className="material-symbols-outlined text-slate-500">close</span>

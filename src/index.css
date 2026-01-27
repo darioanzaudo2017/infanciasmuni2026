@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  @apply bg-slate-50 text-slate-900;
+}
+
+/* Glassmorphism utility */
+.glass {
+  @apply bg-white/70 backdrop-blur-md border border-white/20;
+}
+
+/* Tablas con diseño premium */
+.table-container {
+  @apply overflow-hidden bg-white border border-slate-200 rounded-md shadow-sm;
+}
+
+.table-header {
+  @apply bg-slate-50 border-b border-slate-200 py-3 px-4 text-left font-semibold text-slate-600;
+}
+
+.table-row {
+  @apply border-b border-slate-100 hover:bg-slate-50 transition-colors;
+}
+
+/* Animaciones suaves */
+.transition-standard {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #dce5e5;
+  border-radius: 10px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #2d4141;
+}
+
+@media print {
+
+  /* Ultra-aggressive reset to fix content cutting */
+  html,
+  body,
+  #root,
+  [class*="min-h-screen"],
+  [class*="h-screen"],
+  [class*="flex-1"] {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  nav,
+  .navbar,
+  .sidebar,
+  button,
+  .no-print,
+  [class*="sidebar"],
+  [class*="navbar"],
+  aside,
+  footer {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: hidden !important;
+  }
+
+  .print-only {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  main {
+    display: block !important;
+    overflow: visible !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Make sure internal wrappers don't clip */
+  div {
+    overflow: visible !important;
+  }
+
+  .print-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .shadow-sm,
+  .shadow-md,
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

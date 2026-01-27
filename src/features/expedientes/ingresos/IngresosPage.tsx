@@ -144,7 +144,9 @@ const IngresosPage: React.FC = () => {
                     fecha_ingreso: new Date().toISOString().split('T')[0],
                     es_emergencia: false,
                     etapa: 'Recepción',
-                    estado: 'Activo'
+                    estado: 'Activo',
+                    profesional_asignado_id: userProfile.id,
+                    ultimo_usuario_id: userProfile.id
                 })
                 .select()
                 .single();
@@ -156,12 +158,13 @@ const IngresosPage: React.FC = () => {
 
             console.log('Ingreso creado exitosamente. ID:', newIngreso.id);
 
-            // Register audit
+            // Register audit - Optimized registry
             const { error: auditError } = await supabase.from('auditoria').insert({
                 tabla: 'ingresos',
                 registro_id: newIngreso.id,
                 accion: 'INSERT',
-                usuario_id: userProfile.id
+                usuario_id: userProfile.id,
+                datos_nuevos: newIngreso
             });
 
             if (auditError) {
@@ -266,14 +269,13 @@ const IngresosPage: React.FC = () => {
         return days;
     };
 
-    const hasActiveCase = ingresos.some(i => i.estado === 'Activo');
+    const hasActiveCase = ingresos.some(i => i.estado === 'Activo' || i.estado === 'abierto');
     const headerData = ingresos[0];
 
     return (
         <main className="max-w-[1200px] mx-auto py-6 px-4 md:px-10 space-y-8">
             <Breadcrumbs
                 items={[
-                    { label: 'Inicio', path: '/' },
                     { label: 'Expedientes', path: '/expedientes' },
                     { label: 'Historial de Ingresos', active: true }
                 ]}
@@ -411,13 +413,18 @@ const IngresosPage: React.FC = () => {
                                                     {format(new Date(ingreso.fecha_ingreso), "dd MMM yyyy", { locale: es })}
                                                 </td>
                                                 <td className="px-6 py-5">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="size-7 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary border border-primary/30">
-                                                            {ingreso.ultimo_profesional_nombre?.substring(0, 2).toUpperCase() || '--'}
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-8 rounded-xl bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20 shadow-sm">
+                                                            {ingreso.ultimo_profesional_nombre?.substring(0, 2).toUpperCase() || (ingreso.profesional_asignado_nombre?.substring(0, 2).toUpperCase()) || '--'}
                                                         </div>
-                                                        <span className="text-sm font-medium text-[#111818] dark:text-gray-300">
-                                                            {ingreso.ultimo_profesional_nombre || 'Sincronización'}
-                                                        </span>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-[#111818] dark:text-gray-200">
+                                                                {ingreso.ultimo_profesional_nombre || ingreso.profesional_asignado_nombre || 'Sincronización'}
+                                                            </span>
+                                                            <span className="text-[10px] font-medium text-slate-400 font-bold uppercase tracking-tighter">
+                                                                {ingreso.ultimo_profesional_nombre ? 'Última modificación' : 'Profesional asignado'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5 text-center">

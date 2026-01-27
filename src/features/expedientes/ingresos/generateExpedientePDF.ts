@@ -32,6 +32,8 @@ interface IngresoData {
     informe_sintesis?: any;
     cese?: any;
     documentos?: any[];
+    senaf?: any;
+    senaf_seguimiento?: any[];
 }
 
 interface MedidaData {
@@ -417,6 +419,55 @@ export const generateExpedientePDF = async (
         yPos += 3;
         addTextBlock('Resumen de Logros Alcanzados', ingreso.cese.resumen_logros);
         addTextBlock('Observaciones Finales', ingreso.cese.observaciones_finales);
+    }
+
+    // ========== SOLICITUD SENAF (si existe) ==========
+    if (ingreso.senaf) {
+        addStageTitle('6', 'SOLICITUD DE MEDIDA EXCEPCIONAL (SENAF)');
+
+        addField('Estado de la Solicitud', ingreso.senaf.estado || 'En elaboración');
+        addField('Fecha de Solicitud', ingreso.senaf.fecha_solicitud ? format(new Date(ingreso.senaf.fecha_solicitud), "dd/MM/yyyy", { locale: es }) : 'N/A');
+        addField('Agotó Medidas de Protección', ingreso.senaf.agoto_medidas ? 'Sí' : 'No');
+        addField('Riesgo Grave para la Vida', ingreso.senaf.riesgo_vida ? 'Sí' : 'No');
+
+        yPos += 3;
+        addTextBlock('Reseña de la Situación', ingreso.senaf.causa);
+        addTextBlock('Fundamentación', ingreso.senaf.fundamentacion);
+
+        if (ingreso.senaf.documento_url) {
+            addField('Documento Firmado', 'Adjunto disponible');
+        }
+
+        // Historial de seguimiento SENAF
+        if (ingreso.senaf_seguimiento && ingreso.senaf_seguimiento.length > 0) {
+            yPos += 5;
+            addSectionTitle('Historial de Seguimiento SENAF');
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Fecha', 'Estado', 'Responsable', 'Observación']],
+                body: ingreso.senaf_seguimiento.map((seg: any) => [
+                    seg.fecha ? format(new Date(seg.fecha), "dd/MM/yyyy HH:mm", { locale: es }) : 'N/A',
+                    seg.estado || seg.estado_nuevo || 'N/A',
+                    seg.usuarios?.nombre_completo || seg.responsable || 'Sistema',
+                    seg.observacion || seg.observaciones || '-'
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [37, 123, 244], fontSize: 9 },
+                bodyStyles: { fontSize: 8 },
+                margin: { left: margin, right: margin },
+                columnStyles: {
+                    0: { cellWidth: 35 },
+                    1: { cellWidth: 40 },
+                    2: { cellWidth: 40 },
+                    3: { cellWidth: 'auto' }
+                }
+            });
+
+            yPos = (doc as any).lastAutoTable.finalY + 8;
+        }
+
+        yPos += 5;
     }
 
     // ========== DOCUMENTOS ADJUNTOS ==========

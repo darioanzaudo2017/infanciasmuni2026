@@ -161,12 +161,34 @@ const InformeSintesis = () => {
             }
 
             if (finalizar) {
-                // Update Ingreso Etapa
-                await supabase.from('ingresos').update({ etapa: 'definicion' }).eq('id', ingresoId);
+                // Update Ingreso Etapa and track user
+                const { data: { user } } = await supabase.auth.getUser();
+                await supabase.from('ingresos').update({
+                    etapa: 'definicion',
+                    ultimo_usuario_id: user?.id,
+                    updated_at: new Date().toISOString()
+                }).eq('id', ingresoId);
+
+                // Register audit
+                await supabase.from('auditoria').insert({
+                    tabla: 'ingresos',
+                    registro_id: ingresoId as unknown as number,
+                    accion: 'FINALIZADO_SINTESIS',
+                    usuario_id: user?.id,
+                    datos_nuevos: { etapa: 'definicion' }
+                });
 
                 alert('Informe Finalizado Correctamente');
                 navigate(`/expedientes/${expedienteId}/ingresos/${ingresoId}`);
             } else {
+                // Track user even on draft save
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase.from('ingresos').update({
+                        ultimo_usuario_id: user.id,
+                        updated_at: new Date().toISOString()
+                    }).eq('id', ingresoId);
+                }
                 alert('Borrador Guardado');
             }
 

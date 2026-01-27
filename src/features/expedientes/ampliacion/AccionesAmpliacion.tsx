@@ -97,22 +97,60 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 await supabase.from('form2_intervencion_profesionales').insert(profPayload);
             }
 
-            // Save documents
+            // Save documents with real upload
             if (newIntervencion.documentos.length > 0) {
                 for (const doc of newIntervencion.documentos) {
-                    // In a real app we would upload to Storage here
-                    // For now we simulate the URL
-                    const { error: docErr } = await supabase.from('documentos').insert({
-                        ingreso_id: ingreso.id,
-                        intervencion_id: intervencion.id,
-                        origen: 'Ampliación',
-                        tipo: 'Adjunto de Intervención',
-                        subcategoria: doc.subcategoria,
-                        nombre: doc.nombre,
-                        url: `https://drive.google.com/mock/${doc.file.name}`
-                    });
-                    if (docErr) console.warn('Error al guardar documento:', docErr);
+                    try {
+                        const fileExt = doc.file.name.split('.').pop();
+                        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+                        const filePath = `${ingreso.expediente_id}/${fileName}`;
+
+                        // 1. Upload to Storage
+                        const { error: uploadError } = await supabase.storage
+                            .from('expedientes')
+                            .upload(filePath, doc.file);
+
+                        if (uploadError) throw uploadError;
+
+                        // 2. Get Public URL
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('expedientes')
+                            .getPublicUrl(filePath);
+
+                        // 3. Insert into DB
+                        const { error: docErr } = await supabase.from('documentos').insert({
+                            ingreso_id: ingreso.id,
+                            intervencion_id: intervencion.id,
+                            origen: 'Ampliación',
+                            tipo: fileExt?.toUpperCase() === 'PDF' ? 'PDF' : 'Imagen',
+                            subcategoria: doc.subcategoria,
+                            nombre: doc.nombre,
+                            url: publicUrl
+                        });
+
+                        if (docErr) console.warn('Error al guardar registro de documento:', docErr);
+                    } catch (err) {
+                        console.error('Error subiendo archivo:', doc.nombre, err);
+                        alert(`Error al subir el archivo ${doc.nombre}. Se guardará la intervención pero el archivo podría faltar.`);
+                    }
                 }
+            }
+
+            // Track last user in parent ingreso
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('ingresos').update({
+                    ultimo_usuario_id: user.id,
+                    updated_at: new Date().toISOString()
+                }).eq('id', ingreso.id);
+
+                // Optional: Audit record
+                await supabase.from('auditoria').insert({
+                    tabla: 'ingresos',
+                    registro_id: ingreso.id,
+                    accion: 'NUEVA_INTERVENCION',
+                    usuario_id: user.id
+                });
             }
 
             setIsModalOpen(false);

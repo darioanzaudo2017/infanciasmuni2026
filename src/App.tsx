@@ -15,6 +15,8 @@ import DefinicionMedidas from './features/expedientes/definicion/DefinicionMedid
 import PlanAccionMedida from './features/expedientes/definicion/PlanAccionMedida';
 import ActaCompromiso from './features/expedientes/definicion/ActaCompromiso';
 import CierreIngreso from './features/expedientes/cese/CierreIngreso';
+import SolicitudSenafForm from './features/expedientes/senaf/SolicitudSenafForm';
+import SolicitudSenafSummary from './features/expedientes/senaf/SolicitudSenafSummary';
 
 function App() {
   return (
@@ -40,6 +42,8 @@ function App() {
           <Route path="expedientes/:expedienteId/definicion/:ingresoId/medida/:medidaId" element={<PlanAccionMedida />} />
           <Route path="medidas" element={<div>Medidas</div>} />
           <Route path="senaf" element={<div>SENAF</div>} />
+          <Route path="expedientes/:expedienteId/senaf/:ingresoId" element={<SolicitudSenafForm />} />
+          <Route path="expedientes/:expedienteId/senaf/:ingresoId/resumen" element={<SolicitudSenafSummary />} />
           <Route path="reportes" element={<div>Reportes</div>} />
           <Route path="configuracion" element={<div>Configuración</div>} />
         </Route>

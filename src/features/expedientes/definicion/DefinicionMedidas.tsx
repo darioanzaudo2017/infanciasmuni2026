@@ -114,6 +114,22 @@ const DefinicionMedidas = () => {
                 .order('created_at', { ascending: false });
             setMedidas(medData || []);
 
+            // Track user in parent ingreso
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('ingresos').update({
+                    ultimo_usuario_id: user.id,
+                    updated_at: new Date().toISOString()
+                }).eq('id', ingresoId);
+
+                await supabase.from('auditoria').insert({
+                    tabla: 'ingresos',
+                    registro_id: ingresoId as unknown as number,
+                    accion: 'NUEVA_MEDIDA',
+                    usuario_id: user.id
+                });
+            }
+
             setShowModal(false);
             setNewMedida({
                 medida_propuesta: '',

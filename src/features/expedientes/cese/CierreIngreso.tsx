@@ -14,6 +14,7 @@ const CierreIngreso = () => {
         resumen_logros: '',
         observaciones_finales: ''
     });
+    const [senafStatus, setSenafStatus] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -41,6 +42,17 @@ const CierreIngreso = () => {
                         resumen_logros: ceseData.resumen_logros || '',
                         observaciones_finales: ceseData.observaciones_finales || ''
                     });
+                }
+
+                // Check for SENAF status
+                const { data: senafData } = await supabase
+                    .from('solicitudes_senaf')
+                    .select('status')
+                    .eq('ingreso_id', ingresoId)
+                    .maybeSingle();
+
+                if (senafData) {
+                    setSenafStatus(senafData.status);
                 }
             } catch (error) {
                 console.error("Error fetching stats:", error);
@@ -92,18 +104,48 @@ const CierreIngreso = () => {
             }
 
             // 3. Close Ingreso if not SENAF
+            const { data: { user } } = await supabase.auth.getUser();
             if (formData.motivo_cese !== 'solicitud_medida_excepcional') {
                 const { error: ingError } = await supabase
                     .from('ingresos')
-                    .update({ estado: 'cerrado', etapa: 'cerrado' })
+                    .update({
+                        estado: 'cerrado',
+                        etapa: 'cerrado',
+                        ultimo_usuario_id: user?.id,
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('id', ingresoId);
 
                 if (ingError) throw ingError;
+            } else if (user) {
+                // Just touch it to record who was here
+                await supabase.from('ingresos').update({
+                    ultimo_usuario_id: user.id,
+                    updated_at: new Date().toISOString()
+                }).eq('id', ingresoId);
+            }
+
+            // Audit
+            if (user) {
+                await supabase.from('auditoria').insert({
+                    tabla: 'ingresos',
+                    registro_id: ingresoId as unknown as number,
+                    accion: 'CIERRE_INTERVENCION',
+                    usuario_id: user.id,
+                    datos_nuevos: { motivo_cese: formData.motivo_cese }
+                });
             }
 
             // Redirect or Notify
-            alert('Cierre registrado correctamente');
-            navigate(`/expedientes`);
+            alert(formData.motivo_cese === 'solicitud_medida_excepcional'
+                ? 'Cierre iniciado. Por favor complete el formulario de elevación a SENAF.'
+                : 'Cierre registrado correctamente');
+
+            if (formData.motivo_cese === 'solicitud_medida_excepcional') {
+                navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`);
+            } else {
+                navigate(`/expedientes`);
+            }
 
         } catch (error) {
             console.error(error);
@@ -137,7 +179,10 @@ const CierreIngreso = () => {
                         <h1 className="text-[#121617] dark:text-white text-4xl font-black leading-tight tracking-tight">Formulario de Cese y Cierre de Ingreso</h1>
                         <p className="text-[#658086] text-lg font-medium">Expediente: Cierre de Intervención</p>
                     </div>
-                    <button className="flex items-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1a2b2e] border border-[#e5e7eb] dark:border-[#2d3a3d] text-[#121617] dark:text-white text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
+                    <button
+                        onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}/resumen`)}
+                        className="flex items-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1a2b2e] border border-[#e5e7eb] dark:border-[#2d3a3d] text-[#121617] dark:text-white text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm"
+                    >
                         <span className="material-symbols-outlined text-lg">history</span>
                         <span>Ver Historial</span>
                     </button>
@@ -203,6 +248,32 @@ const CierreIngreso = () => {
                                         value={formData.observaciones_finales}
                                         onChange={(e) => setFormData({ ...formData, observaciones_finales: e.target.value })}
                                     />
+                                </div>
+
+                                {/* Inline History/Tracking Section */}
+                                <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
+                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-primary">timeline</span>
+                                        Seguimiento de Elevación
+                                    </h3>
+                                    <div className="bg-[#f6f8f8] dark:bg-[#121e20] rounded-xl p-4 border border-[#e5e7eb] dark:border-[#2d3a3d]">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <p className="text-sm text-gray-500 font-medium">Estado de Solicitud:</p>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${senafStatus === 'Aprobado' ? 'bg-green-100 text-green-700' :
+                                                    senafStatus?.includes('Observado') ? 'bg-red-100 text-red-700' :
+                                                        'bg-amber-100 text-amber-700'
+                                                }`}>
+                                                {senafStatus || 'No iniciada'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}/resumen`)}
+                                            className="w-full py-3 bg-white dark:bg-[#1a2b2e] border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">visibility</span>
+                                            Ver Historial Completo y Detalles
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </section>

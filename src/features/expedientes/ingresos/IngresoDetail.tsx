@@ -52,6 +52,8 @@ interface IngresoDetalle {
     intervenciones?: any[];
     informe_sintesis?: any;
     cese?: any;
+    senaf?: any;
+    senaf_seguimiento?: any[];
 }
 
 const IngresoDetail = () => {
@@ -62,6 +64,11 @@ const IngresoDetail = () => {
     const [activeTab, setActiveTab] = useState('recepcion');
     const [measuresSummary, setMeasuresSummary] = useState<any[]>([]);
     const [transferHistory, setTransferHistory] = useState<any[]>([]);
+    const [selectedDoc, setSelectedDoc] = useState<any>(null);
+    const [showPreview, setShowPreview] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [pendingFiles, setPendingFiles] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchDetail = async () => {
@@ -90,7 +97,8 @@ const IngresoDetail = () => {
                     { data: planData },
                     { data: interData },
                     { data: informeData },
-                    { data: ceseData }
+                    { data: ceseData },
+                    { data: senafData }
                 ] = await Promise.all([
                     supabase.from('form1_derivacion').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('form1_motivo').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
@@ -103,7 +111,8 @@ const IngresoDetail = () => {
                     supabase.from('form2_planificacion').select('*, form2_equipo(usuario_id)').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('form2_intervenciones').select('*').eq('ingreso_id', ingresoId).order('fecha', { ascending: false }).order('hora', { ascending: false }),
                     supabase.from('form3_informe_sintesis').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
-                    supabase.from('form9_cese_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+                    supabase.from('form9_cese_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
+                    supabase.from('solicitudes_senaf').select('*').eq('ingreso_id', ingresoId).maybeSingle()
                 ]);
 
                 setIngreso({
@@ -132,8 +141,23 @@ const IngresoDetail = () => {
                     planificacion: planData,
                     intervenciones: interData || [],
                     informe_sintesis: informeData,
-                    cese: ceseData
+                    cese: ceseData,
+                    senaf: senafData,
+                    senaf_seguimiento: []
                 });
+
+                // Fetch SENAF seguimiento if senafData exists
+                if (senafData?.id) {
+                    const { data: segData } = await supabase
+                        .from('solicitudes_seguimiento')
+                        .select('*, usuarios(nombre_completo)')
+                        .eq('solicitud_id', senafData.id)
+                        .order('fecha', { ascending: true });
+
+                    if (segData) {
+                        setIngreso(prev => prev ? { ...prev, senaf_seguimiento: segData } : prev);
+                    }
+                }
             } catch (error) {
                 console.error('Error fetching detail:', error);
             } finally {
@@ -297,6 +321,85 @@ const IngresoDetail = () => {
             status
         };
     });
+
+    const getFileType = (url: string = '', nombre: string = '') => {
+        const ext = (nombre || url).split('.').pop()?.toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return 'image';
+        if (ext === 'pdf') return 'pdf';
+        if (['doc', 'docx'].includes(ext || '')) return 'word';
+        if (['xls', 'xlsx'].includes(ext || '')) return 'excel';
+        return 'other';
+    };
+
+    const handlePreview = (doc: any) => {
+        setSelectedDoc(doc);
+        setShowPreview(true);
+    };
+
+    const handleFileUpload = async () => {
+        if (pendingFiles.length === 0 || !ingreso || !ingresoId) return;
+
+        setIsUploading(true);
+        try {
+            for (const doc of pendingFiles) {
+                const fileExt = doc.file.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+                const filePath = `${ingreso.expediente_id}/${fileName}`;
+
+                // 1. Upload to Storage
+                const { error: uploadError } = await supabase.storage
+                    .from('expedientes')
+                    .upload(filePath, doc.file);
+
+                if (uploadError) throw uploadError;
+
+                // 2. Get Public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('expedientes')
+                    .getPublicUrl(filePath);
+
+                // 3. Register in 'documentos' table
+                const { error: dbError } = await supabase
+                    .from('documentos')
+                    .insert({
+                        ingreso_id: parseInt(ingresoId),
+                        nombre: doc.nombre,
+                        tipo: fileExt?.toUpperCase() === 'PDF' ? 'PDF' : 'Imagen',
+                        url: publicUrl,
+                        origen: ingreso.etapa,
+                        subcategoria: doc.subcategoria
+                    });
+
+                if (dbError) throw dbError;
+            }
+
+            // 4. Refresh documents
+            const { data: refreshedDocs } = await supabase
+                .from('documentos')
+                .select('*')
+                .eq('ingreso_id', ingresoId);
+
+            setIngreso(prev => prev ? { ...prev, documentos: refreshedDocs || [] } : null);
+            setIsUploadModalOpen(false);
+            setPendingFiles([]);
+            alert('Documentos subidos con éxito');
+        } catch (error) {
+            console.error('Error al subir archivos:', error);
+            alert('Error al subir los archivos. Verifique su conexión.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        const newDocs = files.map(f => ({
+            file: f,
+            nombre: f.name,
+            subcategoria: 'Informe Técnico'
+        }));
+        setPendingFiles(prev => [...prev, ...newDocs]);
+    };
 
     return (
         <main className="flex-1 font-manrope">
@@ -1020,9 +1123,14 @@ const IngresoDetail = () => {
                                         <span className="material-symbols-outlined text-primary text-lg">folder_open</span>
                                         Documentación del Ingreso ({ingreso.documentos?.length || 0})
                                     </h3>
-                                    <button className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-white transition-all">
-                                        Subir Nuevo
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => setIsUploadModalOpen(true)}
+                                            className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-white transition-all"
+                                        >
+                                            Subir Nuevo Documento
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {ingreso.documentos && ingreso.documentos.length > 0 ? (
@@ -1044,15 +1152,25 @@ const IngresoDetail = () => {
                                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
                                                         {format(new Date(doc.created_at), "dd MMM yyyy", { locale: es })}
                                                     </span>
-                                                    <a
-                                                        href={doc.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest hover:underline cursor-pointer"
-                                                    >
-                                                        Descargar
-                                                        <span className="material-symbols-outlined text-sm">download</span>
-                                                    </a>
+                                                    <div className="flex items-center gap-4">
+                                                        <button
+                                                            onClick={() => handlePreview(doc)}
+                                                            className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest hover:underline cursor-pointer"
+                                                        >
+                                                            Previsualizar
+                                                            <span className="material-symbols-outlined text-sm">visibility</span>
+                                                        </button>
+                                                        <a
+                                                            href={doc.url}
+                                                            download={doc.nombre}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-primary transition-colors"
+                                                        >
+                                                            Descargar
+                                                            <span className="material-symbols-outlined text-sm">download</span>
+                                                        </a>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -1412,7 +1530,195 @@ const IngresoDetail = () => {
                 </div>
             </div>
 
-        </main >
+            {/* Preview Modal */}
+            {showPreview && selectedDoc && (
+                <div className="fixed inset-0 z-[100] bg-[#112121]/90 backdrop-blur-md flex items-center justify-center p-4 md:p-10 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-6xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/10">
+                        <div className="px-8 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <span className="material-symbols-outlined">
+                                        {getFileType(selectedDoc.url, selectedDoc.nombre) === 'pdf' ? 'picture_as_pdf' :
+                                            getFileType(selectedDoc.url, selectedDoc.nombre) === 'image' ? 'image' : 'description'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 dark:text-white leading-none">{selectedDoc.nombre}</h3>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{selectedDoc.subcategoria || 'Documentación'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <a
+                                    href={selectedDoc.url}
+                                    download={selectedDoc.nombre}
+                                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-gray-300 text-xs font-bold hover:bg-primary hover:text-white transition-all flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-sm">download</span>
+                                    Descargar
+                                </a>
+                                <button
+                                    onClick={() => setShowPreview(false)}
+                                    className="size-10 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-all text-slate-400 hover:text-rose-500"
+                                >
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 bg-slate-50 dark:bg-[#081111] p-4 flex items-center justify-center overflow-auto">
+                            {getFileType(selectedDoc.url, selectedDoc.nombre) === 'image' ? (
+                                <img
+                                    src={selectedDoc.url}
+                                    alt={selectedDoc.nombre}
+                                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                                />
+                            ) : getFileType(selectedDoc.url, selectedDoc.nombre) === 'pdf' ? (
+                                <iframe
+                                    src={`${selectedDoc.url}#toolbar=0`}
+                                    className="w-full h-full rounded-lg shadow-lg bg-white"
+                                    title="PDF Preview"
+                                />
+                            ) : (
+                                <div className="text-center space-y-4 max-w-sm">
+                                    <div className="size-24 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-300 mx-auto">
+                                        <span className="material-symbols-outlined text-5xl">visibility_off</span>
+                                    </div>
+                                    <h4 className="font-bold text-slate-700 dark:text-gray-200">Vista previa no disponible</h4>
+                                    <p className="text-sm text-slate-500">Este tipo de archivo (WORD/EXCEL) no se puede previsualizar directamente en el navegador por razones de seguridad.</p>
+                                    <a
+                                        href={selectedDoc.url}
+                                        download={selectedDoc.nombre}
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-[#112121] font-black rounded-2xl shadow-lg shadow-primary/20"
+                                    >
+                                        DESCARGAR PARA VER
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isUploadModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isUploading && setIsUploadModalOpen(false)}></div>
+                    <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-4xl max-h-[90vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="px-10 py-8 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Cargar Documentación</h2>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Legajo: {ingreso.expedientes?.numero}</p>
+                            </div>
+                            <button onClick={() => !isUploading && setIsUploadModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                <span className="material-symbols-outlined text-slate-500">close</span>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <span className="material-symbols-outlined text-3xl">upload_file</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-700 dark:text-white">Seleccionar Archivos</h4>
+                                        <p className="text-xs text-slate-500">Imágenes o PDFs (Máx. 10MB)</p>
+                                    </div>
+                                </div>
+                                <label className="px-6 py-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all cursor-pointer shadow-sm">
+                                    + Buscar en Equipo
+                                    <input
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        accept="image/*,application/pdf"
+                                        onChange={handleFileSelection}
+                                    />
+                                </label>
+                            </div>
+
+                            {pendingFiles.length > 0 ? (
+                                <div className="space-y-4">
+                                    {pendingFiles.map((doc, idx) => (
+                                        <div key={idx} className="flex flex-col md:flex-row gap-6 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm animate-in slide-in-from-left-4 duration-300 relative group">
+                                            <div className="flex-1 space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nombre del Archivo</label>
+                                                <input
+                                                    className="w-full h-12 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20"
+                                                    value={doc.nombre}
+                                                    onChange={(e) => {
+                                                        const docs = [...pendingFiles];
+                                                        docs[idx].nombre = e.target.value;
+                                                        setPendingFiles(docs);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="w-full md:w-64 space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clasificación</label>
+                                                <select
+                                                    className="w-full h-12 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                                                    value={doc.subcategoria}
+                                                    onChange={(e) => {
+                                                        const docs = [...pendingFiles];
+                                                        docs[idx].subcategoria = e.target.value;
+                                                        setPendingFiles(docs);
+                                                    }}
+                                                >
+                                                    <option>Acta de Entrevista</option>
+                                                    <option>Informe Técnico</option>
+                                                    <option>Copia de DNI</option>
+                                                    <option>Certificado Médico</option>
+                                                    <option>Oficio Judicial</option>
+                                                    <option>Otro</option>
+                                                </select>
+                                            </div>
+                                            <button
+                                                onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
+                                                className="md:mt-6 p-3 text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
+                                            >
+                                                <span className="material-symbols-outlined">delete</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-20 opacity-40">
+                                    <span className="material-symbols-outlined text-6xl mb-4">cloud_upload</span>
+                                    <p className="text-sm font-bold uppercase tracking-widest text-slate-400">No hay archivos seleccionados</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-10 py-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-4">
+                            <button
+                                onClick={() => !isUploading && setIsUploadModalOpen(false)}
+                                className="px-6 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleFileUpload}
+                                disabled={isUploading || pendingFiles.length === 0}
+                                className="px-10 h-14 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-3"
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <div className="animate-spin size-4 border-2 border-[#112121] border-t-transparent rounded-full"></div>
+                                        Subiendo...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-lg">cloud_done</span>
+                                        Finalizar Subida
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </main>
     );
 };
 

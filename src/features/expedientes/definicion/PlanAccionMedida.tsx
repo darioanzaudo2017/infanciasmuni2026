@@ -62,6 +62,22 @@ const PlanAccionMedida = () => {
 
             setShowModal(false);
             setNewAccion({ nombre: '', descripcion: '', responsable: '', requiere_recurso: false, tipo_recurso: '', monto: '' });
+
+            // Track user in parent ingreso
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user && ingresoId) {
+                await supabase.from('ingresos').update({
+                    ultimo_usuario_id: user.id,
+                    updated_at: new Date().toISOString()
+                }).eq('id', ingresoId);
+
+                await supabase.from('auditoria').insert({
+                    tabla: 'ingresos',
+                    registro_id: parseInt(ingresoId),
+                    accion: 'NUEVA_ACCION_PLAN',
+                    usuario_id: user.id
+                });
+            }
         } catch (error) {
             console.error('Error saving action', error);
             alert('Error al guardar acción');

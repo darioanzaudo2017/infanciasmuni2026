@@ -132,23 +132,23 @@ const FormularioRecepcion: React.FC = () => {
                 if (!nino) throw new Error('Niño not found');
 
                 const [
-                    { data: extraNinoData },
+                    { data: form1DatosNino },
                     { data: derivacion },
                     { data: motivo },
-                    { data: vulnerabilityData },
-                    { data: familyData },
-                    { data: supportData },
+                    { data: vulnerabilidadesData },
+                    { data: grupoFamiliarData },
+                    { data: referentesData },
                     { data: decisionData },
-                    { data: docData }
+                    { data: documentosData }
                 ] = await Promise.all([
-                    supabase.from('form1_nino_extra').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
+                    supabase.from('form1_datos_nino').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('form1_derivacion').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('form1_motivo').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
-                    supabase.from('form1_vulneraciones').select('*').eq('ingreso_id', ingresoId),
-                    supabase.from('form1_grupo_familiar').select('*').eq('ingreso_id', ingresoId),
-                    supabase.from('form1_referentes').select('*').eq('ingreso_id', ingresoId),
+                    supabase.from('derechos_vulnerados').select('*').eq('ingreso_id', ingresoId),
+                    supabase.from('grupo_conviviente').select('*').eq('ingreso_id', ingresoId),
+                    supabase.from('referentes_comunitarios').select('*').eq('ingreso_id', ingresoId),
                     supabase.from('form1_decision').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
-                    supabase.from('form1_documentos').select('*').eq('ingreso_id', ingresoId)
+                    supabase.from('documentos').select('*').eq('ingreso_id', ingresoId)
                 ]);
 
                 setFormData(prev => ({
@@ -159,21 +159,21 @@ const FormularioRecepcion: React.FC = () => {
                     dni: nino.dni?.toString() || '',
                     fecha_nacimiento: nino.fecha_nacimiento,
                     genero: nino.genero,
-                    domicilio: extraNinoData?.domicilio || nino.domicilio || '',
-                    localidad: extraNinoData?.localidad || nino.localidad || '',
-                    barrio: extraNinoData?.barrio || nino.barrio || '',
-                    centro_salud: extraNinoData?.centro_salud || nino.centro_salud || '',
-                    historia_clinica: extraNinoData?.historia_clinica || nino.historia_clinica || '',
-                    tiene_cud: extraNinoData?.tiene_cud || nino.tiene_cud || false,
-                    cobertura_medica: extraNinoData?.obra_social || nino.cobertura_medica || 'Publica',
-                    observaciones_salud: extraNinoData?.observaciones_salud || nino.observaciones_salud || '',
-                    nivel_educativo: extraNinoData?.nivel_educativo || nino.nivel_educativo || '',
-                    curso: extraNinoData?.curso || nino.curso || '',
-                    turno: extraNinoData?.turno || nino.turno || 'Mañana',
-                    institucion_educativa: extraNinoData?.escuela || nino.institucion_educativa || '',
-                    asiste_regularmente: extraNinoData?.asiste_regularmente ?? nino.asiste_regularmente ?? true,
-                    trabaja: extraNinoData?.trabaja ?? nino.trabaja ?? false,
-                    trabajo_detalle: extraNinoData?.trabajo_detalle || nino.trabajo_detalle || '',
+                    domicilio: form1DatosNino?.domicilio || nino.domicilio || '',
+                    localidad: form1DatosNino?.localidad || nino.localidad || '',
+                    barrio: nino.barrio || '', // Using barrio from nino directly for now
+                    centro_salud: form1DatosNino?.centro_salud || nino.centro_salud || '',
+                    historia_clinica: form1DatosNino?.historia_clinica || nino.historia_clinica || '',
+                    tiene_cud: form1DatosNino?.tiene_cud || nino.tiene_cud || false,
+                    cobertura_medica: form1DatosNino?.obra_social || nino.cobertura_medica || 'Publica',
+                    observaciones_salud: form1DatosNino?.observaciones_salud || nino.observaciones_salud || '',
+                    nivel_educativo: form1DatosNino?.nivel_educativo || nino.nivel_educativo || '',
+                    curso: form1DatosNino?.curso || nino.curso || '',
+                    turno: form1DatosNino?.turno || nino.turno || 'Mañana',
+                    institucion_educativa: form1DatosNino?.escuela || nino.institucion_educativa || '',
+                    asiste_regularmente: form1DatosNino?.asiste_regularmente ?? nino.asiste_regularmente ?? true,
+                    trabaja: form1DatosNino?.trabaja ?? nino.trabaja ?? false,
+                    trabajo_detalle: form1DatosNino?.trabajo_detalle || nino.trabajo_detalle || '',
                     expediente_id: exp.id,
                     spd_id: exp.servicio_proteccion_id,
                     zona_id: exp.zona_id,
@@ -188,12 +188,12 @@ const FormularioRecepcion: React.FC = () => {
                     motivo_principal: motivo?.motivo_principal || '',
                     gravedad: motivo?.gravedad || 'Moderada',
                     relato_situacion: motivo?.descripcion_situacion || '',
-                    vulneraciones: vulnerabilityData?.length ? vulnerabilityData : [{ derecho_id: '', indicador: '', observaciones: '' }],
-                    grupo_familiar: familyData || [],
-                    referentes: supportData || [],
+                    vulneraciones: vulnerabilidadesData?.length ? vulnerabilidadesData : [{ derecho_id: '', indicador: '', observaciones: '' }],
+                    grupo_familiar: grupoFamiliarData || [],
+                    referentes: referentesData || [],
                     decision_id: decisionData?.decision_id || 'asesoramiento',
                     observaciones_cierre: decisionData?.observaciones || '',
-                    archivos: docData?.map((d: any) => ({
+                    archivos: documentosData?.map((d: any) => ({
                         id: d.id,
                         nombre: d.nombre,
                         tipo: d.tipo,
@@ -263,7 +263,7 @@ const FormularioRecepcion: React.FC = () => {
                     // Fetch profile
                     const { data: profile } = await supabase
                         .from('usuarios')
-                        .select('*, usuarios_roles(roles(nombre))')
+                        .select('*, usuarios_roles(roles(nombre)), servicios_proteccion(id, nombre)')
                         .eq('id', user.id)
                         .maybeSingle();
 
@@ -317,6 +317,18 @@ const FormularioRecepcion: React.FC = () => {
         return () => subscription.unsubscribe();
     }, []);
 
+    // Auto-assign SPD for Professionals
+    useEffect(() => {
+        const roles = userProfile?.usuarios_roles?.map((ur: any) => ur.roles?.nombre) || [];
+        const isAdmin = roles.includes('Administrador') || userProfile?.email === 'darioanzaudo@gmail.com';
+        const isCoordinador = roles.includes('Coordinador');
+
+        if (!isAdmin && !isCoordinador && userProfile?.servicio_proteccion_id && !formData.spd_id) {
+            console.log('Auto-assigning SPD for Professional:', userProfile.servicio_proteccion_id);
+            setFormData(prev => ({ ...prev, spd_id: userProfile.servicio_proteccion_id }));
+        }
+    }, [userProfile, formData.spd_id]);
+
     const steps = [
         { id: 1, name: 'Datos y Asignación', icon: 'person' },
         { id: 2, name: 'Salud y Educación', icon: 'medical_services' },
@@ -330,7 +342,8 @@ const FormularioRecepcion: React.FC = () => {
 
     const roles = userProfile?.usuarios_roles?.map((ur: any) => ur.roles?.nombre) || [];
     const isAdmin = roles.includes('Administrador') || userProfile?.email === 'darioanzaudo@gmail.com';
-    const currentRole = isAdmin ? 'Administrador' : (roles[0] || 'Profesional');
+    const isCoordinador = roles.includes('Coordinador');
+    const currentRole = isAdmin ? 'Administrador' : (isCoordinador ? 'Coordinador' : (roles[0] || 'Profesional'));
 
     const handleAddMember = () => {
         setEditingMemberIndex(null);
@@ -445,8 +458,29 @@ const FormularioRecepcion: React.FC = () => {
                 apellido: formData.apellido,
                 dni: formData.dni ? parseInt(String(formData.dni).replace(/\D/g, '')) : null,
                 fecha_nacimiento: formData.fecha_nacimiento,
-                genero: formData.genero
+                genero: formData.genero,
+                domicilio: formData.domicilio,
+                localidad: formData.localidad,
+                barrio: formData.barrio,
+                centro_salud: formData.centro_salud,
+                historia_clinica: formData.historia_clinica,
+                tiene_cud: formData.tiene_cud,
+                cobertura_medica: formData.cobertura_medica,
+                nivel_educativo: formData.nivel_educativo,
+                curso: formData.curso,
+                turno: formData.turno,
+                institucion_educativa: formData.institucion_educativa,
+                asiste_regularmente: formData.asiste_regularmente,
+                observaciones_salud: formData.observaciones_salud
             };
+
+            if (!ninoId && ninoPayload.dni) {
+                const { data: existingNino } = await supabase.from('ninos').select('id').eq('dni', ninoPayload.dni).maybeSingle();
+                if (existingNino) {
+                    ninoId = existingNino.id;
+                    console.log('Found existing child by DNI:', ninoId);
+                }
+            }
 
             if (!ninoId) {
                 const { data: newNino, error: ninoErr } = await supabase.from('ninos').insert(ninoPayload).select().single();
@@ -460,19 +494,42 @@ const FormularioRecepcion: React.FC = () => {
             // 2. Create/Get Expediente
             let expedienteId = formData.expediente_id;
             if (!expedienteId) {
-                const year = new Date().getFullYear();
-                const randomNum = Math.floor(Math.random() * 90000) + 10000;
-                const { data: newExp, error: expErr } = await supabase.from('expedientes').insert({
-                    nino_id: ninoId,
-                    servicio_proteccion_id: formData.spd_id || (userProfile?.servicios_proteccion?.id),
-                    profesional_id: userProfile?.id,
-                    numero: `EXP-${year}-${randomNum}`,
-                    fecha_apertura: new Date().toISOString().split('T')[0],
-                    activo: true
-                }).select().single();
+                // Try to find an active expediente for this nino
+                const { data: existingExp } = await supabase
+                    .from('expedientes')
+                    .select('id')
+                    .eq('nino_id', ninoId)
+                    .eq('activo', true)
+                    .maybeSingle();
 
-                if (expErr) throw expErr;
-                expedienteId = newExp.id;
+                if (existingExp) {
+                    expedienteId = existingExp.id;
+                    console.log('Using existing active expediente:', expedienteId);
+                } else {
+                    const year = new Date().getFullYear();
+                    const randomNum = Math.floor(Math.random() * 90000) + 10000;
+                    // Get SPD's zona_id if available
+                    const spdId = formData.spd_id || userProfile?.servicios_proteccion?.id;
+                    let zonaId = userProfile?.zona_id;
+
+                    if (spdId && !zonaId) {
+                        const { data: spdData } = await supabase.from('servicios_proteccion').select('zona_id').eq('id', spdId).single();
+                        zonaId = spdData?.zona_id;
+                    }
+
+                    const { data: newExp, error: expErr } = await supabase.from('expedientes').insert({
+                        nino_id: ninoId,
+                        servicio_proteccion_id: spdId,
+                        zona_id: zonaId,
+                        profesional_id: userProfile?.id,
+                        numero: `EXP-${year}-${randomNum}`,
+                        fecha_apertura: new Date().toISOString().split('T')[0],
+                        activo: true
+                    }).select().single();
+
+                    if (expErr) throw expErr;
+                    expedienteId = newExp.id;
+                }
             }
 
             // 3. Create/Update Ingreso
@@ -486,7 +543,8 @@ const FormularioRecepcion: React.FC = () => {
                     etapa: formData.decision_id === 'abordaje_integral' ? 'ampliacion' : 'recepcion',
                     estado: isClosing ? 'cerrado' : 'abierto',
                     fecha_cierre: isClosing ? today : null,
-                    motivo_cierre: isClosing ? 'Asesoramiento Finalizado' : null
+                    motivo_cierre: isClosing ? 'Asesoramiento Finalizado' : null,
+                    ultimo_usuario_id: userProfile?.id
                 }).eq('id', currentIngresoId);
                 if (ingErr) throw ingErr;
             } else {
@@ -494,6 +552,7 @@ const FormularioRecepcion: React.FC = () => {
                 const { data: newIngreso, error: ingErr } = await supabase.from('ingresos').insert({
                     expediente_id: expedienteId,
                     profesional_asignado_id: userProfile?.id,
+                    ultimo_usuario_id: userProfile?.id,
                     fecha_ingreso: today,
                     etapa: formData.decision_id === 'abordaje_integral' ? 'ampliacion' : 'recepcion',
                     estado: isClosing ? 'cerrado' : 'abierto',
@@ -584,9 +643,11 @@ const FormularioRecepcion: React.FC = () => {
                     nombre: m.nombre,
                     apellido: m.apellido,
                     dni: m.dni ? parseInt(String(m.dni).replace(/\D/g, '')) : null,
+                    fecha_nacimiento: m.fecha_nacimiento || null,
                     vinculo: m.vinculo,
                     convive: m.convive,
                     telefono: m.telefono,
+                    direccion: m.direccion,
                     observaciones: m.observaciones
                 })),
                 ...formData.referentes.map(r => supabase.from('referentes_comunitarios').insert({
@@ -597,19 +658,63 @@ const FormularioRecepcion: React.FC = () => {
                     dni: r.dni ? parseInt(String(r.dni).replace(/\D/g, '')) : null,
                     vinculo: r.vinculo,
                     telefono: r.telefono,
+                    direccion: r.direccion,
                     puede_acompanar: r.puede_acompanar,
+                    puede_aportar_info: r.puede_aportar_info,
                     es_referente_principal: r.es_referente_principal,
                     observaciones: r.observaciones
-                })),
-                ...formData.archivos.map(doc => supabase.from('documentos').insert({
-                    ingreso_id: currentIngresoId,
-                    nombre: doc.nombre,
-                    tipo: doc.tipo,
-                    url: (doc as any).url || 'https://placeholder.com/doc.pdf' // Assuming we have URLs if loaded, or placeholders for newly added in this simulation
                 }))
             ];
 
             await Promise.all([...promises, ...collectionPromises]);
+
+            // 5. Save Documents with real upload
+            if (formData.archivos.length > 0) {
+                for (const doc of formData.archivos) {
+                    if (doc.file) {
+                        try {
+                            const fileExt = doc.file.name.split('.').pop();
+                            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+                            const filePath = `${expedienteId}/${fileName}`;
+
+                            // 1. Upload to Storage
+                            await supabase.storage.from('expedientes').upload(filePath, doc.file);
+
+                            // 2. Get URL
+                            const { data: { publicUrl } } = supabase.storage.from('expedientes').getPublicUrl(filePath);
+
+                            // 3. Insert into DB
+                            await supabase.from('documentos').insert({
+                                ingreso_id: currentIngresoId,
+                                nombre: doc.nombre,
+                                tipo: fileExt?.toUpperCase() === 'PDF' ? 'PDF' : 'Imagen',
+                                url: publicUrl,
+                                origen: 'recepcion'
+                            });
+                        } catch (err) {
+                            console.error('Error subiendo archivo en recepcion:', doc.nombre, err);
+                        }
+                    } else if (doc.url) {
+                        // Si ya tenía una URL (edición), la mantenemos
+                        await supabase.from('documentos').insert({
+                            ingreso_id: currentIngresoId,
+                            nombre: doc.nombre,
+                            tipo: doc.tipo,
+                            url: doc.url,
+                            origen: 'recepcion'
+                        });
+                    }
+                }
+            }
+
+            // 5. Register audit
+            await supabase.from('auditoria').insert({
+                tabla: 'ingresos',
+                registro_id: currentIngresoId as unknown as number,
+                accion: ingresoId ? 'UPDATE' : 'INSERT',
+                usuario_id: userProfile?.id,
+                datos_nuevos: { etapa: formData.decision_id === 'abordaje_integral' ? 'ampliacion' : 'recepcion', estado: isClosing ? 'cerrado' : 'abierto' }
+            });
 
             alert('¡Recepción finalizada con éxito! El legajo ha sido creado.');
             navigate(`/expedientes/${expedienteId}/ingresos/${currentIngresoId}`);
@@ -670,7 +775,6 @@ const FormularioRecepcion: React.FC = () => {
                 <div className="max-w-4xl mx-auto">
                     <Breadcrumbs
                         items={[
-                            { label: 'Inicio', path: '/' },
                             { label: 'Expedientes', path: '/expedientes' },
                             ...(formData.expediente_id ? [{ label: 'Historial de Ingresos', path: `/expedientes/${formData.expediente_id}/ingresos` }] : []),
                             ...(ingresoId ? [{ label: 'Detalle de Legajo', path: `/expedientes/` + (formData.expediente_id || '0') + `/ingresos/${ingresoId}` }] : []),
@@ -1691,6 +1795,7 @@ const FormularioRecepcion: React.FC = () => {
                                                     setFormData({
                                                         ...formData,
                                                         archivos: [...formData.archivos, {
+                                                            file: file, // Guardamos el objeto File real
                                                             nombre: file.name,
                                                             tipo: file.type.split('/')[1]?.toUpperCase() || 'FILE',
                                                             fecha: new Date().toLocaleDateString(),

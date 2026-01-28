@@ -4,12 +4,25 @@ import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
 
+const calculateAge = (birthDate: string) => {
+    if (!birthDate) return '';
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return String(age);
+};
+
 const INITIAL_FORM_DATA = {
     nino_id: '',
     nombre: '',
     apellido: '',
     dni: '',
     fecha_nacimiento: '',
+    edad: '',
     genero: '',
     expediente_id: '',
     spd_id: '',
@@ -29,6 +42,9 @@ const INITIAL_FORM_DATA = {
     asiste_regularmente: true,
     trabaja: false,
     trabajo_detalle: '',
+    referencia_ubicacion: '',
+    tiene_discapacidad: false,
+    tipo_discapacidad: '',
     grupo_familiar: [] as any[],
     referentes: [] as any[],
     motivo_principal: '',
@@ -60,8 +76,13 @@ const FormularioRecepcion: React.FC = () => {
     const [loadingAuth, setLoadingAuth] = useState(true);
     const [loadingNino, setLoadingNino] = useState(false);
     const [catalogoDerechos, setCatalogoDerechos] = useState<any[]>([]);
+    const [barrios, setBarrios] = useState<any[]>([]);
+    const [barrioSearch, setBarrioSearch] = useState('');
+    const [isBarrioDropdownOpen, setIsBarrioDropdownOpen] = useState(false);
+    const barrioRef = React.useRef<HTMLDivElement>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(false);
+    const [isEditingNino, setIsEditingNino] = useState(false);
     // ... rest of states ...
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isReferenteDrawerOpen, setIsReferenteDrawerOpen] = useState(false);
@@ -76,8 +97,15 @@ const FormularioRecepcion: React.FC = () => {
         telefono: '',
         convive: true,
         direccion: '',
-        observaciones: ''
+        edad: '',
+        observaciones: '',
+        linked_expediente_id: null as string | null,
+        linked_ingreso_id: null as string | null
     });
+
+    const [isCheckingDni, setIsCheckingDni] = useState(false);
+    const [linkedExpedienteId, setLinkedExpedienteId] = useState<string | null>(null);
+    const [linkedIngresoId, setLinkedIngresoId] = useState<string | null>(null);
 
     const [currentReferente, setCurrentReferente] = useState({
         nombre: '',
@@ -165,6 +193,8 @@ const FormularioRecepcion: React.FC = () => {
                     centro_salud: form1DatosNino?.centro_salud || nino.centro_salud || '',
                     historia_clinica: form1DatosNino?.historia_clinica || nino.historia_clinica || '',
                     tiene_cud: form1DatosNino?.tiene_cud || nino.tiene_cud || false,
+                    tiene_discapacidad: form1DatosNino?.tiene_discapacidad ?? nino.tiene_discapacidad ?? false,
+                    tipo_discapacidad: form1DatosNino?.tipo_discapacidad || nino.tipo_discapacidad || '',
                     cobertura_medica: form1DatosNino?.obra_social || nino.cobertura_medica || 'Publica',
                     observaciones_salud: form1DatosNino?.observaciones_salud || nino.observaciones_salud || '',
                     nivel_educativo: form1DatosNino?.nivel_educativo || nino.nivel_educativo || '',
@@ -189,7 +219,10 @@ const FormularioRecepcion: React.FC = () => {
                     gravedad: motivo?.gravedad || 'Moderada',
                     relato_situacion: motivo?.descripcion_situacion || '',
                     vulneraciones: vulnerabilidadesData?.length ? vulnerabilidadesData : [{ derecho_id: '', indicador: '', observaciones: '' }],
-                    grupo_familiar: grupoFamiliarData || [],
+                    grupo_familiar: (grupoFamiliarData || []).map(m => ({
+                        ...m,
+                        edad: m.edad || calculateAge(m.fecha_nacimiento)
+                    })),
                     referentes: referentesData || [],
                     decision_id: decisionData?.decision_id || 'asesoramiento',
                     observaciones_cierre: decisionData?.observaciones || '',
@@ -224,6 +257,7 @@ const FormularioRecepcion: React.FC = () => {
                     apellido: data.apellido,
                     dni: data.dni?.toString() || '',
                     fecha_nacimiento: data.fecha_nacimiento,
+                    edad: data.edad || calculateAge(data.fecha_nacimiento),
                     genero: data.genero
                 }));
             }
@@ -303,7 +337,7 @@ const FormularioRecepcion: React.FC = () => {
 
         // Always load SPDs if we think user might be admin (to avoid race hazard)
         const loadAllSpds = async () => {
-            const { data } = await supabase.from('servicios_proteccion').select('id, nombre').order('nombre');
+            const { data } = await supabase.from('servicios_proteccion').select('id, nombre, zona_id').order('nombre');
             if (data) setSpds(data);
         };
         loadAllSpds();
@@ -313,6 +347,12 @@ const FormularioRecepcion: React.FC = () => {
             if (data) setCatalogoDerechos(data);
         };
         fetchCatalog();
+
+        const fetchBarrios = async () => {
+            const { data } = await supabase.from('barrios').select('id, nombre').order('nombre');
+            if (data) setBarrios(data);
+        };
+        fetchBarrios();
 
         return () => subscription.unsubscribe();
     }, []);
@@ -328,6 +368,16 @@ const FormularioRecepcion: React.FC = () => {
             setFormData(prev => ({ ...prev, spd_id: userProfile.servicio_proteccion_id }));
         }
     }, [userProfile, formData.spd_id]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (barrioRef.current && !barrioRef.current.contains(event.target as Node)) {
+                setIsBarrioDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const steps = [
         { id: 1, name: 'Datos y Asignación', icon: 'person' },
@@ -356,27 +406,106 @@ const FormularioRecepcion: React.FC = () => {
             telefono: '',
             convive: true,
             direccion: '',
-            observaciones: ''
+            edad: '',
+            observaciones: '',
+            linked_expediente_id: null as string | null,
+            linked_ingreso_id: null as string | null
         });
+        setLinkedExpedienteId(null);
+        setLinkedIngresoId(null);
         setIsDrawerOpen(true);
     };
 
     const handleEditMember = (index: number) => {
         setEditingMemberIndex(index);
-        setCurrentMember(formData.grupo_familiar[index]);
+        const member = formData.grupo_familiar[index];
+        setCurrentMember(member);
+        setLinkedExpedienteId(member.linked_expediente_id || null);
+        setLinkedIngresoId(member.linked_ingreso_id || null);
         setIsDrawerOpen(true);
     };
 
     const handleSaveMember = () => {
         const newGroup = [...formData.grupo_familiar];
+        const memberToSave = {
+            ...currentMember,
+            linked_expediente_id: linkedExpedienteId,
+            linked_ingreso_id: linkedIngresoId
+        };
+
         if (editingMemberIndex !== null) {
-            newGroup[editingMemberIndex] = currentMember;
+            newGroup[editingMemberIndex] = memberToSave;
         } else {
-            newGroup.push(currentMember);
+            newGroup.push(memberToSave);
         }
         setFormData({ ...formData, grupo_familiar: newGroup });
         setIsDrawerOpen(false);
     };
+
+    // Effect to check DNI for existing files
+    useEffect(() => {
+        const checkDni = async () => {
+            const cleanDni = currentMember.dni ? parseInt(String(currentMember.dni).replace(/\D/g, '')) : null;
+            if (!cleanDni || String(cleanDni).length < 6) {
+                setLinkedExpedienteId(null);
+                setLinkedIngresoId(null);
+                return;
+            }
+
+            setIsCheckingDni(true);
+            try {
+                const { data: nino } = await supabase.from('ninos').select('id').eq('dni', cleanDni).maybeSingle();
+                if (nino) {
+                    const { data: exp } = await supabase.from('expedientes')
+                        .select('id, numero')
+                        .eq('nino_id', nino.id)
+                        .eq('activo', true)
+                        .maybeSingle();
+
+                    if (exp && exp.id !== formData.expediente_id) {
+                        setLinkedExpedienteId(exp.id);
+
+                        // Also find the latest active ingreso
+                        const { data: activeIngreso } = await supabase.from('ingresos')
+                            .select('id')
+                            .eq('expediente_id', exp.id)
+                            .neq('estado', 'cerrado')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+
+                        if (activeIngreso) {
+                            setLinkedIngresoId(activeIngreso.id);
+                        } else {
+                            // If no active ingreso, check for the latest one anyway
+                            const { data: latestIngreso } = await supabase.from('ingresos')
+                                .select('id')
+                                .eq('expediente_id', exp.id)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                            setLinkedIngresoId(latestIngreso?.id || null);
+                        }
+                    } else {
+                        setLinkedExpedienteId(null);
+                        setLinkedIngresoId(null);
+                    }
+                } else {
+                    setLinkedExpedienteId(null);
+                    setLinkedIngresoId(null);
+                }
+            } catch (err) {
+                console.error('Error checking DNI:', err);
+            } finally {
+                setIsCheckingDni(false);
+            }
+        };
+
+        if (isDrawerOpen) {
+            const timer = setTimeout(checkDni, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [currentMember.dni, isDrawerOpen]);
 
     const handleRemoveMember = (index: number) => {
         const newGroup = formData.grupo_familiar.filter((_, i) => i !== index);
@@ -457,7 +586,7 @@ const FormularioRecepcion: React.FC = () => {
                 nombre: formData.nombre,
                 apellido: formData.apellido,
                 dni: formData.dni ? parseInt(String(formData.dni).replace(/\D/g, '')) : null,
-                fecha_nacimiento: formData.fecha_nacimiento,
+                fecha_nacimiento: formData.fecha_nacimiento || null,
                 genero: formData.genero,
                 domicilio: formData.domicilio,
                 localidad: formData.localidad,
@@ -471,7 +600,11 @@ const FormularioRecepcion: React.FC = () => {
                 turno: formData.turno,
                 institucion_educativa: formData.institucion_educativa,
                 asiste_regularmente: formData.asiste_regularmente,
-                observaciones_salud: formData.observaciones_salud
+                observaciones_salud: formData.observaciones_salud,
+                referencia_ubicacion: formData.referencia_ubicacion,
+                tiene_discapacidad: formData.tiene_discapacidad,
+                tipo_discapacidad: formData.tipo_discapacidad,
+                edad: formData.edad
             };
 
             if (!ninoId && ninoPayload.dni) {
@@ -491,13 +624,19 @@ const FormularioRecepcion: React.FC = () => {
                 if (ninoErr) throw ninoErr;
             }
 
-            // 2. Create/Get Expediente
+            // 2. Create/Get/Update Expediente
             let expedienteId = formData.expediente_id;
+            const spdId = formData.spd_id || userProfile?.servicios_proteccion?.id;
+
+            // Determinar zona_id basado en el SPD seleccionado (si existe en el estado spds)
+            let selectedSpd = spds.find(s => String(s.id) === String(spdId));
+            let zonaId = selectedSpd?.zona_id || userProfile?.zona_id;
+
             if (!expedienteId) {
                 // Try to find an active expediente for this nino
                 const { data: existingExp } = await supabase
                     .from('expedientes')
-                    .select('id')
+                    .select('id, servicio_proteccion_id, zona_id')
                     .eq('nino_id', ninoId)
                     .eq('activo', true)
                     .maybeSingle();
@@ -505,17 +644,18 @@ const FormularioRecepcion: React.FC = () => {
                 if (existingExp) {
                     expedienteId = existingExp.id;
                     console.log('Using existing active expediente:', expedienteId);
+
+                    // Si el usuario es Admin/Coord y seleccionó un SPD diferente, actualizamos el expediente existente
+                    if ((isAdmin || isCoordinador) && spdId && (String(existingExp.servicio_proteccion_id) !== String(spdId))) {
+                        console.log('Updating existing expediente with new SPD/Zona for Admin/Coord');
+                        await supabase.from('expedientes').update({
+                            servicio_proteccion_id: spdId,
+                            zona_id: zonaId
+                        }).eq('id', expedienteId);
+                    }
                 } else {
                     const year = new Date().getFullYear();
                     const randomNum = Math.floor(Math.random() * 90000) + 10000;
-                    // Get SPD's zona_id if available
-                    const spdId = formData.spd_id || userProfile?.servicios_proteccion?.id;
-                    let zonaId = userProfile?.zona_id;
-
-                    if (spdId && !zonaId) {
-                        const { data: spdData } = await supabase.from('servicios_proteccion').select('zona_id').eq('id', spdId).single();
-                        zonaId = spdData?.zona_id;
-                    }
 
                     const { data: newExp, error: expErr } = await supabase.from('expedientes').insert({
                         nino_id: ninoId,
@@ -529,6 +669,14 @@ const FormularioRecepcion: React.FC = () => {
 
                     if (expErr) throw expErr;
                     expedienteId = newExp.id;
+                }
+            } else {
+                // Si ya teníamos un ID de expediente pero el SPD cambió (caso de edición o carga parcial)
+                if ((isAdmin || isCoordinador) && spdId) {
+                    await supabase.from('expedientes').update({
+                        servicio_proteccion_id: spdId,
+                        zona_id: zonaId
+                    }).eq('id', expedienteId);
                 }
             }
 
@@ -635,7 +783,10 @@ const FormularioRecepcion: React.FC = () => {
                     turno: formData.turno,
                     asiste_regularmente: formData.asiste_regularmente,
                     trabaja: formData.trabaja,
-                    trabajo_detalle: formData.trabajo_detalle
+                    trabajo_detalle: formData.trabajo_detalle,
+                    tiene_discapacidad: formData.tiene_discapacidad,
+                    tipo_discapacidad: formData.tipo_discapacidad,
+                    edad: formData.edad
                 }),
                 ...formData.grupo_familiar.map(m => supabase.from('grupo_conviviente').insert({
                     expediente_id: expedienteId,
@@ -648,7 +799,10 @@ const FormularioRecepcion: React.FC = () => {
                     convive: m.convive,
                     telefono: m.telefono,
                     direccion: m.direccion,
-                    observaciones: m.observaciones
+                    edad: m.edad,
+                    observaciones: m.observaciones,
+                    linked_expediente_id: m.linked_expediente_id,
+                    linked_ingreso_id: m.linked_ingreso_id
                 })),
                 ...formData.referentes.map(r => supabase.from('referentes_comunitarios').insert({
                     expediente_id: expedienteId,
@@ -688,6 +842,7 @@ const FormularioRecepcion: React.FC = () => {
                                 ingreso_id: currentIngresoId,
                                 nombre: doc.nombre,
                                 tipo: fileExt?.toUpperCase() === 'PDF' ? 'PDF' : 'Imagen',
+                                subcategoria: doc.subcategoria || 'Otro',
                                 url: publicUrl,
                                 origen: 'recepcion'
                             });
@@ -700,6 +855,7 @@ const FormularioRecepcion: React.FC = () => {
                             ingreso_id: currentIngresoId,
                             nombre: doc.nombre,
                             tipo: doc.tipo,
+                            subcategoria: doc.subcategoria || 'Otro',
                             url: doc.url,
                             origen: 'recepcion'
                         });
@@ -750,11 +906,12 @@ const FormularioRecepcion: React.FC = () => {
                             return (
                                 <div
                                     key={step.id}
-                                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all border-l-4 ${isActive
+                                    onClick={() => setCurrentStep(step.id)}
+                                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all border-l-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${isActive
                                         ? 'bg-primary/10 text-primary border-primary'
                                         : isCompleted
                                             ? 'text-green-600 bg-green-50/50 dark:bg-green-900/10 border-transparent'
-                                            : 'text-[#60708a] border-transparent opacity-60'
+                                            : 'text-[#60708a] border-transparent hover:opacity-100 opacity-60'
                                         }`}
                                 >
                                     <span className={`material-symbols-outlined text-xl ${isActive || isCompleted ? 'fill-current' : ''}`}>
@@ -835,7 +992,17 @@ const FormularioRecepcion: React.FC = () => {
                                     </p>
                                 </div>
                             </div>
-                            <button className="text-primary text-[10px] font-bold uppercase hover:underline">Cambiar Sujeto</button>
+                            <button
+                                onClick={() => {
+                                    const nextState = !isEditingNino;
+                                    setIsEditingNino(nextState);
+                                    if (nextState) setCurrentStep(1);
+                                }}
+                                disabled={isSaving}
+                                className={`text-[10px] font-bold uppercase transition-all ${isSaving ? 'text-slate-400 cursor-not-allowed' : 'text-primary hover:underline'}`}
+                            >
+                                {isEditingNino ? 'Cancelar Edición' : 'Editar NNyA'}
+                            </button>
                         </div>
                     ) : (
                         <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-200 dark:border-amber-800 flex gap-4">
@@ -850,8 +1017,8 @@ const FormularioRecepcion: React.FC = () => {
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {currentStep === 1 && (
                             <div className="space-y-6">
-                                {/* Datos Filiales del Niño (Only if NEW) */}
-                                {(!ninoData && !formData.nino_id) && (
+                                {/* Datos Filiales del Niño (Only if NEW or EDITING) */}
+                                {(!ninoData && !formData.nino_id || isEditingNino) && (
                                     <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
                                         <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                             <h3 className="text-lg font-bold tracking-tight">Datos Filiales del Niño/a</h3>
@@ -876,7 +1043,7 @@ const FormularioRecepcion: React.FC = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">DNI</label>
+                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">DNI (Opcional)</label>
                                                 <input
                                                     className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
                                                     value={formData.dni}
@@ -890,7 +1057,31 @@ const FormularioRecepcion: React.FC = () => {
                                                     type="date"
                                                     className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
                                                     value={formData.fecha_nacimiento}
-                                                    onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const dob = e.target.value;
+                                                        let suggestedAge = '';
+                                                        if (dob) {
+                                                            const birth = new Date(dob);
+                                                            const today = new Date();
+                                                            let age = today.getFullYear() - birth.getFullYear();
+                                                            const m = today.getMonth() - birth.getMonth();
+                                                            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                                                                age--;
+                                                            }
+                                                            suggestedAge = String(age);
+                                                        }
+                                                        setFormData({ ...formData, fecha_nacimiento: dob, edad: suggestedAge });
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Edad (Años)</label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    value={formData.edad}
+                                                    onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
+                                                    placeholder="Edad sugerida o manual"
                                                 />
                                             </div>
                                         </div>
@@ -960,15 +1151,6 @@ const FormularioRecepcion: React.FC = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
-                                            <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
-                                                placeholder="Ej: 1234/2024"
-                                                value={formData.derivacion.oficio_numero}
-                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, oficio_numero: e.target.value } })}
-                                            />
-                                        </div>
-                                        <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nombre del Solicitante / Informante</label>
                                             <input
                                                 className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
@@ -993,7 +1175,7 @@ const FormularioRecepcion: React.FC = () => {
 
                         {currentStep === 2 && (
                             <div className="space-y-8">
-                                {/* Domicilio */}
+                                {/* Domicilio y Localización */}
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
                                     <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                         <h3 className="text-lg font-bold tracking-tight">Domicilio y Localización</h3>
@@ -1009,6 +1191,77 @@ const FormularioRecepcion: React.FC = () => {
                                                 onChange={(e) => setFormData({ ...formData, domicilio: e.target.value })}
                                             />
                                         </div>
+                                        <div className="relative" ref={barrioRef}>
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Barrio</label>
+                                            <div
+                                                onClick={() => setIsBarrioDropdownOpen(!isBarrioDropdownOpen)}
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium flex items-center justify-between cursor-pointer select-none"
+                                            >
+                                                <span className={formData.barrio ? "text-slate-800 dark:text-white" : "text-slate-400"}>
+                                                    {barrios.find(b => b.nombre === formData.barrio) ? formData.barrio : (formData.barrio ? "OTRO: " + formData.barrio : "Seleccionar barrio")}
+                                                </span>
+                                                <span className="material-symbols-outlined transition-transform duration-200" style={{ transform: isBarrioDropdownOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                                            </div>
+
+                                            {isBarrioDropdownOpen && (
+                                                <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className="p-3 border-b border-slate-50 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
+                                                        <div className="relative">
+                                                            <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
+                                                            <input
+                                                                autoFocus
+                                                                className="w-full h-10 pl-10 pr-4 bg-slate-50 dark:bg-slate-900 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary"
+                                                                placeholder="Buscar barrio..."
+                                                                value={barrioSearch}
+                                                                onChange={(e) => setBarrioSearch(e.target.value)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                                                        {barrios
+                                                            .filter(b => b.nombre.toLowerCase().includes(barrioSearch.toLowerCase()))
+                                                            .map(b => (
+                                                                <button
+                                                                    key={b.id}
+                                                                    onClick={() => {
+                                                                        setFormData({ ...formData, barrio: b.nombre });
+                                                                        setIsBarrioDropdownOpen(false);
+                                                                        setBarrioSearch('');
+                                                                    }}
+                                                                    className={`w-full text-left px-5 py-3 text-sm font-bold transition-colors flex items-center gap-3 ${formData.barrio === b.nombre ? 'bg-primary/5 text-primary border-l-4 border-primary' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                                                                >
+                                                                    <span className="material-symbols-outlined text-sm opacity-40">location_on</span>
+                                                                    {b.nombre}
+                                                                </button>
+                                                            ))}
+                                                        <button
+                                                            onClick={() => {
+                                                                setFormData({ ...formData, barrio: "OTRO" });
+                                                                setIsBarrioDropdownOpen(false);
+                                                                setBarrioSearch('');
+                                                            }}
+                                                            className={`w-full text-left px-5 py-3 text-sm font-black transition-colors flex items-center gap-3 border-t border-slate-50 dark:border-slate-700 ${formData.barrio === "OTRO" || (formData.barrio && !barrios.some(b => b.nombre === formData.barrio)) ? 'bg-amber-50 text-amber-600 border-l-4 border-amber-500' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm opacity-40">add_circle</span>
+                                                            OTRO (Especificar...)
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {(formData.barrio === "" || !barrios.some(b => b.nombre === formData.barrio)) && (
+                                            <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                                                <label className="block mb-2 text-xs font-bold text-primary uppercase tracking-widest">Nombre del Barrio (Otro)</label>
+                                                <input
+                                                    className="w-full h-12 rounded-lg border-primary/30 border-2 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    placeholder="Escriba el nombre del barrio"
+                                                    type="text"
+                                                    value={formData.barrio}
+                                                    onChange={(e) => setFormData({ ...formData, barrio: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Ciudad / Localidad</label>
                                             <select
@@ -1022,6 +1275,25 @@ const FormularioRecepcion: React.FC = () => {
                                                 <option value="rio_iv">Río Cuarto</option>
                                             </select>
                                         </div>
+                                        <div className="col-span-1 md:col-span-2">
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Referencia de la ubicación / Otros datos</label>
+                                            <input
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                placeholder="Ej: Portón verde, entre calle X e Y, frente a la plaza..."
+                                                type="text"
+                                                value={formData.referencia_ubicacion}
+                                                onChange={(e) => setFormData({ ...formData, referencia_ubicacion: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Trayectoria Educativa */}
+                                <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
+                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                        <h3 className="text-lg font-bold tracking-tight">Trayectoria Educativa</h3>
+                                    </div>
+                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nivel Educativo Actual</label>
                                             <select
@@ -1104,15 +1376,6 @@ const FormularioRecepcion: React.FC = () => {
                                                 onChange={(e) => setFormData({ ...formData, historia_clinica: e.target.value })}
                                             />
                                         </div>
-                                        <div className="flex items-center gap-4 py-2">
-                                            <div
-                                                className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_cud ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}
-                                                onClick={() => setFormData({ ...formData, tiene_cud: !formData.tiene_cud })}
-                                            >
-                                                {formData.tiene_cud && <span className="material-symbols-outlined text-sm font-black">check</span>}
-                                            </div>
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Posee CUD (Certificado de Discapacidad)</label>
-                                        </div>
                                         <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Obra Social / Prepaga</label>
                                             <input
@@ -1120,6 +1383,50 @@ const FormularioRecepcion: React.FC = () => {
                                                 placeholder="Nombre de la cobertura"
                                                 value={formData.cobertura_medica}
                                                 onChange={(e) => setFormData({ ...formData, cobertura_medica: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_cud ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}
+                                                    onClick={() => setFormData({ ...formData, tiene_cud: !formData.tiene_cud })}
+                                                >
+                                                    {formData.tiene_cud && <span className="material-symbols-outlined text-sm font-black">check</span>}
+                                                </div>
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Posee CUD</label>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_discapacidad ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}
+                                                    onClick={() => setFormData({ ...formData, tiene_discapacidad: !formData.tiene_discapacidad })}
+                                                >
+                                                    {formData.tiene_discapacidad && <span className="material-symbols-outlined text-sm font-black">check</span>}
+                                                </div>
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tiene discapacidad</label>
+                                            </div>
+                                            {formData.tiene_discapacidad && (
+                                                <div className="animate-in fade-in slide-in-from-left-2 duration-200">
+                                                    <select
+                                                        className="w-full h-11 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 text-sm font-medium"
+                                                        value={formData.tipo_discapacidad}
+                                                        onChange={(e) => setFormData({ ...formData, tipo_discapacidad: e.target.value })}
+                                                    >
+                                                        <option value="">Seleccionar tipo...</option>
+                                                        <option value="Motriz">Motriz</option>
+                                                        <option value="Psicosocial">Psicosocial</option>
+                                                        <option value="Mental">Mental</option>
+                                                        <option value="Otra">Otra</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Observaciones de Salud / Discapacidad</label>
+                                            <textarea
+                                                className="w-full min-h-[100px] rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary p-4 font-medium resize-none"
+                                                placeholder="Detalle cualquier información relevante sobre el estado de salud o discapacidad..."
+                                                value={formData.observaciones_salud}
+                                                onChange={(e) => setFormData({ ...formData, observaciones_salud: e.target.value })}
                                             />
                                         </div>
                                     </div>
@@ -1150,6 +1457,7 @@ const FormularioRecepcion: React.FC = () => {
                                                 <tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-[#dbdfe6] dark:border-slate-800">
                                                     <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Nombre y Apellido</th>
                                                     <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">DNI</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Edad</th>
                                                     <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Vínculo</th>
                                                     <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em] text-center">Convive</th>
                                                     <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em] text-right">Acciones</th>
@@ -1177,6 +1485,9 @@ const FormularioRecepcion: React.FC = () => {
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-4 text-sm text-[#60708a] font-medium">{member.dni}</td>
+                                                            <td className="px-8 py-4 text-sm text-[#60708a] font-black">
+                                                                {(member.edad || calculateAge(member.fecha_nacimiento)) ? `${member.edad || calculateAge(member.fecha_nacimiento)} años` : '-'}
+                                                            </td>
                                                             <td className="px-8 py-4">
                                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter bg-primary/10 text-primary">
                                                                     {member.vinculo}
@@ -1253,7 +1564,21 @@ const FormularioRecepcion: React.FC = () => {
                                                                     value={currentMember.dni}
                                                                     onChange={(e) => setCurrentMember({ ...currentMember, dni: e.target.value })}
                                                                 />
+                                                                {isCheckingDni && (
+                                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                                                        <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                                                    </div>
+                                                                )}
                                                             </div>
+                                                            {linkedExpedienteId && (
+                                                                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl flex gap-3 animate-in zoom-in-95 duration-200">
+                                                                    <span className="material-symbols-outlined text-amber-500 text-lg">link</span>
+                                                                    <div className="space-y-0.5">
+                                                                        <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-tight">Expediente Detectado</p>
+                                                                        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-500">Este integrante tiene un legajo activo. Se vinculará al grupo familiar.</p>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         <div className="space-y-2">
@@ -1284,14 +1609,40 @@ const FormularioRecepcion: React.FC = () => {
                                                             </div>
                                                         </div>
 
-                                                        <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Fecha de Nacimiento</label>
-                                                            <input
-                                                                className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
-                                                                type="date"
-                                                                value={currentMember.fecha_nacimiento}
-                                                                onChange={(e) => setCurrentMember({ ...currentMember, fecha_nacimiento: e.target.value })}
-                                                            />
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Fecha de Nacimiento</label>
+                                                                <input
+                                                                    className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    type="date"
+                                                                    value={currentMember.fecha_nacimiento}
+                                                                    onChange={(e) => {
+                                                                        const dob = e.target.value;
+                                                                        let suggestedAge = '';
+                                                                        if (dob) {
+                                                                            const birth = new Date(dob);
+                                                                            const today = new Date();
+                                                                            let age = today.getFullYear() - birth.getFullYear();
+                                                                            const m = today.getMonth() - birth.getMonth();
+                                                                            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                                                                                age--;
+                                                                            }
+                                                                            suggestedAge = String(age);
+                                                                        }
+                                                                        setCurrentMember({ ...currentMember, fecha_nacimiento: dob, edad: suggestedAge });
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Edad</label>
+                                                                <input
+                                                                    className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    type="number"
+                                                                    placeholder="Edad"
+                                                                    value={currentMember.edad || ''}
+                                                                    onChange={(e) => setCurrentMember({ ...currentMember, edad: e.target.value })}
+                                                                />
+                                                            </div>
                                                         </div>
 
                                                         <div className="space-y-2">
@@ -1798,6 +2149,7 @@ const FormularioRecepcion: React.FC = () => {
                                                             file: file, // Guardamos el objeto File real
                                                             nombre: file.name,
                                                             tipo: file.type.split('/')[1]?.toUpperCase() || 'FILE',
+                                                            subcategoria: 'Acta de Entrevista',
                                                             fecha: new Date().toLocaleDateString(),
                                                             size: (file.size / 1024 / 1024).toFixed(2) + ' MB'
                                                         }]
@@ -1815,25 +2167,63 @@ const FormularioRecepcion: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="space-y-3">
-                                                {formData.archivos.map((file, idx) => (
-                                                    <div key={idx} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between shadow-sm">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-xl flex items-center justify-center">
-                                                                <span className="material-symbols-outlined text-xl">description</span>
+                                                <div className="space-y-4">
+                                                    {formData.archivos.map((file, idx) => (
+                                                        <div key={idx} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col gap-4 shadow-sm animate-in slide-in-from-left-4 duration-300">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl flex items-center justify-center">
+                                                                        <span className="material-symbols-outlined text-2xl">description</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Archivo Detectado</p>
+                                                                        <p className="text-sm font-bold truncate max-w-[200px]">{file.nombre}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => setFormData({ ...formData, archivos: formData.archivos.filter((_, i) => i !== idx) })}
+                                                                    className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
+                                                                >
+                                                                    <span className="material-symbols-outlined">delete</span>
+                                                                </button>
                                                             </div>
-                                                            <div>
-                                                                <p className="text-sm font-bold truncate max-w-[150px]">{file.nombre}</p>
-                                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{file.tipo} • {file.size}</p>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-50 dark:border-slate-800/50 mt-2">
+                                                                <div className="space-y-1.5">
+                                                                    <label className="text-[9px] font-black text-[#60708a] uppercase tracking-widest">Nombre Descriptivo</label>
+                                                                    <input
+                                                                        className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs font-bold outline-none focus:ring-1 focus:ring-primary border-none"
+                                                                        value={file.nombre}
+                                                                        onChange={(e) => {
+                                                                            const next = [...formData.archivos];
+                                                                            next[idx].nombre = e.target.value;
+                                                                            setFormData({ ...formData, archivos: next });
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    <label className="text-[9px] font-black text-[#60708a] uppercase tracking-widest">Clasificación</label>
+                                                                    <select
+                                                                        className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs font-bold outline-none focus:ring-1 focus:ring-primary border-none cursor-pointer appearance-none"
+                                                                        value={file.subcategoria}
+                                                                        onChange={(e) => {
+                                                                            const next = [...formData.archivos];
+                                                                            next[idx].subcategoria = e.target.value;
+                                                                            setFormData({ ...formData, archivos: next });
+                                                                        }}
+                                                                    >
+                                                                        <option value="Acta de Entrevista">Acta de Entrevista</option>
+                                                                        <option value="Copia de DNI">Copia de DNI</option>
+                                                                        <option value="Informe Técnico">Informe Técnico</option>
+                                                                        <option value="Certificado Médico">Certificado Médico</option>
+                                                                        <option value="Oficio Judicial">Oficio Judicial</option>
+                                                                        <option value="Otro">Otro</option>
+                                                                    </select>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <button
-                                                            onClick={() => setFormData({ ...formData, archivos: formData.archivos.filter((_, i) => i !== idx) })}
-                                                            className="text-slate-300 hover:text-red-500 transition-colors"
-                                                        >
-                                                            <span className="material-symbols-outlined">delete</span>
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -1885,8 +2275,8 @@ const FormularioRecepcion: React.FC = () => {
                                     <section className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-[#60708a] dark:text-slate-400">Observaciones y fundamentación</label>
-                                            <span className={`text-[10px] font-black uppercase tracking-widest ${formData.observaciones_cierre.length < 50 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                {formData.observaciones_cierre.length} / 50 carácteres min.
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                {formData.observaciones_cierre.length} carácteres
                                             </span>
                                         </div>
                                         <textarea
@@ -1910,13 +2300,16 @@ const FormularioRecepcion: React.FC = () => {
                                         <div className="p-6 space-y-6">
                                             <ul className="space-y-4">
                                                 {[
-                                                    { label: 'Datos del Niño/a', ok: !!(ninoData || (formData.nombre && formData.dni)), step: 1 },
-                                                    { label: 'Origen / Derivación', ok: !!formData.derivacion.via_ingreso, step: 1 },
+                                                    { label: 'Identidad del Niño/a', ok: !!(ninoData || formData.nombre), step: 1 },
+                                                    { label: 'Domicilio y Localización', ok: !!(formData.domicilio && formData.barrio), step: 2 },
+                                                    { label: 'Trayectoria Educativa', ok: !!(formData.institucion_educativa), step: 2 },
                                                     { label: 'Atención Sanitaria', ok: !!formData.centro_salud, step: 2 },
+                                                    { label: 'Origen / Derivación', ok: !!formData.derivacion.via_ingreso, step: 1 },
                                                     { label: 'Grupo Familiar', ok: formData.grupo_familiar.length > 0, step: 3 },
                                                     { label: 'Red de Apoyo', ok: formData.referentes.length > 0, step: 4 },
-                                                    { label: 'Relato de Situación', ok: formData.relato_situacion.length > 100, step: 5 },
-                                                    { label: 'Valoración de Derechos', ok: formData.vulneraciones.length > 0, step: 6 }
+                                                    { label: 'Relato de Situación', ok: formData.relato_situacion.length > 0, step: 5 },
+                                                    { label: 'Valoración de Derechos', ok: formData.vulneraciones.length > 0, step: 6 },
+                                                    { label: 'Documentación Soporte', ok: formData.archivos.length > 0, step: 7 }
                                                 ].map((check, i) => (
                                                     <li key={i} className="flex items-center justify-between group">
                                                         <div className="flex items-center gap-3">
@@ -1966,7 +2359,7 @@ const FormularioRecepcion: React.FC = () => {
                                     void handleFinalizarRecepcion();
                                 }
                             }}
-                            disabled={currentStep === 8 && (formData.observaciones_cierre.length < 10 || isSaving)}
+                            disabled={currentStep === 8 && isSaving}
                             className="px-8 h-11 flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
                         >
                             {currentStep === 8 ? (isSaving ? 'Guardando...' : 'Finalizar Recepción') : 'Siguiente'}

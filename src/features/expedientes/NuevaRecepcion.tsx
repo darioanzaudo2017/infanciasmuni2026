@@ -208,7 +208,7 @@ const NuevaRecepcion: React.FC = () => {
                 )}
 
                 {!loading && searchResults.length > 0 && (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden mb-4">
                         <div className="p-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 uppercase text-[10px] font-bold tracking-widest text-gray-500">
                             Se encontraron {searchResults.length} coincidencias
                         </div>
@@ -236,7 +236,7 @@ const NuevaRecepcion: React.FC = () => {
                 )}
 
                 {!loading && hasTyped && result && (
-                    <div className={`relative overflow-hidden bg-white dark:bg-gray-800 rounded-xl border-l-4 ${isRestricted ? 'border-amber-500' : 'border-primary'} shadow-lg p-6 animate-in zoom-in-95`}>
+                    <div className={`relative overflow-hidden bg-white dark:bg-gray-800 rounded-xl border-l-4 ${isRestricted ? 'border-amber-500' : 'border-primary'} shadow-lg p-6 animate-in zoom-in-95 mb-4`}>
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex items-center gap-5">
                                 <div className="size-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-600">
@@ -289,22 +289,40 @@ const NuevaRecepcion: React.FC = () => {
                     </div>
                 )}
 
-                {!loading && hasTyped && !result && searchResults.length === 0 && (
-                    <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-8 rounded-xl flex flex-col items-center text-center shadow-sm animate-in zoom-in-95 transition-all">
-                        <div className="size-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-500 mb-6 border border-amber-100 dark:border-amber-800/30">
-                            <span className="material-symbols-outlined text-5xl">person_search</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">No se encontraron resultados</h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md text-sm leading-relaxed">
-                            No se encontró ninguna coincidencia para "<span className="font-bold text-slate-800 dark:text-white">{dni}</span>".
-                        </p>
-                        <button
-                            onClick={() => navigate(`/expedientes/recepcion/nuevo?dni=${dni}`)}
-                            className="bg-primary hover:bg-blue-600 text-white px-10 py-3.5 rounded-xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-primary/20 active:scale-95"
-                        >
-                            <span className="material-symbols-outlined">person_add</span>
-                            Registrar Nuevo Niño/a
-                        </button>
+                {!loading && hasTyped && (
+                    <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                        {(!result && searchResults.length === 0) ? (
+                            <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 p-8 rounded-xl flex flex-col items-center text-center shadow-sm">
+                                <div className="size-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-500 mb-6 border border-amber-100 dark:border-amber-800/30">
+                                    <span className="material-symbols-outlined text-5xl">person_search</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">No se encontraron resultados</h3>
+                                <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md text-sm leading-relaxed">
+                                    No se encontró ninguna coincidencia para "<span className="font-bold text-slate-800 dark:text-white">{dni}</span>".
+                                </p>
+                                <button
+                                    onClick={() => navigate(`/expedientes/recepcion/nuevo?dni=${dni}`)}
+                                    className="bg-primary hover:bg-blue-600 text-white px-10 py-3.5 rounded-xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-primary/20 active:scale-95"
+                                >
+                                    <span className="material-symbols-outlined">person_add</span>
+                                    Registrar Nuevo Niño/a
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center gap-4 bg-slate-50 dark:bg-gray-700/20 p-6 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                                <div className="text-center">
+                                    <p className="text-sm font-bold text-gray-500 dark:text-gray-400">¿No es ninguna de las personas encontradas?</p>
+                                    <p className="text-xs text-gray-400 mt-1">Si está seguro de que se trata de un nuevo registro, puede iniciarlo aquí.</p>
+                                </div>
+                                <button
+                                    onClick={() => navigate(`/expedientes/recepcion/nuevo?dni=${dni}`)}
+                                    className="bg-white dark:bg-gray-800 border-2 border-primary text-primary hover:bg-primary hover:text-white px-8 py-3 rounded-xl font-bold flex items-center gap-3 transition-all active:scale-95"
+                                >
+                                    <span className="material-symbols-outlined">person_add</span>
+                                    Registrar Nuevo Niño/a
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

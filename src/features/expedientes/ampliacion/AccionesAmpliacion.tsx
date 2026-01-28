@@ -26,11 +26,46 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
         entrevistado_nombre: '',
         vinculo: 'Padre/Madre',
         convive: false,
+        telefono: '',
+        dni: '',
+        edad: '',
+        ocupacion: '',
+        direccion: '',
+        nombre_institucion: '',
         registro: '',
+        fortalezas: '',
+        observaciones_sugerencias: '',
         asistencia: 'Asistió',
         profesionales_ids: [] as string[],
-        documentos: [] as { file: File; nombre: string; subcategoria: string }[]
+        documentos: [] as { file: File; nombre: string; subcategoria: string }[],
+        es_grupal: false
     });
+
+    const calculateAge = (birthDate: string) => {
+        if (!birthDate) return '';
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+        return age.toString();
+    };
+
+    const loadNNyAData = () => {
+        const nino = ingreso.expedientes?.ninos;
+        if (nino) {
+            setNewIntervencion({
+                ...newIntervencion,
+                entrevistado_nombre: `${nino.nombre} ${nino.apellido}`.trim(),
+                dni: nino.dni?.toString() || '',
+                edad: calculateAge(nino.fecha_nacimiento),
+                direccion: `${nino.domicilio || ''} ${nino.barrio || ''} ${nino.localidad || ''}`.trim(),
+                vinculo: 'NNyA'
+            });
+        }
+    };
 
     const fetchIntervenciones = async () => {
         const { data } = await supabase
@@ -75,7 +110,8 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
 
         setIsSaving(true);
         try {
-            const { data: intervencion, error: intErr } = await supabase.from('form2_intervenciones').insert({
+            // 1. Prepare intervention data
+            const interventionData = {
                 ingreso_id: ingreso.id,
                 tipo_entrevistado: newIntervencion.tipo_entrevistado,
                 fecha: newIntervencion.fecha,
@@ -83,12 +119,24 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 entrevistado_nombre: newIntervencion.entrevistado_nombre,
                 vinculo: newIntervencion.vinculo,
                 convive: newIntervencion.convive,
+                telefono: newIntervencion.telefono,
+                dni: newIntervencion.dni,
+                edad: newIntervencion.edad ? parseInt(newIntervencion.edad) : null,
+                ocupacion: newIntervencion.ocupacion,
+                direccion: newIntervencion.direccion,
+                nombre_institucion: newIntervencion.nombre_institucion,
                 registro: newIntervencion.registro,
-                asistencia: newIntervencion.asistencia
-            }).select().single();
+                fortalezas: newIntervencion.fortalezas,
+                observaciones_sugerencias: newIntervencion.observaciones_sugerencias,
+                asistencia: newIntervencion.asistencia,
+                es_grupal: newIntervencion.es_grupal
+            };
 
+            // 2. Save main intervention
+            const { data: intervencion, error: intErr } = await supabase.from('form2_intervenciones').insert(interventionData).select().single();
             if (intErr) throw intErr;
 
+            // 3. Save Professionals for main
             if (newIntervencion.profesionales_ids.length > 0) {
                 const profPayload = newIntervencion.profesionales_ids.map(uid => ({
                     intervencion_id: intervencion.id,
@@ -97,7 +145,38 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 await supabase.from('form2_intervencion_profesionales').insert(profPayload);
             }
 
-            // Save documents with real upload
+            // 4. Handle Group Replication
+            const replicatedIds: Record<string, string> = {};
+            // Filtrar familiares de personasDisponibles que tengan vinculación
+            const familiarSource = personasDisponibles.filter(p => p.source === 'Familiar' && p.linked_ingreso_id);
+
+            if (newIntervencion.es_grupal && familiarSource.length > 0) {
+                for (const member of familiarSource) {
+                    try {
+                        const { data: replicatedInt, error: repErr } = await supabase.from('form2_intervenciones').insert({
+                            ...interventionData,
+                            ingreso_id: member.linked_ingreso_id,
+                            registro: `[REPLICADO GRUPAL] ${newIntervencion.registro}`
+                        }).select().single();
+
+                        if (!repErr) {
+                            replicatedIds[member.linked_ingreso_id] = replicatedInt.id;
+                            if (newIntervencion.profesionales_ids.length > 0) {
+                                const profRepPayload = newIntervencion.profesionales_ids.map(uid => ({
+                                    intervencion_id: replicatedInt.id,
+                                    usuario_id: uid
+                                }));
+                                await supabase.from('form2_intervencion_profesionales').insert(profRepPayload);
+                            }
+                        }
+                    } catch (repError) {
+                        console.warn(`Error replicando en ingreso ${member.linked_ingreso_id}:`, repError);
+                    }
+                }
+            }
+
+            // 5. Save documents (only for main for now to avoid storage duplication, or could link to same URL)
+            // ... document saving logic ...
             if (newIntervencion.documentos.length > 0) {
                 for (const doc of newIntervencion.documentos) {
                     try {
@@ -105,20 +184,12 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                         const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
                         const filePath = `${ingreso.expediente_id}/${fileName}`;
 
-                        // 1. Upload to Storage
-                        const { error: uploadError } = await supabase.storage
-                            .from('expedientes')
-                            .upload(filePath, doc.file);
-
+                        const { error: uploadError } = await supabase.storage.from('expedientes').upload(filePath, doc.file);
                         if (uploadError) throw uploadError;
 
-                        // 2. Get Public URL
-                        const { data: { publicUrl } } = supabase.storage
-                            .from('expedientes')
-                            .getPublicUrl(filePath);
+                        const { data: { publicUrl } } = supabase.storage.from('expedientes').getPublicUrl(filePath);
 
-                        // 3. Insert into DB
-                        const { error: docErr } = await supabase.from('documentos').insert({
+                        await supabase.from('documentos').insert({
                             ingreso_id: ingreso.id,
                             intervencion_id: intervencion.id,
                             origen: 'Ampliación',
@@ -128,27 +199,38 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                             url: publicUrl
                         });
 
-                        if (docErr) console.warn('Error al guardar registro de documento:', docErr);
+                        // Replicate document records
+                        if (newIntervencion.es_grupal) {
+                            for (const [linkedIngId, repIntId] of Object.entries(replicatedIds)) {
+                                try {
+                                    await supabase.from('documentos').insert({
+                                        ingreso_id: linkedIngId,
+                                        intervencion_id: repIntId,
+                                        origen: 'Ampliación',
+                                        tipo: fileExt?.toUpperCase() === 'PDF' ? 'PDF' : 'Imagen',
+                                        subcategoria: doc.subcategoria,
+                                        nombre: doc.nombre,
+                                        url: publicUrl
+                                    });
+                                } catch (repDocErr) {
+                                    console.warn(`Error replicando documento en ingreso ${linkedIngId}:`, repDocErr);
+                                }
+                            }
+                        }
                     } catch (err) {
                         console.error('Error subiendo archivo:', doc.nombre, err);
-                        alert(`Error al subir el archivo ${doc.nombre}. Se guardará la intervención pero el archivo podría faltar.`);
                     }
                 }
             }
 
-            // Track last user in parent ingreso
+            // 6. Audit
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                await supabase.from('ingresos').update({
-                    ultimo_usuario_id: user.id,
-                    updated_at: new Date().toISOString()
-                }).eq('id', ingreso.id);
-
-                // Optional: Audit record
+                await supabase.from('ingresos').update({ ultimo_usuario_id: user.id, updated_at: new Date().toISOString() }).eq('id', ingreso.id);
                 await supabase.from('auditoria').insert({
                     tabla: 'ingresos',
                     registro_id: ingreso.id,
-                    accion: 'NUEVA_INTERVENCION',
+                    accion: 'NUEVA_INTERVENCION_GRUPAL',
                     usuario_id: user.id
                 });
             }
@@ -161,10 +243,19 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 entrevistado_nombre: '',
                 vinculo: 'Padre/Madre',
                 convive: false,
+                telefono: '',
+                dni: '',
+                edad: '',
+                ocupacion: '',
+                direccion: '',
+                nombre_institucion: '',
                 registro: '',
+                fortalezas: '',
+                observaciones_sugerencias: '',
                 asistencia: 'Asistió',
                 profesionales_ids: [],
-                documentos: []
+                documentos: [],
+                es_grupal: false
             });
             void fetchIntervenciones();
         } catch (error: any) {
@@ -377,7 +468,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Tipo de Entrevistado</label>
                                     <div className="flex h-14 items-center justify-center rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 p-1.5">
-                                        {['Adulto', 'NNyA'].map(type => (
+                                        {['Adulto', 'NNyA', 'Institución'].map(type => (
                                             <button
                                                 key={type}
                                                 onClick={() => setNewIntervencion({ ...newIntervencion, tipo_entrevistado: type })}
@@ -442,8 +533,30 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {newIntervencion.tipo_entrevistado === 'Institución' && (
+                                        <div className="space-y-2 md:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nombre de la Institución</label>
+                                            <input
+                                                className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                                placeholder="Ej: Escuela N° 123"
+                                                value={newIntervencion.nombre_institucion}
+                                                onChange={e => setNewIntervencion({ ...newIntervencion, nombre_institucion: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nombre del Entrevistado</label>
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nombre del Entrevistado / Referente</label>
+                                            {newIntervencion.tipo_entrevistado === 'NNyA' && (
+                                                <button
+                                                    onClick={loadNNyAData}
+                                                    className="text-[9px] font-black text-primary uppercase border border-primary/20 px-2 py-1 rounded-lg hover:bg-primary/5 transition-all flex items-center gap-1"
+                                                >
+                                                    <span className="material-symbols-outlined text-xs">auto_fix_high</span>
+                                                    Cargar datos del legajo
+                                                </button>
+                                            )}
+                                        </div>
                                         <input
                                             className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
                                             placeholder="Ej: Carmen (Madre)"
@@ -460,10 +573,63 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                         >
                                             <option>Padre/Madre</option>
                                             <option>Tío/a</option>
+                                            <option>Abuelo/a</option>
                                             <option>Referente afectivo</option>
                                             <option>Institución</option>
                                             <option>Vecino/a</option>
+                                            <option>Director/a</option>
+                                            <option>Docente</option>
+                                            <option>NNyA</option>
+                                            <option>Otros</option>
                                         </select>
+                                    </div>
+
+                                    {/* Additional Personal Data Fields */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">DNI</label>
+                                        <input
+                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                            placeholder="Sin puntos"
+                                            value={newIntervencion.dni}
+                                            onChange={e => setNewIntervencion({ ...newIntervencion, dni: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Teléfono</label>
+                                        <input
+                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                            placeholder="Ej: 2991234567"
+                                            value={newIntervencion.telefono}
+                                            onChange={e => setNewIntervencion({ ...newIntervencion, telefono: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Edad</label>
+                                        <input
+                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                            type="number"
+                                            placeholder="Años"
+                                            value={newIntervencion.edad}
+                                            onChange={e => setNewIntervencion({ ...newIntervencion, edad: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Ocupación</label>
+                                        <input
+                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                            placeholder="Profesión u oficio"
+                                            value={newIntervencion.ocupacion}
+                                            onChange={e => setNewIntervencion({ ...newIntervencion, ocupacion: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Dirección</label>
+                                        <input
+                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                            placeholder="Calle, número, barrio"
+                                            value={newIntervencion.direccion}
+                                            onChange={e => setNewIntervencion({ ...newIntervencion, direccion: e.target.value })}
+                                        />
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4 pt-2">
@@ -478,14 +644,56 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                             </section>
 
                             {/* Summary / Record */}
-                            <section className="space-y-4">
-                                <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Relato y Hallazgos de la Intervención</label>
-                                <textarea
-                                    className="w-full p-8 rounded-[32px] border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold italic focus:ring-2 focus:ring-primary outline-none shadow-sm min-h-[160px]"
-                                    placeholder="Describa aquí lo conversado, clima de la entrevista, preocupaciones detectadas y compromisos asumidos..."
-                                    value={newIntervencion.registro}
-                                    onChange={e => setNewIntervencion({ ...newIntervencion, registro: e.target.value })}
-                                />
+                            <section className="space-y-6">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Relato y Hallazgos de la Intervención</label>
+                                    <textarea
+                                        className="w-full p-8 rounded-[32px] border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold italic focus:ring-2 focus:ring-primary outline-none shadow-sm min-h-[160px]"
+                                        placeholder="Describa aquí lo conversado, clima de la entrevista, preocupaciones detectadas y compromisos asumidos..."
+                                        value={newIntervencion.registro}
+                                        onChange={e => setNewIntervencion({ ...newIntervencion, registro: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Fortalezas</label>
+                                    <textarea
+                                        className="w-full p-6 rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold focus:ring-2 focus:ring-primary outline-none shadow-sm min-h-[100px]"
+                                        placeholder="Registre aquí las fortalezas detectadas durante la intervención..."
+                                        value={newIntervencion.fortalezas}
+                                        onChange={e => setNewIntervencion({ ...newIntervencion, fortalezas: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Observaciones y Sugerencias</label>
+                                    <textarea
+                                        className="w-full p-6 rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold focus:ring-2 focus:ring-primary outline-none shadow-sm min-h-[100px]"
+                                        placeholder="Propuestas, derivaciones o sugerencias de acción..."
+                                        value={newIntervencion.observaciones_sugerencias}
+                                        onChange={e => setNewIntervencion({ ...newIntervencion, observaciones_sugerencias: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div
+                                            onClick={() => setNewIntervencion({ ...newIntervencion, es_grupal: !newIntervencion.es_grupal })}
+                                            className={`size-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${newIntervencion.es_grupal ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-200'}`}
+                                        >
+                                            {newIntervencion.es_grupal && <span className="material-symbols-outlined text-lg font-black">check</span>}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-slate-800 dark:text-white leading-tight">Intervención Grupal</p>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Replicar este registro en todos los familiares vinculados</p>
+                                        </div>
+                                    </div>
+                                    {newIntervencion.es_grupal && (
+                                        <div className="px-3 py-1 bg-primary text-white text-[9px] font-black uppercase tracking-widest rounded-full animate-in zoom-in-50 duration-300">
+                                            Activado
+                                        </div>
+                                    )}
+                                </div>
                             </section>
 
                             {/* Professionals Selection (Tag style) */}
@@ -741,14 +949,78 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 </div>
                             </div>
 
-                            <div className="relative">
-                                <div className="absolute -left-6 top-0 bottom-0 w-1 bg-primary/20 rounded-full"></div>
-                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-lg">description</span>
-                                    Relato y Hallazgos Registrados
-                                </h4>
-                                <div className="prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 text-lg leading-relaxed whitespace-pre-wrap font-medium font-serif italic bg-slate-50/50 dark:bg-slate-800/30 p-8 rounded-3xl border border-slate-100 dark:border-slate-800">
-                                    "{selectedIntervencion.registro}"
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-lg">description</span>
+                                            Relato y Hallazgos Registrados
+                                        </h4>
+                                        <div className="prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-medium font-serif italic bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                                            "{selectedIntervencion.registro}"
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-lg">contact_page</span>
+                                                Datos del Entrevistado
+                                            </h4>
+                                            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm grid grid-cols-2 gap-4">
+                                                {selectedIntervencion.nombre_institucion && (
+                                                    <div className="col-span-2">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Institución</p>
+                                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedIntervencion.nombre_institucion}</p>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">DNI</p>
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedIntervencion.dni || '-'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Teléfono</p>
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedIntervencion.telefono || '-'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Edad</p>
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedIntervencion.edad || '-'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ocupación</p>
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedIntervencion.ocupacion || '-'}</p>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Dirección</p>
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedIntervencion.direccion || '-'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {selectedIntervencion.fortalezas && (
+                                            <div className="space-y-4">
+                                                <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-lg">star</span>
+                                                    Fortalezas
+                                                </h4>
+                                                <div className="bg-emerald-50/30 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 italic">"{selectedIntervencion.fortalezas}"</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedIntervencion.observaciones_sugerencias && (
+                                            <div className="space-y-4">
+                                                <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-lg">lightbulb</span>
+                                                    Observaciones y Sugerencias
+                                                </h4>
+                                                <div className="bg-amber-50/30 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 italic">"{selectedIntervencion.observaciones_sugerencias}"</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

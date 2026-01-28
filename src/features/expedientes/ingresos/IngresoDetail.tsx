@@ -69,6 +69,7 @@ const IngresoDetail = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [pendingFiles, setPendingFiles] = useState<any[]>([]);
+    const [isDiscoveringLinks, setIsDiscoveringLinks] = useState(false);
 
     useEffect(() => {
         const fetchDetail = async () => {
@@ -243,6 +244,78 @@ const IngresoDetail = () => {
     const calculateAge = (birthDate: string) => {
         if (!birthDate) return 0;
         return Math.floor(differenceInDays(new Date(), new Date(birthDate)) / 365.25);
+    };
+
+    const handleDiscoverLinks = async () => {
+        if (!ingreso?.grupo_familiar || ingreso.grupo_familiar.length === 0) return;
+
+        setIsDiscoveringLinks(true);
+        let discoveredCount = 0;
+
+        try {
+            const updatedFamily = [...ingreso.grupo_familiar];
+
+            for (let i = 0; i < updatedFamily.length; i++) {
+                const member = updatedFamily[i];
+                // Only scan those not linked yet
+                if (!member.linked_expediente_id && member.dni) {
+                    const cleanDni = parseInt(String(member.dni).replace(/\D/g, ''));
+                    if (isNaN(cleanDni)) continue;
+
+                    // 1. Search Nino
+                    const { data: nino } = await supabase.from('ninos').select('id').eq('dni', cleanDni).maybeSingle();
+
+                    if (nino) {
+                        // 2. Search Active Expediente
+                        const { data: exp } = await supabase.from('expedientes')
+                            .select('id')
+                            .eq('nino_id', nino.id)
+                            .eq('activo', true)
+                            .maybeSingle();
+
+                        if (exp && exp.id !== ingreso.expediente_id) {
+                            // 3. Search Latest Active Ingreso
+                            const { data: activeIngreso } = await supabase.from('ingresos')
+                                .select('id')
+                                .eq('expediente_id', exp.id)
+                                .neq('estado', 'cerrado')
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+
+                            if (exp) {
+                                // Update in DB
+                                await supabase.from('grupo_conviviente')
+                                    .update({
+                                        linked_expediente_id: exp.id,
+                                        linked_ingreso_id: activeIngreso?.id || null
+                                    })
+                                    .eq('id', member.id);
+
+                                updatedFamily[i] = {
+                                    ...member,
+                                    linked_expediente_id: exp.id,
+                                    linked_ingreso_id: activeIngreso?.id || null
+                                };
+                                discoveredCount++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (discoveredCount > 0) {
+                setIngreso({ ...ingreso, grupo_familiar: updatedFamily });
+                alert(`Se detectaron y vincularon ${discoveredCount} familiares con expedientes activos.`);
+            } else {
+                alert('No se detectaron nuevos vínculos para los integrantes del grupo familiar.');
+            }
+        } catch (err) {
+            console.error('Error discovering links:', err);
+            alert('Ocurrió un error al procesar los vínculos.');
+        } finally {
+            setIsDiscoveringLinks(false);
+        }
     };
 
     if (loading) {
@@ -1063,15 +1136,49 @@ const IngresoDetail = () => {
                                     {/* Right Column: Context and Decision */}
                                     <div className="space-y-8">
                                         <section>
-                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">04. Entorno Familiar</h4>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">04. Entorno Familiar</h4>
+                                                <button
+                                                    onClick={handleDiscoverLinks}
+                                                    disabled={isDiscoveringLinks}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-white transition-all disabled:opacity-50"
+                                                >
+                                                    <span className={`material-symbols-outlined text-sm ${isDiscoveringLinks ? 'animate-spin' : ''}`}>
+                                                        {isDiscoveringLinks ? 'sync' : 'link'}
+                                                    </span>
+                                                    {isDiscoveringLinks ? 'Buscando...' : 'Buscar Vínculos'}
+                                                </button>
+                                            </div>
                                             <div className="space-y-2">
                                                 {ingreso.grupo_familiar?.map((m, i) => (
-                                                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50/50 dark:bg-zinc-800/30 rounded-xl border border-slate-100 dark:border-zinc-800 text-[11px]">
+                                                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50/50 dark:bg-zinc-800/30 rounded-xl border border-slate-100 dark:border-zinc-800 text-[11px] group">
                                                         <div className="flex items-center gap-3">
-                                                            <span className="font-bold">{m.nombre} {m.apellido}</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-bold">{m.nombre} {m.apellido}</span>
+                                                                {m.linked_expediente_id && (
+                                                                    <Link
+                                                                        to={`/expedientes/${m.linked_expediente_id}${m.linked_ingreso_id ? `/ingresos/${m.linked_ingreso_id}` : ''}`}
+                                                                        className="material-symbols-outlined text-primary text-sm hover:scale-110 transition-transform"
+                                                                        title="Ver Expediente Vinculado"
+                                                                    >
+                                                                        link
+                                                                    </Link>
+                                                                )}
+                                                            </div>
+                                                            {(m.edad || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento))) && (
+                                                                <span className="text-[#60708a] font-bold text-[10px]">({m.edad || calculateAge(m.fecha_nacimiento)} años)</span>
+                                                            )}
+                                                            {((m.edad && parseInt(m.edad) < 18) || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento) < 18)) && (
+                                                                <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1">
+                                                                    <span className="material-symbols-outlined text-[10px]">child_care</span>
+                                                                    NNyA
+                                                                </span>
+                                                            )}
                                                             <span className="px-2 py-0.5 bg-slate-200 dark:bg-zinc-700 rounded-full text-[9px] uppercase font-black">{m.vinculo}</span>
                                                         </div>
-                                                        <span className={m.convive ? "text-emerald-500 font-bold" : "text-slate-400"}>{m.convive ? 'Convive' : 'No convive'}</span>
+                                                        <div className="flex items-center gap-4">
+                                                            <span className={m.convive ? "text-emerald-500 font-bold" : "text-slate-400"}>{m.convive ? 'Convive' : 'No convive'}</span>
+                                                        </div>
                                                     </div>
                                                 ))}
                                                 {(!ingreso.grupo_familiar || ingreso.grupo_familiar.length === 0) && (

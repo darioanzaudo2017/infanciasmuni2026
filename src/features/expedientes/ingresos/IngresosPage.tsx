@@ -106,7 +106,7 @@ const IngresosPage: React.FC = () => {
 
     useEffect(() => {
         const fetchSpds = async () => {
-            const { data } = await supabase.from('servicios_proteccion').select('id, nombre').order('nombre');
+            const { data } = await supabase.from('servicios_proteccion').select('id, nombre, zona_id').order('nombre');
             setSpds(data || []);
         };
         fetchSpds();
@@ -221,9 +221,13 @@ const IngresosPage: React.FC = () => {
 
             if (transferError) throw transferError;
 
-            // 3. Update expediente current SPD
+            // 3. Update expediente current SPD and Zona
+            const selectedSpd = spds.find(s => String(s.id) === String(destinoSpdIdNum));
             const { error: updateError, data: updateData } = await supabase.from('expedientes')
-                .update({ servicio_proteccion_id: destinoSpdIdNum })
+                .update({
+                    servicio_proteccion_id: destinoSpdIdNum,
+                    zona_id: selectedSpd?.zona_id
+                })
                 .eq('id', id)
                 .select();
 

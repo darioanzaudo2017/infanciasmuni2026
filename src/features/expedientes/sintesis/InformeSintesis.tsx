@@ -163,11 +163,18 @@ const InformeSintesis = () => {
             if (finalizar) {
                 // Update Ingreso Etapa and track user
                 const { data: { user } } = await supabase.auth.getUser();
-                await supabase.from('ingresos').update({
+                const { error: stageError } = await supabase.from('ingresos').update({
                     etapa: 'definicion',
                     ultimo_usuario_id: user?.id,
                     updated_at: new Date().toISOString()
                 }).eq('id', ingresoId);
+
+                if (stageError) {
+                    console.error('Error updating stage:', stageError);
+                    alert(`El informe se guardó pero no se pudo avanzar la etapa automáticamente: ${stageError.message}`);
+                    setSaving(false);
+                    return;
+                }
 
                 // Register audit
                 await supabase.from('auditoria').insert({

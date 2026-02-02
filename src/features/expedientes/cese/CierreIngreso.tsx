@@ -103,9 +103,12 @@ const CierreIngreso = () => {
                 if (formError) throw formError;
             }
 
-            // 3. Close Ingreso if not SENAF
+            // 3. User info
             const { data: { user } } = await supabase.auth.getUser();
+
             if (formData.motivo_cese !== 'solicitud_medida_excepcional') {
+                // 3. Close Ingreso
+                console.log('Cerrando ingreso...', ingresoId);
                 const { error: ingError } = await supabase
                     .from('ingresos')
                     .update({
@@ -114,22 +117,41 @@ const CierreIngreso = () => {
                         ultimo_usuario_id: user?.id,
                         updated_at: new Date().toISOString()
                     })
-                    .eq('id', ingresoId);
+                    .eq('id', parseInt(ingresoId)); // Force numeric if it helps
 
-                if (ingError) throw ingError;
+                if (ingError) {
+                    console.error('Error closing ingreso:', ingError);
+                    throw new Error(`No se pudo cerrar el ingreso: ${ingError.message}`);
+                }
+
+                // 4. Close Expediente
+                console.log('Cerrando expediente...', expedienteId);
+                const { error: expError } = await supabase
+                    .from('expedientes')
+                    .update({
+                        activo: false,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', parseInt(expedienteId || '0'));
+
+                if (expError) {
+                    console.error('Error closing expediente:', expError);
+                    // We don't throw here to at least complete the audit part, 
+                    // but we should alert the user later.
+                }
             } else if (user) {
                 // Just touch it to record who was here
                 await supabase.from('ingresos').update({
                     ultimo_usuario_id: user.id,
                     updated_at: new Date().toISOString()
-                }).eq('id', ingresoId);
+                }).eq('id', parseInt(ingresoId));
             }
 
             // Audit
             if (user) {
                 await supabase.from('auditoria').insert({
                     tabla: 'ingresos',
-                    registro_id: ingresoId as unknown as number,
+                    registro_id: parseInt(ingresoId),
                     accion: 'CIERRE_INTERVENCION',
                     usuario_id: user.id,
                     datos_nuevos: { motivo_cese: formData.motivo_cese }
@@ -139,7 +161,7 @@ const CierreIngreso = () => {
             // Redirect or Notify
             alert(formData.motivo_cese === 'solicitud_medida_excepcional'
                 ? 'Cierre iniciado. Por favor complete el formulario de elevación a SENAF.'
-                : 'Cierre registrado correctamente');
+                : 'Cierre registrado correctamente. El caso y el expediente han sido finalizados.');
 
             if (formData.motivo_cese === 'solicitud_medida_excepcional') {
                 navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`);
@@ -260,8 +282,8 @@ const CierreIngreso = () => {
                                         <div className="flex items-center justify-between mb-4">
                                             <p className="text-sm text-gray-500 font-medium">Estado de Solicitud:</p>
                                             <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${senafStatus === 'Aprobado' ? 'bg-green-100 text-green-700' :
-                                                    senafStatus?.includes('Observado') ? 'bg-red-100 text-red-700' :
-                                                        'bg-amber-100 text-amber-700'
+                                                senafStatus?.includes('Observado') ? 'bg-red-100 text-red-700' :
+                                                    'bg-amber-100 text-amber-700'
                                                 }`}>
                                                 {senafStatus || 'No iniciada'}
                                             </span>

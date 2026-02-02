@@ -229,14 +229,44 @@ const IngresoDetail = () => {
         if (!ingreso || !ingreso.id) return;
 
         let nextStage = '';
-        if (ingreso.etapa === 'Recepción') nextStage = 'ampliacion';
-        else if (ingreso.etapa === 'Ampliación') nextStage = 'informe_sintesis';
-        else if (ingreso.etapa === 'Informe Síntesis' || ingreso.etapa === 'informe_sintesis') nextStage = 'definicion';
-        else if (ingreso.etapa === 'Definición' || ingreso.etapa === 'definicion') nextStage = 'cerrado';
+        const currentNorm = normalizeStage(ingreso.etapa);
+
+        if (currentNorm === 'recepcion') nextStage = 'ampliacion';
+        else if (currentNorm === 'ampliacion' || activeStageIndex === 2) nextStage = 'informe_sintesis';
+        else if (currentNorm === 'informe_sintesis' || currentNorm === 'sintesis' || activeStageIndex === 3) nextStage = 'definicion';
+        else if (currentNorm === 'definicion' || activeStageIndex === 4) nextStage = 'cerrado';
 
         if (nextStage) {
-            const confirm = window.confirm(`¿Está seguro que desea finalizar la etapa ${ingreso.etapa} y avanzar a ${nextStage}?`);
+            const confirm = window.confirm(`¿Está seguro que desea finalizar la etapa actual y avanzar a la etapa de ${nextStage}?`);
             if (confirm) {
+                try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    const { error } = await supabase
+                        .from('ingresos')
+                        .update({
+                            etapa: nextStage,
+                            ultimo_usuario_id: user?.id,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', ingreso.id);
+
+                    if (error) throw error;
+
+                    // Auditoria
+                    await supabase.from('auditoria').insert({
+                        tabla: 'ingresos',
+                        registro_id: ingreso.id as any,
+                        accion: 'AVANCE_ETAPA',
+                        usuario_id: user?.id,
+                        datos_nuevos: { etapa: nextStage }
+                    });
+
+                    alert('Etapa avanzada correctamente');
+                    window.location.reload(); // Recargar para ver cambios
+                } catch (err: any) {
+                    console.error('Error al avanzar etapa:', err);
+                    alert(`Error: ${err.message || 'No se pudo avanzar la etapa'}`);
+                }
             }
         }
     };
@@ -336,19 +366,47 @@ const IngresoDetail = () => {
         );
     }
 
+    const normalizeStage = (s: string) => {
+        return (s || '')
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    };
+
     const stageMap: { [key: string]: number } = {
         'recepcion': 0,
         'ampliacion': 1,
         'informe_sintesis': 2,
+        'sintesis': 2, // Fallback common name
         'definicion': 3,
         'cerrado': 4
     };
-    let activeStageIndex = stageMap[ingreso.etapa?.toLowerCase() || 'recepcion'] ?? 0;
 
-    // Si la etapa es todavía recepción pero ya se tomó la decisión de abordaje integral,
-    // forzamos que se muestre como que ya puede entrar a ampliación.
+    const currentEtapa = normalizeStage(ingreso.etapa || 'recepcion');
+    let activeStageIndex = stageMap[currentEtapa] ?? 0;
+
+    // Lógica de "Salto" (Leapfrog): Si un informe o paso posterior ya está completo,
+    // forzamos que la etapa activa refleje ese progreso real.
+
+    // 1. Si ya se tomó la decisión de abordaje integral, el mínimo es Ampliación (1)
     if (activeStageIndex === 0 && ingreso.decision?.decision_id === 'abordaje_integral') {
         activeStageIndex = 1;
+    }
+
+    // 2. Si el informe síntesis ya está finalizado, el mínimo es Definición (3)
+    if (activeStageIndex < 3 && ingreso.informe_sintesis?.estado === 'finalizado') {
+        activeStageIndex = 3;
+    }
+
+    // 3. Si ya existen medidas definidas, el mínimo es Definición (3)
+    if (activeStageIndex < 3 && measuresSummary && measuresSummary.length > 0) {
+        activeStageIndex = 3;
+    }
+
+    // 4. Si el cese ya está registrado, el mínimo es Cerrado (4)
+    if (activeStageIndex < 4 && ingreso.cese) {
+        activeStageIndex = 4;
     }
 
     const isClosed = ingreso.estado === 'cerrado';
@@ -364,6 +422,10 @@ const IngresoDetail = () => {
                 status = 'completed';
                 icon = 'verified';
                 date = 'Caso Cerrado';
+            } else if (activeStageIndex === 4) {
+                status = 'active';
+                icon = 'pending';
+                date = 'Cese Registrado';
             } else {
                 status = 'locked';
                 icon = 'lock';
@@ -675,8 +737,10 @@ const IngresoDetail = () => {
                                 <span className="text-primary font-bold">{ingreso.expediente_numero}</span>
                             </div>
                         </div>
-                        <div className="px-2 py-1 bg-primary/10 rounded-lg shrink-0">
-                            <span className="text-[10px] font-bold text-primary uppercase">{ingreso.expediente_activo ? 'Activo' : 'Inactivo'}</span>
+                        <div className={`px-2 py-1 rounded-lg shrink-0 ${isClosed ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-primary/10'}`}>
+                            <span className={`text-[10px] font-bold uppercase ${isClosed ? 'text-rose-600' : 'text-primary'}`}>
+                                {isClosed || !ingreso.expediente_activo ? 'Inactivo' : 'Activo'}
+                            </span>
                         </div>
                     </div>
 

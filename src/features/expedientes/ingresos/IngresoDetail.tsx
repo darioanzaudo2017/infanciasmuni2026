@@ -7,6 +7,7 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 import IntervencionesPDF from './IntervencionesPDF';
 import { generateExpedientePDF } from './generateExpedientePDF';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
+import { buscarVinculacionPorDni } from '../../../services/vinculacionService';
 
 interface IngresoDetalle {
     id: number;
@@ -289,47 +290,23 @@ const IngresoDetail = () => {
                 const member = updatedFamily[i];
                 // Only scan those not linked yet
                 if (!member.linked_expediente_id && member.dni) {
-                    const cleanDni = parseInt(String(member.dni).replace(/\D/g, ''));
-                    if (isNaN(cleanDni)) continue;
+                    const result = await buscarVinculacionPorDni(supabase, member.dni, String(ingreso.expediente_id));
 
-                    // 1. Search Nino
-                    const { data: nino } = await supabase.from('ninos').select('id').eq('dni', cleanDni).maybeSingle();
+                    if (result.linkedExpedienteId) {
+                        // Update in DB
+                        await supabase.from('grupo_conviviente')
+                            .update({
+                                linked_expediente_id: result.linkedExpedienteId,
+                                linked_ingreso_id: result.linkedIngresoId
+                            })
+                            .eq('id', member.id);
 
-                    if (nino) {
-                        // 2. Search Active Expediente
-                        const { data: exp } = await supabase.from('expedientes')
-                            .select('id')
-                            .eq('nino_id', nino.id)
-                            .eq('activo', true)
-                            .maybeSingle();
-
-                        if (exp && exp.id !== ingreso.expediente_id) {
-                            // 3. Search Latest Active Ingreso
-                            const { data: activeIngreso } = await supabase.from('ingresos')
-                                .select('id')
-                                .eq('expediente_id', exp.id)
-                                .neq('estado', 'cerrado')
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-
-                            if (exp) {
-                                // Update in DB
-                                await supabase.from('grupo_conviviente')
-                                    .update({
-                                        linked_expediente_id: exp.id,
-                                        linked_ingreso_id: activeIngreso?.id || null
-                                    })
-                                    .eq('id', member.id);
-
-                                updatedFamily[i] = {
-                                    ...member,
-                                    linked_expediente_id: exp.id,
-                                    linked_ingreso_id: activeIngreso?.id || null
-                                };
-                                discoveredCount++;
-                            }
-                        }
+                        updatedFamily[i] = {
+                            ...member,
+                            linked_expediente_id: result.linkedExpedienteId,
+                            linked_ingreso_id: result.linkedIngresoId
+                        };
+                        discoveredCount++;
                     }
                 }
             }

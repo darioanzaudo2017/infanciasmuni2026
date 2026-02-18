@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
+import { buscarVinculacionPorDni } from '../../../services/vinculacionService';
 
 const calculateAge = (birthDate: string) => {
     if (!birthDate) return '';
@@ -442,11 +443,10 @@ const FormularioRecepcion: React.FC = () => {
         setIsDrawerOpen(false);
     };
 
-    // Effect to check DNI for existing files
+    // Effect to check DNI for existing files using vinculacionService
     useEffect(() => {
         const checkDni = async () => {
-            const cleanDni = currentMember.dni ? parseInt(String(currentMember.dni).replace(/\D/g, '')) : null;
-            if (!cleanDni || String(cleanDni).length < 6) {
+            if (!currentMember.dni || String(currentMember.dni).length < 3) {
                 setLinkedExpedienteId(null);
                 setLinkedIngresoId(null);
                 return;
@@ -454,46 +454,14 @@ const FormularioRecepcion: React.FC = () => {
 
             setIsCheckingDni(true);
             try {
-                const { data: nino } = await supabase.from('ninos').select('id').eq('dni', cleanDni).maybeSingle();
-                if (nino) {
-                    const { data: exp } = await supabase.from('expedientes')
-                        .select('id, numero')
-                        .eq('nino_id', nino.id)
-                        .eq('activo', true)
-                        .maybeSingle();
+                const result = await buscarVinculacionPorDni(
+                    supabase,
+                    currentMember.dni,
+                    formData.expediente_id
+                );
 
-                    if (exp && exp.id !== formData.expediente_id) {
-                        setLinkedExpedienteId(exp.id);
-
-                        // Also find the latest active ingreso
-                        const { data: activeIngreso } = await supabase.from('ingresos')
-                            .select('id')
-                            .eq('expediente_id', exp.id)
-                            .neq('estado', 'cerrado')
-                            .order('created_at', { ascending: false })
-                            .limit(1)
-                            .maybeSingle();
-
-                        if (activeIngreso) {
-                            setLinkedIngresoId(activeIngreso.id);
-                        } else {
-                            // If no active ingreso, check for the latest one anyway
-                            const { data: latestIngreso } = await supabase.from('ingresos')
-                                .select('id')
-                                .eq('expediente_id', exp.id)
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                            setLinkedIngresoId(latestIngreso?.id || null);
-                        }
-                    } else {
-                        setLinkedExpedienteId(null);
-                        setLinkedIngresoId(null);
-                    }
-                } else {
-                    setLinkedExpedienteId(null);
-                    setLinkedIngresoId(null);
-                }
+                setLinkedExpedienteId(result.linkedExpedienteId);
+                setLinkedIngresoId(result.linkedIngresoId);
             } catch (err) {
                 console.error('Error checking DNI:', err);
             } finally {
@@ -505,7 +473,7 @@ const FormularioRecepcion: React.FC = () => {
             const timer = setTimeout(checkDni, 600);
             return () => clearTimeout(timer);
         }
-    }, [currentMember.dni, isDrawerOpen]);
+    }, [currentMember.dni, isDrawerOpen, formData.expediente_id]);
 
     const handleRemoveMember = (index: number) => {
         const newGroup = formData.grupo_familiar.filter((_, i) => i !== index);
@@ -1575,7 +1543,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                     <span className="material-symbols-outlined text-amber-500 text-lg">link</span>
                                                                     <div className="space-y-0.5">
                                                                         <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-tight">Expediente Detectado</p>
-                                                                        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-500">Este integrante tiene un legajo activo. Se vinculará al grupo familiar.</p>
+                                                                        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-500">Se encontró un historial o expediente para este DNI. Se vinculará al grupo familiar.</p>
                                                                     </div>
                                                                 </div>
                                                             )}

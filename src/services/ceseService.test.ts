@@ -82,7 +82,7 @@ describe('Servicio de Cese de Ingreso (Validaciones)', () => {
         await registrarCeseIngreso(mockSupabase, mockIngreso, payloadValido);
 
         // Buscamos la llamada a la tabla 'ingresos'
-        const ingresosCall = mockSupabase.from.mock.calls.find(call => call[0] === 'ingresos');
+        const ingresosCall = mockSupabase.from.mock.calls.find((call: any[]) => call[0] === 'ingresos');
         expect(ingresosCall).toBeDefined();
 
         const updateData = mockSupabase.update.mock.calls[0][0];

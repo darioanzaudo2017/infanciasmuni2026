@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validarTransicionEtapa, ETAPAS_ORDEN } from './ingresoService';
+import { validarTransicionEtapa } from './ingresoService';
 
 describe('Lógica de Transición de Etapas de Ingreso', () => {
 

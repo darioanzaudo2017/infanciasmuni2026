@@ -37,14 +37,12 @@ const Sidebar = () => {
 
     return (
         <aside className="w-64 border-r border-[#e5e7eb] dark:border-[#333] flex flex-col bg-white dark:bg-[#1a1a1a] shrink-0 h-screen sticky top-0">
-            <div className="p-6 border-b border-[#f0f2f5] dark:border-[#333] flex items-center gap-3">
-                <div className="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
-                    <span className="material-symbols-outlined">shield_person</span>
-                </div>
-                <div>
-                    <h1 className="text-base font-bold leading-none tracking-tight dark:text-white">SIPNNA</h1>
-                    <p className="text-[10px] uppercase tracking-wider text-[#60708a] font-semibold mt-1">Gestión de Derechos</p>
-                </div>
+            <div className="p-6 border-b border-[#f0f2f5] dark:border-[#333] flex justify-center">
+                <img
+                    src="/logo_cordoba.png"
+                    alt="Córdoba Capital"
+                    className="h-auto w-auto max-w-full max-h-16 object-contain"
+                />
             </div>
 
             <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">

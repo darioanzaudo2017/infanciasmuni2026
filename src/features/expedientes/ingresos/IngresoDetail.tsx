@@ -702,7 +702,7 @@ const IngresoDetail = () => {
                 {/* Compact Informative Strip */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                     {/* Child Summary - Smaller */}
-                    <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-[#f0f2f5] dark:border-[#333] shadow-sm flex items-center gap-4">
+                    <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex items-center gap-4 hover:shadow-lg transition-shadow">
                         <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10">
                             <span className="material-symbols-outlined text-2xl">face</span>
                         </div>
@@ -722,14 +722,14 @@ const IngresoDetail = () => {
                     </div>
 
                     {/* Micro Stats Row */}
-                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-[#f0f2f5] dark:border-[#333] shadow-sm flex flex-col justify-center">
+                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center hover:shadow-lg transition-shadow">
                         <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none mb-1">Profesional</p>
                         <p className="text-[#111818] dark:text-white text-sm font-bold truncate">
                             {ingreso.profesional_asignado_nombre || 'Sin asignar'}
                         </p>
                     </div>
 
-                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-[#f0f2f5] dark:border-[#333] shadow-sm flex flex-col justify-center border-l-2 border-l-primary/30">
+                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center border-l-4 border-l-primary hover:shadow-lg transition-shadow">
                         <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none mb-1">Días Totales</p>
                         <div className="flex items-center gap-2">
                             <p className="text-[#111818] dark:text-white text-sm font-bold">
@@ -744,7 +744,7 @@ const IngresoDetail = () => {
                         </div>
                     </div>
 
-                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-[#f0f2f5] dark:border-[#333] shadow-sm flex flex-col justify-center border-l-2 border-l-amber-500/30">
+                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
                         <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none mb-1">Días en Etapa</p>
                         <p className="text-[#111818] dark:text-white text-sm font-bold">
                             {/* Note: This is currently using fecha_ingreso as proxy for stage start */}
@@ -876,7 +876,7 @@ const IngresoDetail = () => {
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                                     <section className="space-y-8">
-                                        <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-slate-100 dark:border-zinc-800 space-y-6">
+                                        <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-primary/20 shadow-lg space-y-6">
                                             <div>
                                                 <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                                     <span className="material-symbols-outlined text-md">target</span>
@@ -968,7 +968,7 @@ const IngresoDetail = () => {
 
                                 {ingreso.informe_sintesis ? (
                                     <div className="grid grid-cols-1 gap-8">
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
                                             <div className="absolute top-0 right-0 p-4 opacity-10">
                                                 <span className="material-symbols-outlined text-8xl text-primary">gavel</span>
                                             </div>
@@ -978,7 +978,7 @@ const IngresoDetail = () => {
                                             </p>
                                         </div>
 
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
                                             <div className="absolute top-0 right-0 p-4 opacity-10">
                                                 <span className="material-symbols-outlined text-8xl text-primary">psychology</span>
                                             </div>
@@ -988,7 +988,7 @@ const IngresoDetail = () => {
                                             </p>
                                         </div>
 
-                                        <div className="bg-gradient-to-br from-primary/5 to-transparent p-8 rounded-3xl border border-primary/20 shadow-sm">
+                                        <div className="bg-gradient-to-br from-primary/5 to-transparent p-8 rounded-3xl border border-primary/20 shadow-lg">
                                             <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Plan de Acción</h4>
                                             <p className="text-slate-800 dark:text-white font-medium leading-relaxed whitespace-pre-wrap text-sm">
                                                 {ingreso.informe_sintesis.plan_accion || 'Sin contenido.'}
@@ -1003,7 +1003,7 @@ const IngresoDetail = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-slate-100 dark:border-zinc-800 space-y-6 text-center">
+                                    <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-primary/20 shadow-lg space-y-6 text-center">
                                         <span className="material-symbols-outlined text-6xl text-slate-300">description</span>
                                         <p className="text-slate-500 font-medium">Acceda al módulo de redacción para completar la evaluación técnica.</p>
                                     </div>
@@ -1037,7 +1037,7 @@ const IngresoDetail = () => {
                                 {measuresSummary.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {measuresSummary.map(m => (
-                                            <div key={m.id} className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+                                            <div key={m.id} className="bg-white dark:bg-zinc-900 border border-primary/20 p-4 rounded-2xl flex items-center justify-between shadow-lg">
                                                 <div>
                                                     <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-1">{m.medida_propuesta}</h4>
                                                     <div className="flex items-center gap-2">
@@ -1056,7 +1056,7 @@ const IngresoDetail = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-10 text-center bg-slate-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-slate-200">
+                                    <div className="p-10 text-center bg-slate-50 dark:bg-zinc-800/30 rounded-3xl border-2 border-dashed border-primary/20 shadow-lg">
                                         <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">security</span>
                                         <p className="text-slate-500 font-medium">Acceda al módulo de gestión para configurar las medidas de protección.</p>
                                     </div>
@@ -1102,7 +1102,7 @@ const IngresoDetail = () => {
                                     <div className="space-y-8">
                                         <section>
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">01. Origen de la Demanda</h4>
-                                            <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-slate-100 dark:border-zinc-800">
+                                            <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-primary/20 shadow-lg">
                                                 <div className="grid grid-cols-2 gap-6">
                                                     <div>
                                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vía de Ingreso</p>
@@ -1123,7 +1123,7 @@ const IngresoDetail = () => {
 
                                         <section>
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">02. Motivo y Relato</h4>
-                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm">
+                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-primary/20 shadow-lg">
                                                 <div className="mb-4 flex items-center gap-2">
                                                     <span className={`size-3 rounded-full ${ingreso.motivo?.gravedad === 'Urgente' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
                                                     <span className="text-[10px] font-black uppercase tracking-widest">{ingreso.motivo?.gravedad || 'Moderada'}</span>
@@ -1136,7 +1136,7 @@ const IngresoDetail = () => {
 
                                         <section>
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">02b. Salud y Educación</h4>
-                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-slate-100 dark:border-zinc-800 shadow-sm grid grid-cols-2 gap-4">
+                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-primary/20 shadow-lg grid grid-cols-2 gap-4">
                                                 <div>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Escolaridad</p>
                                                     <p className="font-bold text-xs">{ingreso.nino_nivel_educativo || 'No informada'} {ingreso.nino_curso ? `(${ingreso.nino_curso})` : ''}</p>
@@ -1156,7 +1156,7 @@ const IngresoDetail = () => {
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">03. Vulneración de Derechos</h4>
                                             <div className="space-y-3">
                                                 {ingreso.vulneraciones?.map((v, i) => (
-                                                    <div key={i} className="flex gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm items-start">
+                                                    <div key={i} className="flex gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-primary/20 shadow-lg items-start">
                                                         <div className="size-8 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center shrink-0">
                                                             <span className="material-symbols-outlined text-[18px]">gavel</span>
                                                         </div>
@@ -1230,7 +1230,7 @@ const IngresoDetail = () => {
 
                                         <section>
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">05. Decisión Técnica</h4>
-                                            <div className={`p-6 rounded-2xl border-2 ${ingreso.decision?.decision_id === 'asesoramiento' ? 'border-blue-500/20 bg-blue-50/10' : 'border-emerald-500/20 bg-emerald-50/10'}`}>
+                                            <div className={`p-6 rounded-2xl border-2 shadow-lg ${ingreso.decision?.decision_id === 'asesoramiento' ? 'border-primary/20 bg-blue-50/10' : 'border-emerald-500/20 bg-emerald-50/10'}`}>
                                                 <div className="flex items-center gap-3 mb-4">
                                                     <span className="material-symbols-outlined text-3xl text-primary">analytics</span>
                                                     <div>
@@ -1284,7 +1284,7 @@ const IngresoDetail = () => {
                                 {ingreso.documentos && ingreso.documentos.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {ingreso.documentos.map((doc, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                                            <div key={idx} className="bg-white dark:bg-zinc-900 border border-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden">
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div className={`p-3 rounded-xl ${doc.tipo === 'PDF' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'} transition-colors group-hover:bg-primary group-hover:text-white`}>
                                                         <span className="material-symbols-outlined text-2xl">
@@ -1324,7 +1324,7 @@ const IngresoDetail = () => {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 dark:bg-zinc-800/20 rounded-3xl border-2 border-dashed border-slate-200 dark:border-zinc-800">
+                                    <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 dark:bg-zinc-800/20 rounded-3xl border-2 border-dashed border-primary/20 shadow-lg">
                                         <span className="material-symbols-outlined text-6xl text-slate-200 mb-4">cloud_off</span>
                                         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin documentos adjuntos</p>
                                     </div>
@@ -1349,7 +1349,7 @@ const IngresoDetail = () => {
                                 {ingreso.cese ? (
                                     <div className="grid grid-cols-1 gap-8">
                                         {/* Motivo de Cese */}
-                                        <div className="bg-gradient-to-br from-danger/5 to-transparent p-8 rounded-3xl border border-danger/20 shadow-sm">
+                                        <div className="bg-gradient-to-br from-danger/5 to-transparent p-8 rounded-3xl border border-danger/20 shadow-lg">
                                             <h4 className="text-sm font-black text-danger uppercase tracking-widest mb-4 flex items-center gap-2">
                                                 <span className="material-symbols-outlined">gavel</span>
                                                 Motivo de Cese
@@ -1365,7 +1365,7 @@ const IngresoDetail = () => {
                                         </div>
 
                                         {/* Resumen de Logros */}
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
                                             <div className="absolute top-0 right-0 p-4 opacity-10">
                                                 <span className="material-symbols-outlined text-8xl text-primary">emoji_events</span>
                                             </div>
@@ -1376,7 +1376,7 @@ const IngresoDetail = () => {
                                         </div>
 
                                         {/* Observaciones Finales */}
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
                                             <div className="absolute top-0 right-0 p-4 opacity-10">
                                                 <span className="material-symbols-outlined text-8xl text-primary">description</span>
                                             </div>
@@ -1397,7 +1397,7 @@ const IngresoDetail = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-slate-100 dark:border-zinc-800 space-y-6 text-center">
+                                    <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-primary/20 shadow-lg space-y-6 text-center">
                                         <span className="material-symbols-outlined text-6xl text-slate-300">verified</span>
                                         <p className="text-slate-500 font-medium">No hay información de cese registrada para este ingreso.</p>
                                     </div>

@@ -7,14 +7,16 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: "#19e5e6",    // Color SIPNNA (Mockup)
-                'primary-recovery': "#136c6c", // Color SIPNNA (Recovery)
+                primary: "#004884",    // Córdoba Capital Blue
+                'primary-recovery': "#003366", // Darker shade for recovery
                 "background-light": "#f6f8f8",
                 "background-dark": "#112121",
                 success: "#10B981",
-                warning: "#F59E0B",
-                danger: "#EF4444",
+                warning: "#F1B434",    // Brand Yellow as Warning/Accent
+                danger: "#C8102E",     // Brand Red as Danger
                 info: "#06B6D4",
+                "brand-red": "#C8102E",
+                "brand-yellow": "#F1B434",
             },
             fontFamily: {
                 sans: ['Public Sans', 'sans-serif'],

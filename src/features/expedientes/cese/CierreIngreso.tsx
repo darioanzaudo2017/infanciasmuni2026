@@ -14,12 +14,32 @@ const CierreIngreso = () => {
         resumen_logros: '',
         observaciones_finales: ''
     });
+    const [senafData, setSenafData] = useState({
+        agoto_medidas: false,
+        riesgo_vida: false,
+        causa: '',
+        fundamentacion: '',
+    });
     const [senafStatus, setSenafStatus] = useState<string | null>(null);
+    const [solicitudId, setSolicitudId] = useState<number | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
+    const [documentoUrl, setDocumentoUrl] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchStats = async () => {
             if (!ingresoId) return;
             try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data: profile } = await supabase
+                        .from('usuarios')
+                        .select('*, usuarios_roles(roles(nombre))')
+                        .eq('id', user.id)
+                        .single();
+                    setUserRole(profile?.usuarios_roles?.[0]?.roles?.nombre || 'Profesional');
+                }
+
                 const { data: medidas } = await supabase
                     .from('medidas')
                     .select('restituido')
@@ -44,15 +64,23 @@ const CierreIngreso = () => {
                     });
                 }
 
-                // Check for SENAF status
-                const { data: senafData } = await supabase
+                // Check for SENAF data
+                const { data: senafRecord } = await supabase
                     .from('solicitudes_senaf')
-                    .select('status')
+                    .select('*')
                     .eq('ingreso_id', ingresoId)
                     .maybeSingle();
 
-                if (senafData) {
-                    setSenafStatus(senafData.status);
+                if (senafRecord) {
+                    setSolicitudId(senafRecord.id);
+                    setSenafStatus(senafRecord.estado);
+                    setDocumentoUrl(senafRecord.documento_url);
+                    setSenafData({
+                        agoto_medidas: senafRecord.agoto_medidas,
+                        riesgo_vida: senafRecord.riesgo_vida,
+                        causa: senafRecord.causa || '',
+                        fundamentacion: senafRecord.fundamentacion || '',
+                    });
                 }
             } catch (error) {
                 console.error("Error fetching stats:", error);
@@ -65,8 +93,11 @@ const CierreIngreso = () => {
 
     const handleSubmit = async () => {
         if (!ingresoId) return;
+        setIsSaving(true);
 
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+
             // 1. Check if cese already exists
             const { data: existingCese } = await supabase
                 .from('form9_cese_ingreso')
@@ -75,76 +106,62 @@ const CierreIngreso = () => {
                 .maybeSingle();
 
             // 2. Upsert Form 9 Record
+            const cesePayload = {
+                ingreso_id: parseInt(ingresoId),
+                motivo_cese: formData.motivo_cese,
+                resumen_logros: formData.resumen_logros,
+                observaciones_finales: formData.observaciones_finales,
+                fecha_cierre: new Date().toISOString()
+            };
+
             if (existingCese) {
-                // Update existing
-                const { error: formError } = await supabase
-                    .from('form9_cese_ingreso')
-                    .update({
-                        motivo_cese: formData.motivo_cese,
-                        resumen_logros: formData.resumen_logros,
-                        observaciones_finales: formData.observaciones_finales,
-                        fecha_cierre: new Date().toISOString()
-                    })
-                    .eq('id', existingCese.id);
-
-                if (formError) throw formError;
+                await supabase.from('form9_cese_ingreso').update(cesePayload).eq('id', existingCese.id);
             } else {
-                // Insert new
-                const { error: formError } = await supabase
-                    .from('form9_cese_ingreso')
-                    .insert({
-                        ingreso_id: parseInt(ingresoId),
-                        motivo_cese: formData.motivo_cese,
-                        resumen_logros: formData.resumen_logros,
-                        observaciones_finales: formData.observaciones_finales,
-                        fecha_cierre: new Date().toISOString()
-                    });
-
-                if (formError) throw formError;
+                await supabase.from('form9_cese_ingreso').insert(cesePayload);
             }
 
-            // 3. User info
-            const { data: { user } } = await supabase.auth.getUser();
+            // 3. Handle SENAF if needed
+            if (formData.motivo_cese === 'solicitud_medida_excepcional') {
+                const senafPayload = {
+                    ingreso_id: parseInt(ingresoId),
+                    agoto_medidas: senafData.agoto_medidas,
+                    riesgo_vida: senafData.riesgo_vida,
+                    causa: senafData.causa || '',
+                    fundamentacion: senafData.fundamentacion || '',
+                    estado: senafStatus || 'En elaboración'
+                };
 
-            if (formData.motivo_cese !== 'solicitud_medida_excepcional') {
-                // 3. Close Ingreso
-                console.log('Cerrando ingreso...', ingresoId);
-                const { error: ingError } = await supabase
-                    .from('ingresos')
-                    .update({
-                        estado: 'cerrado',
-                        etapa: 'cerrado',
-                        ultimo_usuario_id: user?.id,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', parseInt(ingresoId)); // Force numeric if it helps
-
-                if (ingError) {
-                    console.error('Error closing ingreso:', ingError);
-                    throw new Error(`No se pudo cerrar el ingreso: ${ingError.message}`);
+                if (solicitudId) {
+                    await supabase.from('solicitudes_senaf').update(senafPayload).eq('id', solicitudId);
+                } else {
+                    const { data: newSenaf } = await supabase.from('solicitudes_senaf').insert(senafPayload).select().single();
+                    if (newSenaf) setSolicitudId(newSenaf.id);
                 }
 
-                // 4. Close Expediente
-                console.log('Cerrando expediente...', expedienteId);
-                const { error: expError } = await supabase
-                    .from('expedientes')
-                    .update({
-                        activo: false,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', parseInt(expedienteId || '0'));
-
-                if (expError) {
-                    console.error('Error closing expediente:', expError);
-                    // We don't throw here to at least complete the audit part, 
-                    // but we should alert the user later.
-                }
-            } else if (user) {
-                // Just touch it to record who was here
+                // If it's a new or existing record, touch the ingreso but don't close it yet
                 await supabase.from('ingresos').update({
-                    ultimo_usuario_id: user.id,
+                    ultimo_usuario_id: user?.id,
                     updated_at: new Date().toISOString()
                 }).eq('id', parseInt(ingresoId));
+
+                alert('Datos de cese y borrador SENAF guardados correctamente. Proceda a completar la elevación.');
+                navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`);
+            } else {
+                // 4. Close Case for other reasons
+                await supabase.from('ingresos').update({
+                    estado: 'cerrado',
+                    etapa: 'cerrado',
+                    ultimo_usuario_id: user?.id,
+                    updated_at: new Date().toISOString()
+                }).eq('id', parseInt(ingresoId));
+
+                await supabase.from('expedientes').update({
+                    activo: false,
+                    updated_at: new Date().toISOString()
+                }).eq('id', parseInt(expedienteId || '0'));
+
+                alert('Cierre registrado correctamente. El caso y el expediente han sido finalizados.');
+                navigate(`/expedientes`);
             }
 
             // Audit
@@ -154,30 +171,25 @@ const CierreIngreso = () => {
                     registro_id: parseInt(ingresoId),
                     accion: 'CIERRE_INTERVENCION',
                     usuario_id: user.id,
-                    datos_nuevos: { motivo_cese: formData.motivo_cese }
+                    datos_nuevos: { ...formData, ...senafData }
                 });
-            }
-
-            // Redirect or Notify
-            alert(formData.motivo_cese === 'solicitud_medida_excepcional'
-                ? 'Cierre iniciado. Por favor complete el formulario de elevación a SENAF.'
-                : 'Cierre registrado correctamente. El caso y el expediente han sido finalizados.');
-
-            if (formData.motivo_cese === 'solicitud_medida_excepcional') {
-                navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`);
-            } else {
-                navigate(`/expedientes`);
             }
 
         } catch (error) {
             console.error(error);
             alert('Error al registrar el cierre');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     if (loading) return <div className="flex h-screen items-center justify-center">Cargando...</div>;
 
     const progress = stats.totalMedidas > 0 ? (stats.completedMedidas / stats.totalMedidas) * 100 : 0;
+    const isElevated = !!(senafStatus && senafStatus !== 'En elaboración' && !senafStatus.includes('Observado'));
+
+    // For a Coordinator, if it's "Pendiente Coordinación", it's effectively read-only in this view
+    const isLockedForRole = !!((userRole === 'Coordinador' || userRole === 'Administrador') && isElevated);
 
     return (
         <div className="min-h-screen bg-[#f6f8f8] dark:bg-[#121e20] text-[#121617] dark:text-white font-['Manrope',sans-serif]">
@@ -220,8 +232,9 @@ const CierreIngreso = () => {
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-bold text-[#121617] dark:text-gray-300" htmlFor="motivo">Motivo de Cese</label>
                                     <select
-                                        className="w-full h-12 px-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] focus:border-[#1f96ad] transition-all"
+                                        className="w-full h-12 px-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] focus:border-[#1f96ad] transition-all disabled:opacity-75"
                                         id="motivo"
+                                        disabled={isLockedForRole}
                                         value={formData.motivo_cese}
                                         onChange={(e) => setFormData({ ...formData, motivo_cese: e.target.value })}
                                     >
@@ -237,12 +250,43 @@ const CierreIngreso = () => {
 
                                 {/* Conditional Section: SENAF Summary */}
                                 {formData.motivo_cese === 'solicitud_medida_excepcional' && (
-                                    <div className="bg-[#1f96ad]/5 dark:bg-[#1f96ad]/10 border border-[#1f96ad]/20 rounded-lg p-6 flex flex-col gap-4">
+                                    <div className="bg-[#1f96ad]/5 dark:bg-[#1f96ad]/10 border border-[#1f96ad]/20 rounded-xl p-6 space-y-6">
                                         <div className="flex items-center gap-2 text-[#1f96ad]">
-                                            <span className="material-symbols-outlined">info</span>
-                                            <p className="font-bold text-sm">Información de Solicitud SENAF</p>
+                                            <span className="material-symbols-outlined">gavel</span>
+                                            <p className="font-bold text-sm uppercase tracking-wider">Criterios de Medida Excepcional</p>
                                         </div>
-                                        <p className="text-sm">Al seleccionar esta opción, se iniciará el proceso de solicitud de medida excepcional a SENAF. El expediente permanecerá abierto hasta la resolución.</p>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between p-4 bg-white dark:bg-[#1a2b2e] rounded-lg border border-[#e5e7eb] dark:border-[#2d3a3d]">
+                                                <p className="text-sm font-medium">¿Se agotaron las medidas de protección posibles?</p>
+                                                <div className="flex gap-4">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="radio" disabled={isLockedForRole} checked={senafData.agoto_medidas === true} onChange={() => setSenafData({ ...senafData, agoto_medidas: true })} className="text-primary focus:ring-primary" />
+                                                        <span className="text-sm font-bold">Si</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="radio" disabled={isLockedForRole} checked={senafData.agoto_medidas === false} onChange={() => setSenafData({ ...senafData, agoto_medidas: false })} className="text-primary focus:ring-primary" />
+                                                        <span className="text-sm font-bold">No</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-4 bg-white dark:bg-[#1a2b2e] rounded-lg border border-[#e5e7eb] dark:border-[#2d3a3d]">
+                                                <p className="text-sm font-medium">¿Existe grave riesgo para la vida o integridad?</p>
+                                                <div className="flex gap-4">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="radio" disabled={isLockedForRole} checked={senafData.riesgo_vida === true} onChange={() => setSenafData({ ...senafData, riesgo_vida: true })} className="text-primary focus:ring-primary" />
+                                                        <span className="text-sm font-bold">Si</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="radio" disabled={isLockedForRole} checked={senafData.riesgo_vida === false} onChange={() => setSenafData({ ...senafData, riesgo_vida: false })} className="text-primary focus:ring-primary" />
+                                                        <span className="text-sm font-bold">No</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-[11px] text-gray-500 italic">Al confirmar, se guardará un borrador de la solicitud SENAF con estos criterios y los logros/observaciones detallados a continuación.</p>
                                     </div>
                                 )}
 
@@ -250,8 +294,9 @@ const CierreIngreso = () => {
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-bold text-[#121617] dark:text-gray-300" htmlFor="logros">Resumen de Logros Alcanzados</label>
                                     <textarea
-                                        className="w-full p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] transition-all"
+                                        className="w-full p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] transition-all disabled:opacity-75"
                                         id="logros"
+                                        disabled={isLockedForRole}
                                         placeholder="Describa los avances y metas cumplidas durante la intervención..."
                                         rows={4}
                                         value={formData.resumen_logros}
@@ -263,8 +308,9 @@ const CierreIngreso = () => {
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-bold text-[#121617] dark:text-gray-300" htmlFor="observaciones">Observaciones Finales</label>
                                     <textarea
-                                        className="w-full p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] transition-all"
+                                        className="w-full p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] transition-all disabled:opacity-75"
                                         id="observaciones"
+                                        disabled={isLockedForRole}
                                         placeholder="Información relevante adicional para el cierre definitivo..."
                                         rows={3}
                                         value={formData.observaciones_finales}
@@ -288,13 +334,27 @@ const CierreIngreso = () => {
                                                 {senafStatus || 'No iniciada'}
                                             </span>
                                         </div>
-                                        <button
-                                            onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}/resumen`)}
-                                            className="w-full py-3 bg-white dark:bg-[#1a2b2e] border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <span className="material-symbols-outlined text-lg">visibility</span>
-                                            Ver Historial Completo y Detalles
-                                        </button>
+                                        <div className="flex flex-col gap-3">
+                                            <button
+                                                onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`)}
+                                                className="w-full py-3 bg-white dark:bg-[#1a2b2e] border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">visibility</span>
+                                                {isLockedForRole ? 'Revisar Solicitud SENAF' : 'Ver Historial Completo y Detalles'}
+                                            </button>
+
+                                            {documentoUrl && (
+                                                <a
+                                                    href={documentoUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="w-full py-3 bg-primary/5 border border-primary/20 rounded-lg text-primary font-bold text-sm hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <span className="material-symbols-outlined text-lg">description</span>
+                                                    Ver Solicitud Subida (Adjunto)
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -339,11 +399,13 @@ const CierreIngreso = () => {
                         <div className="flex flex-col gap-3">
                             <button
                                 onClick={handleSubmit}
-                                disabled={!formData.motivo_cese}
-                                className={`w-full text-white font-bold py-4 px-6 rounded-lg transition-all shadow-md flex items-center justify-center gap-3 ${!formData.motivo_cese ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#B3243F] hover:bg-[#B3243F]/90'}`}
+                                disabled={(!formData.motivo_cese || isSaving) && !isLockedForRole}
+                                className={`w-full text-white font-bold py-4 px-6 rounded-lg transition-all shadow-md flex items-center justify-center gap-3 ${((!formData.motivo_cese || isSaving) && !isLockedForRole) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#B3243F] hover:bg-[#B3243F]/90'}`}
                             >
-                                <span className="material-symbols-outlined">assignment_turned_in</span>
-                                Confirmar Cierre y Generar Informe
+                                <span className="material-symbols-outlined">{isSaving ? 'sync' : isLockedForRole ? 'rate_review' : 'assignment_turned_in'}</span>
+                                {isSaving ? 'Guardando...' :
+                                    isLockedForRole ? 'Revisar Solicitud a SENAF' :
+                                        formData.motivo_cese === 'solicitud_medida_excepcional' ? 'Guardar y Continuar a SENAF' : 'Confirmar Cierre y Generar Informe'}
                             </button>
                             <button
                                 onClick={() => navigate(-1)}

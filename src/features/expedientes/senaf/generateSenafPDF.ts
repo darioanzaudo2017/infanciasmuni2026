@@ -31,11 +31,10 @@ interface SenafPDFData {
         tipo_familia: string;
     };
     grupo_familiar: any[];
-    resena_situacion: string;
+    valoracion_integral: string;
     derechos_vulnerados: any[];
     indicadores_vulneracion: string;
     medidas_implementadas: any[];
-    fundamentacion: string;
     indicadores_riesgo: string[];
     agoto_medidas: boolean;
     riesgo_vida: boolean;
@@ -129,15 +128,15 @@ export const generateSenafPDF = (data: SenafPDFData) => {
     doc.text(`TIPO DE FAMILIA: ${data.nna.tipo_familia}`, margin + 5, yPos);
     yPos += 12;
 
-    // 2. Reseña
+    // 2. Valoración Integral
     checkPageBreak(15);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('2- RESEÑA DE SITUACIÓN:', margin, yPos);
+    doc.text('2- VALORACIÓN INTEGRAL DE LA SITUACIÓN:', margin, yPos);
     yPos += 8;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    const resenaLines = doc.splitTextToSize(data.resena_situacion || 'Sin reseña proporcionada.', contentWidth);
+    const resenaLines = doc.splitTextToSize(data.valoracion_integral || 'Sin valoración integral proporcionada.', contentWidth);
     doc.text(resenaLines, margin + 5, yPos);
     yPos += (resenaLines.length * 5) + 12;
 
@@ -177,7 +176,7 @@ export const generateSenafPDF = (data: SenafPDFData) => {
     // 5. Valoracion
     checkPageBreak(40);
     doc.setFont('helvetica', 'bold');
-    doc.text('5- VALORACIÓN PROFESIONAL:', margin, yPos);
+    doc.text('5- VALORACIÓN PROFESIONAL FINAL:', margin, yPos);
     yPos += 8;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
@@ -185,10 +184,6 @@ export const generateSenafPDF = (data: SenafPDFData) => {
     const valIntroLines = doc.splitTextToSize(valIntro, contentWidth);
     doc.text(valIntroLines, margin + 5, yPos);
     yPos += (valIntroLines.length * 5) + 5;
-
-    const fundLines = doc.splitTextToSize(data.fundamentacion, contentWidth);
-    doc.text(fundLines, margin + 5, yPos);
-    yPos += (fundLines.length * 5) + 8;
 
     doc.setFont('helvetica', 'bold');
     doc.text('Factores e indicadores de riesgo identificados:', margin + 5, yPos);

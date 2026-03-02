@@ -221,7 +221,7 @@ const IngresoDetail = () => {
                 setMeasuresSummary(medidasConAcciones);
             }
         }
-        if (ingreso && (ingreso.etapa === 'definicion' || ingreso.etapa === 'Definición' || activeTab === 'definicion' || activeTab === 'historial')) {
+        if (ingreso) {
             fetchMeasures();
         }
     }, [ingresoId, ingreso, activeTab]);
@@ -690,6 +690,15 @@ const IngresoDetail = () => {
                             <span className="material-symbols-outlined text-[18px]">download</span>
                             Descargar PDF
                         </button>
+                        {measuresSummary.length > 0 && !isClosed && (
+                            <button
+                                onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/cierre/${ingreso.id}`)}
+                                className="flex items-center justify-center gap-2 rounded-xl h-9 px-4 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[11px] font-bold hover:bg-rose-50 border border-rose-100 dark:border-rose-900/30 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">gavel</span>
+                                Cierre de Intervención
+                            </button>
+                        )}
                         <button
                             onClick={handleFinalizeStage}
                             className="flex items-center justify-center rounded-xl h-9 px-5 bg-primary text-[#112121] text-[11px] font-bold hover:brightness-110 transition-all shadow-sm uppercase tracking-wider"
@@ -838,7 +847,7 @@ const IngresoDetail = () => {
                             ...(activeStageIndex >= 1 ? [{ id: 'ampliacion', label: 'Ficha de Ampliación', icon: 'insights' }] : []),
                             ...(activeStageIndex >= 2 || (ingreso.intervenciones && ingreso.intervenciones.length > 0) ? [{ id: 'sintesis', label: 'Informe Síntesis', icon: 'gavel' }] : []),
                             ...(activeStageIndex >= 3 ? [{ id: 'definicion', label: 'Definición de Medidas', icon: 'security' }] : []),
-                            ...((ingreso.cese || ingreso.estado === 'cerrado') ? [{ id: 'cese', label: 'Cese de Intervención', icon: 'verified' }] : []),
+                            ...((ingreso.cese || ingreso.estado === 'cerrado' || measuresSummary.length > 0) ? [{ id: 'cese', label: 'Cese de Intervención', icon: 'verified' }] : []),
                             { id: 'transferencias', label: 'Transferencias', icon: 'swap_horiz' },
                             { id: 'historial', label: 'Historial', icon: 'history' },
                             { id: 'documentos', label: 'Documentos', icon: 'description' }
@@ -993,6 +1002,34 @@ const IngresoDetail = () => {
                                             <p className="text-slate-800 dark:text-white font-medium leading-relaxed whitespace-pre-wrap text-sm">
                                                 {ingreso.informe_sintesis.plan_accion || 'Sin contenido.'}
                                             </p>
+                                        </div>
+
+                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                <span className="material-symbols-outlined text-8xl text-primary">gavel</span>
+                                            </div>
+                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-6 flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-primary">warning</span>
+                                                Derechos Vulnerados (Síntesis)
+                                            </h4>
+                                            {(ingreso.vulneraciones || []).length === 0 ? (
+                                                <p className="text-slate-500 italic text-sm">No se registraron derechos específicos en esta etapa.</p>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {(ingreso.vulneraciones || []).map((v, i) => (
+                                                        <div key={i} className="flex gap-4 p-4 bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-slate-100 dark:border-zinc-800/50 items-start">
+                                                            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                                                <span className="material-symbols-outlined text-[18px]">gavel</span>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-tight">{v.catalogo_derechos?.categoria}</p>
+                                                                <p className="text-[10px] text-primary font-bold mb-2 tracking-wide uppercase uppercase">{v.catalogo_derechos?.subcategoria}</p>
+                                                                {v.indicador && <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 italic">"{v.indicador}"</p>}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex justify-end pt-4">
@@ -1610,7 +1647,10 @@ const IngresoDetail = () => {
                                                     {measuresSummary.map((medida: any, idx: number) => (
                                                         <div key={idx} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-l-4 border-l-primary border border-slate-200 dark:border-zinc-800 shadow-md hover:shadow-lg transition-all">
                                                             <div className="flex justify-between items-start mb-3">
-                                                                <span className={`text-xs font-bold px-2 py-1 rounded ${medida.estado === 'activa' ? 'bg-primary/10 text-primary' : medida.estado === 'finalizada' ? 'bg-slate-100 dark:bg-slate-800 text-slate-500' : 'bg-orange-100 text-orange-600'}`}>
+                                                                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider ${medida.estado === 'completa' ? 'bg-emerald-100 text-emerald-600' :
+                                                                    medida.estado === 'en proceso' ? 'bg-primary/10 text-primary' :
+                                                                        'bg-slate-100 dark:bg-zinc-800 text-slate-500'
+                                                                    }`}>
                                                                     {medida.estado || 'Activa'}
                                                                 </span>
                                                                 {medida.created_at && (

@@ -31,11 +31,10 @@ interface SenafWordData {
         tipo_familia: string;
     };
     grupo_familiar: any[];
-    resena_situacion: string;
+    valoracion_integral: string;
     derechos_vulnerados: any[];
     indicadores_vulneracion: string;
     medidas_implementadas: any[];
-    fundamentacion: string;
     indicadores_riesgo: string[];
     agoto_medidas: boolean;
     riesgo_vida: boolean;
@@ -149,12 +148,12 @@ export const generateSenafWord = async (data: SenafWordData) => {
                     spacing: { before: 200, after: 400 },
                 }),
 
-                // 2. RESEÑA
+                // 2. VALORACIÓN INTEGRAL
                 new Paragraph({
-                    children: [new TextRun({ text: "2- RESEÑA DE SITUACIÓN:", bold: true, size: 22 })],
+                    children: [new TextRun({ text: "2- VALORACIÓN INTEGRAL DE LA SITUACIÓN:", bold: true, size: 22 })],
                 }),
                 new Paragraph({
-                    children: [new TextRun({ text: data.resena_situacion || "Sin reseña.", size: 20 })],
+                    children: [new TextRun({ text: data.valoracion_integral || "Sin valoración integral proporcionada.", size: 20 })],
                     spacing: { after: 400 },
                 }),
 
@@ -207,15 +206,11 @@ export const generateSenafWord = async (data: SenafWordData) => {
 
                 // 5. VALORACION
                 new Paragraph({
-                    children: [new TextRun({ text: "5- VALORACIÓN PROFESIONAL:", bold: true, size: 22 })],
+                    children: [new TextRun({ text: "5- VALORACIÓN PROFESIONAL FINAL:", bold: true, size: 22 })],
                     spacing: { before: 400 },
                 }),
                 new Paragraph({
                     children: [new TextRun({ text: "Este equipo de trabajo ha intentado realizar abordaje desde segundo nivel de intervención con la familia, no habiendo logrado revertir las situaciones problemáticas y de riesgo a causa de las cuales se recibió la derivación.", size: 20 })],
-                }),
-                new Paragraph({
-                    children: [new TextRun({ text: data.fundamentacion, size: 20 })],
-                    spacing: { after: 200 },
                 }),
                 new Paragraph({
                     children: [new TextRun({ text: "Factores e indicadores de riesgo identificación:", bold: true, size: 20 })],

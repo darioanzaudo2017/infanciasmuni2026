@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 
 export interface Notification {
     id: string;
+    usuario_id: string;
     titulo: string;
     mensaje: string;
     tipo: 'info' | 'warning' | 'success' | 'error';
@@ -77,7 +78,15 @@ export const useNotifications = () => {
     };
 
     useEffect(() => {
-        fetchNotifications();
+        let userId: string | null = null;
+
+        const setup = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) userId = user.id;
+            fetchNotifications();
+        };
+
+        setup();
 
         // Subscribe to real-time changes
         const channel = supabase
@@ -91,8 +100,11 @@ export const useNotifications = () => {
                 },
                 (payload) => {
                     const newNotif = payload.new as Notification;
-                    setNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
-                    if (!newNotif.leida) setUnreadCount(count => count + 1);
+                    // Only process if it belongs to the current user
+                    if (userId && newNotif.usuario_id === userId) {
+                        setNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+                        if (!newNotif.leida) setUnreadCount(count => count + 1);
+                    }
                 }
             )
             .subscribe();

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/shared/MainLayout';
 import Dashboard from './features/Dashboard';
 import ExpedientesList from './features/expedientes/ExpedientesList';
@@ -17,6 +17,9 @@ import ActaCompromiso from './features/expedientes/definicion/ActaCompromiso';
 import CierreIngreso from './features/expedientes/cese/CierreIngreso';
 import SolicitudSenafForm from './features/expedientes/senaf/SolicitudSenafForm';
 import SolicitudSenafSummary from './features/expedientes/senaf/SolicitudSenafSummary';
+import SenafManagementPage from './features/expedientes/senaf/SenafManagementPage';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import DerechosManagementPage from './features/admin/derechos/DerechosManagementPage';
 
 function App() {
   return (
@@ -27,7 +30,7 @@ function App() {
         <Route path="/recuperar-password" element={<RecoveryPage />} />
 
         {/* App Routes */}
-        <Route path="/" element={<MainLayout />}>
+        <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="expedientes" element={<ExpedientesList />} />
           <Route path="expedientes/nuevo" element={<NuevaRecepcion />} />
@@ -38,19 +41,23 @@ function App() {
           <Route path="expedientes/:id/ingresos" element={<IngresosPage />} />
           <Route path="expedientes/:expedienteId/ingresos/:ingresoId" element={<IngresoDetail />} />
           <Route path="usuarios" element={<UserManagementPage />} />
+          <Route path="derechos" element={<DerechosManagementPage />} />
           <Route path="expedientes/:expedienteId/definicion/:ingresoId" element={<DefinicionMedidas />} />
           <Route path="expedientes/:expedienteId/definicion/:ingresoId/medida/:medidaId" element={<PlanAccionMedida />} />
           <Route path="medidas" element={<div>Medidas</div>} />
-          <Route path="senaf" element={<div>SENAF</div>} />
+          <Route path="senaf" element={<SenafManagementPage />} />
           <Route path="expedientes/:expedienteId/senaf/:ingresoId" element={<SolicitudSenafForm />} />
           <Route path="expedientes/:expedienteId/senaf/:ingresoId/resumen" element={<SolicitudSenafSummary />} />
           <Route path="reportes" element={<div>Reportes</div>} />
           <Route path="configuracion" element={<div>Configuración</div>} />
         </Route>
 
-        {/* Standalone Route for Acta */}
-        <Route path="expedientes/:expedienteId/acta/:ingresoId" element={<ActaCompromiso />} />
-        <Route path="expedientes/:expedienteId/cierre/:ingresoId" element={<CierreIngreso />} />
+        {/* Protected Standalone Routes */}
+        <Route path="expedientes/:expedienteId/acta/:ingresoId" element={<ProtectedRoute><ActaCompromiso /></ProtectedRoute>} />
+        <Route path="expedientes/:expedienteId/cierre/:ingresoId" element={<ProtectedRoute><CierreIngreso /></ProtectedRoute>} />
+
+        {/* Redirect unknown routes to dashboard */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

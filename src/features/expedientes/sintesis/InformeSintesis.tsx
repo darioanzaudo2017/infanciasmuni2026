@@ -27,10 +27,13 @@ const InformeSintesis = () => {
     const [vulneraciones, setVulneraciones] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [history, setHistory] = useState<any[]>([]);
+    const [personasDisponibles, setPersonasDisponibles] = useState<any[]>([]);
+    const [esGrupal, setEsGrupal] = useState(false);
 
     // Right selection states
     const [catalogo, setCatalogo] = useState<any[]>([]);
     const [showRightSelector, setShowRightSelector] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('');
     const [selectedRight, setSelectedRight] = useState('');
 
     // State for history preview
@@ -100,6 +103,13 @@ const InformeSintesis = () => {
                     setHistory(histData || []);
                 }
 
+                // Fetch Family Group for replication
+                const { data: familyData } = await supabase
+                    .from('grupo_conviviente')
+                    .select('*')
+                    .eq('ingreso_id', ingresoId);
+                setPersonasDisponibles(familyData || []);
+
             } catch (error) {
                 console.error('Error fetching data', error);
             } finally {
@@ -159,6 +169,72 @@ const InformeSintesis = () => {
                     .order('created_at', { ascending: false });
                 setHistory(histData || []);
             }
+
+            // --- REPLICATION LOGIC ---
+            if (esGrupal && personasDisponibles.some(p => p.linked_ingreso_id)) {
+                const linkedIngresos = personasDisponibles.filter(p => p.linked_ingreso_id);
+                const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+                for (const member of linkedIngresos) {
+                    try {
+                        const linkedPayload = {
+                            ingreso_id: member.linked_ingreso_id,
+                            fundamento_normativo: payload.fundamento_normativo,
+                            valoracion_integral: payload.valoracion_integral,
+                            plan_accion: payload.plan_accion,
+                            profesionales_ids: payload.profesionales_ids,
+                            estado: payload.estado,
+                            updated_at: new Date().toISOString()
+                        };
+
+                        const { data: linkedExisting } = await supabase
+                            .from('form3_informe_sintesis')
+                            .select('id')
+                            .eq('ingreso_id', member.linked_ingreso_id)
+                            .maybeSingle();
+
+                        let linkedReportId;
+                        if (linkedExisting) {
+                            await supabase.from('form3_informe_sintesis').update(linkedPayload).eq('id', linkedExisting.id);
+                            linkedReportId = linkedExisting.id;
+                        } else {
+                            const { data: newLinkedReport } = await supabase.from('form3_informe_sintesis').insert(linkedPayload).select('id').single();
+                            linkedReportId = newLinkedReport?.id;
+                        }
+
+                        if (linkedReportId) {
+                            await supabase.from('form3_informe_sintesis_historial').insert({
+                                informe_id: linkedReportId,
+                                fundamento_normativo: linkedPayload.fundamento_normativo,
+                                valoracion_integral: linkedPayload.valoracion_integral,
+                                plan_accion: linkedPayload.plan_accion,
+                                profesionales_ids: linkedPayload.profesionales_ids,
+                                estado: linkedPayload.estado,
+                                created_at: new Date().toISOString()
+                            });
+                        }
+
+                        if (finalizar) {
+                            await supabase.from('ingresos').update({
+                                etapa: 'definicion',
+                                ultimo_usuario_id: currentUser?.id,
+                                updated_at: new Date().toISOString()
+                            }).eq('id', member.linked_ingreso_id);
+
+                            await supabase.from('auditoria').insert({
+                                tabla: 'ingresos',
+                                registro_id: member.linked_ingreso_id,
+                                accion: 'FINALIZADO_SINTESIS_REPLICADO',
+                                usuario_id: currentUser?.id,
+                                datos_nuevos: { etapa: 'definicion' }
+                            });
+                        }
+                    } catch (err) {
+                        console.error(`Error replicando informe en ingreso ${member.linked_ingreso_id}:`, err);
+                    }
+                }
+            }
+            // --- END REPLICATION LOGIC ---
 
             if (finalizar) {
                 // Update Ingreso Etapa and track user
@@ -222,6 +298,7 @@ const InformeSintesis = () => {
                 .eq('ingreso_id', ingresoId);
             setVulneraciones(vulData || []);
             setShowRightSelector(false);
+            setSelectedCategory('');
             setSelectedRight('');
         } catch (error) {
             console.error('Error adding right', error);
@@ -414,7 +491,10 @@ const InformeSintesis = () => {
                                     <span className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                                         <span className="material-symbols-outlined text-[20px]">psychology</span>
                                     </span>
-                                    Valoración Integral
+                                    <div className="flex flex-col">
+                                        <span>Valoración Integral</span>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Indique aqui el responsable de las vulneraciones, las fortalezas familiares y los actores para articular</span>
+                                    </div>
                                 </h2>
                                 <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-1 shadow-sm overflow-hidden">
                                     <div className="flex items-center gap-2 p-2 border-b border-gray-50 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
@@ -478,34 +558,97 @@ const InformeSintesis = () => {
 
                                 {/* Add Selector UI */}
                                 {showRightSelector && (
-                                    <div className="p-4 bg-gray-50 dark:bg-zinc-800 rounded-xl border border-dashed border-primary animate-in fade-in zoom-in-95 mt-4">
-                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Seleccione el derecho a agregar</label>
-                                        <select
-                                            className="w-full p-2 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-zinc-700 text-sm mb-3"
-                                            value={selectedRight}
-                                            onChange={(e) => setSelectedRight(e.target.value)}
-                                        >
-                                            <option value="">-- Seleccionar --</option>
-                                            {catalogo.map(c => (
-                                                <option key={c.id} value={c.id}>{c.categoria} - {c.subcategoria}</option>
-                                            ))}
-                                        </select>
-                                        <div className="flex justify-end gap-2">
-                                            <button onClick={() => setShowRightSelector(false)} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:bg-gray-200 rounded-lg transition-colors">Cancelar</button>
-                                            <button onClick={handleAddRight} disabled={!selectedRight} className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-lg shadow-sm hover:brightness-110 disabled:opacity-50 transition-all">Confirmar</button>
+                                    <div className="p-6 bg-gray-50 dark:bg-zinc-800 rounded-2xl border border-dashed border-primary animate-in fade-in zoom-in-95 mt-4 space-y-4">
+                                        <h4 className="text-sm font-black text-primary uppercase tracking-widest">Agregar Nuevo Derecho</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest">1. Categoría de Derecho</label>
+                                                <select
+                                                    className="w-full h-11 px-3 rounded-xl border-gray-200 dark:border-zinc-700 dark:bg-zinc-700 text-sm font-bold focus:ring-2 focus:ring-primary outline-none transition-all"
+                                                    value={selectedCategory}
+                                                    onChange={(e) => {
+                                                        setSelectedCategory(e.target.value);
+                                                        setSelectedRight('');
+                                                    }}
+                                                >
+                                                    <option value="">-- Seleccionar Categoría --</option>
+                                                    {Array.from(new Set(catalogo.map(c => c.categoria))).sort().map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest">2. Subcategoría específica</label>
+                                                <select
+                                                    className="w-full h-11 px-3 rounded-xl border-gray-200 dark:border-zinc-700 dark:bg-zinc-700 text-sm font-bold focus:ring-2 focus:ring-primary outline-none transition-all disabled:opacity-50"
+                                                    value={selectedRight}
+                                                    disabled={!selectedCategory}
+                                                    onChange={(e) => setSelectedRight(e.target.value)}
+                                                >
+                                                    <option value="">-- Seleccionar Subcategoría --</option>
+                                                    {catalogo
+                                                        .filter(c => c.categoria === selectedCategory)
+                                                        .sort((a, b) => a.subcategoria.localeCompare(b.subcategoria))
+                                                        .map(c => (
+                                                            <option key={c.id} value={c.id}>{c.subcategoria}</option>
+                                                        ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button onClick={() => {
+                                                setShowRightSelector(false);
+                                                setSelectedCategory('');
+                                                setSelectedRight('');
+                                            }} className="px-4 py-2 text-xs font-black uppercase tracking-widest text-[#60708a] hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl transition-all">
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                onClick={handleAddRight}
+                                                disabled={!selectedRight}
+                                                className="px-6 py-2 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">add_circle</span>
+                                                Confirmar Agregado
+                                            </button>
                                         </div>
                                     </div>
                                 )}
 
                                 {!showRightSelector && (
                                     <div className="mt-4">
-                                        <button onClick={() => setShowRightSelector(true)} className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5 px-4 py-2 rounded-lg border border-dashed border-primary/30 transition-all">
+                                        <button onClick={() => setShowRightSelector(true)} className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5 px-6 py-3 rounded-xl border-2 border-dashed border-primary/30 transition-all hover:border-primary">
                                             <span className="material-symbols-outlined text-lg">add_circle</span>
                                             Agregar otro derecho
                                         </button>
                                     </div>
                                 )}
                             </div>
+
+                            {/* Replication Toggle Section */}
+                            {personasDisponibles.some(p => p.linked_ingreso_id) && (
+                                <div className="bg-white dark:bg-gray-900 rounded-xl border-2 border-primary/20 p-6 shadow-sm flex items-center justify-between group hover:border-primary transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div
+                                            onClick={() => setEsGrupal(!esGrupal)}
+                                            className={`size-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${esGrupal ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-200'}`}
+                                        >
+                                            {esGrupal && <span className="material-symbols-outlined text-xl font-black">check</span>}
+                                        </div>
+                                        <div>
+                                            <p className="text-base font-black text-slate-800 dark:text-white leading-tight">Intervención Grupal</p>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Replicar este informe en todos los familiares vinculados</p>
+                                        </div>
+                                    </div>
+                                    {esGrupal && (
+                                        <div className="px-4 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full animate-in zoom-in-50 duration-300">
+                                            Activado
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Professionals Section */}
                             <div id="profesionales" className="scroll-mt-24">

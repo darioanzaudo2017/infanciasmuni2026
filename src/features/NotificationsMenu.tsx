@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
 import type { Notification } from '../hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale/es';
+import { es } from 'date-fns/locale';
 
 const NotificationsMenu = () => {
     const [isOpen, setIsOpen] = useState(false);

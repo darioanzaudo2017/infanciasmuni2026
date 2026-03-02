@@ -1,8 +1,24 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import { supabase } from '../../lib/supabase';
 
 const MainLayout = () => {
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') {
+                navigate('/login', { replace: true });
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [navigate]);
+
     return (
         <div className="flex min-h-screen overflow-hidden text-[#111418] font-display">
             <Sidebar />

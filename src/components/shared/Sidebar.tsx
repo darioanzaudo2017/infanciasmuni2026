@@ -32,7 +32,11 @@ const Sidebar = () => {
     const menuItems = [
         { title: 'Panel de Control', icon: 'dashboard', path: '/' },
         { title: 'Expedientes', icon: 'folder_shared', path: '/expedientes' },
-        ...(canManageUsers ? [{ title: 'Usuarios', icon: 'group', path: '/usuarios' }] : []),
+        ...(canManageUsers ? [
+            { title: 'Usuarios', icon: 'group', path: '/usuarios' },
+            { title: 'Catálogo de Derechos', icon: 'gavel', path: '/derechos' },
+            { title: 'Medidas Excepcionales', icon: 'account_balance', path: '/senaf' }
+        ] : []),
     ];
 
     return (

@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
 import { buscarVinculacionPorDni } from '../../../services/vinculacionService';
+import { crearExpedienteConIngreso } from '../../../services/expedienteService';
 
 const calculateAge = (birthDate: string) => {
     if (!birthDate) return '';
@@ -107,6 +108,7 @@ const FormularioRecepcion: React.FC = () => {
     const [isCheckingDni, setIsCheckingDni] = useState(false);
     const [linkedExpedienteId, setLinkedExpedienteId] = useState<string | null>(null);
     const [linkedIngresoId, setLinkedIngresoId] = useState<string | null>(null);
+    const [isConfirmExpedienteModalOpen, setIsConfirmExpedienteModalOpen] = useState(false);
 
     const [currentReferente, setCurrentReferente] = useState({
         nombre: '',
@@ -426,7 +428,14 @@ const FormularioRecepcion: React.FC = () => {
         setIsDrawerOpen(true);
     };
 
-    const handleSaveMember = () => {
+    const handleSaveMember = (confirmAlreadyAsked = false) => {
+        const ageNum = parseInt(currentMember.edad || calculateAge(currentMember.fecha_nacimiento));
+
+        if (!confirmAlreadyAsked && !linkedExpedienteId && ageNum > 0 && ageNum < 18) {
+            setIsConfirmExpedienteModalOpen(true);
+            return;
+        }
+
         const newGroup = [...formData.grupo_familiar];
         const memberToSave = {
             ...currentMember,
@@ -441,6 +450,58 @@ const FormularioRecepcion: React.FC = () => {
         }
         setFormData({ ...formData, grupo_familiar: newGroup });
         setIsDrawerOpen(false);
+        setIsConfirmExpedienteModalOpen(false);
+    };
+
+    const handleConfirmCreateExpediente = async () => {
+        setIsSaving(true);
+        try {
+            const spdId = formData.spd_id || userProfile?.servicios_proteccion?.id;
+            let selectedSpd = spds.find(s => String(s.id) === String(spdId));
+            let zonaId = selectedSpd?.zona_id || userProfile?.zona_id;
+
+            if (!spdId) {
+                alert('Debe tener un SPD asignado para crear un expediente.');
+                return;
+            }
+
+            const result = await crearExpedienteConIngreso(
+                supabase,
+                {
+                    dni: currentMember.dni,
+                    nombre: currentMember.nombre,
+                    apellido: currentMember.apellido,
+                    fecha_nacimiento: currentMember.fecha_nacimiento,
+                },
+                spdId,
+                zonaId,
+                userProfile.id
+            );
+
+            // Guardar con los nuevos IDs vinculados
+            const newGroup = [...formData.grupo_familiar];
+            const memberToSave = {
+                ...currentMember,
+                linked_expediente_id: result.expedienteId,
+                linked_ingreso_id: result.ingresoId
+            };
+
+            if (editingMemberIndex !== null) {
+                newGroup[editingMemberIndex] = memberToSave;
+            } else {
+                newGroup.push(memberToSave);
+            }
+
+            setFormData({ ...formData, grupo_familiar: newGroup });
+            setIsDrawerOpen(false);
+            setIsConfirmExpedienteModalOpen(false);
+            alert('Expediente y Vínculo creados correctamente.');
+        } catch (error: any) {
+            console.error('Error creating expediente for minor:', error);
+            alert(`Error al crear el expediente para el menor: ${error.message || 'Error desconocido'}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // Effect to check DNI for existing files using vinculacionService
@@ -1450,6 +1511,12 @@ const FormularioRecepcion: React.FC = () => {
                                                                         {member.nombre.substring(0, 2).toUpperCase()}
                                                                     </div>
                                                                     <span className="font-bold text-sm tracking-tight">{member.nombre}</span>
+                                                                    {member.linked_expediente_id && (
+                                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-700/50 group/link cursor-help" title="Expediente Vinculado">
+                                                                            <span className="material-symbols-outlined text-[14px] font-bold">link</span>
+                                                                            <span className="text-[9px] font-black uppercase tracking-tighter">Vinculado</span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-4 text-sm text-[#60708a] font-medium">{member.dni}</td>
@@ -1686,12 +1753,54 @@ const FormularioRecepcion: React.FC = () => {
                                                             Cancelar
                                                         </button>
                                                         <button
-                                                            onClick={handleSaveMember}
+                                                            onClick={() => handleSaveMember()}
                                                             className="flex-1 h-14 bg-primary text-white text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/20"
                                                         >
                                                             Guardar
                                                         </button>
                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Modal de confirmación para crear expediente a menor */}
+                                {isConfirmExpedienteModalOpen && (
+                                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
+                                            <div className="p-8 text-center space-y-6">
+                                                <div className="size-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto">
+                                                    <span className="material-symbols-outlined text-4xl">folder_shared</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">¿Crear nuevo expediente?</h3>
+                                                    <p className="text-sm font-medium text-slate-500 leading-relaxed px-4">
+                                                        Se detectó que <span className="font-bold text-primary">{currentMember.nombre} {currentMember.apellido}</span> es menor de 18 años. ¿Desea crear un nuevo expediente e ingreso de forma automática?
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-col gap-3 pt-2">
+                                                    <button
+                                                        onClick={handleConfirmCreateExpediente}
+                                                        className="h-14 bg-primary text-white font-black uppercase tracking-widest rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                                                        disabled={isSaving}
+                                                    >
+                                                        {isSaving ? (
+                                                            <div className="size-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        ) : (
+                                                            <>
+                                                                <span className="material-symbols-outlined">add_circle</span>
+                                                                <span>Sí, crear Expediente</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSaveMember(true)}
+                                                        className="h-14 border border-[#dbdfe6] dark:border-slate-800 text-[#60708a] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                                                        disabled={isSaving}
+                                                    >
+                                                        Sólo agregar al grupo
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

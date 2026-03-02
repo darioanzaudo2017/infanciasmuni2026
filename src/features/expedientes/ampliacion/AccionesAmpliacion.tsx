@@ -675,25 +675,27 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                     />
                                 </div>
 
-                                <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div
-                                            onClick={() => setNewIntervencion({ ...newIntervencion, es_grupal: !newIntervencion.es_grupal })}
-                                            className={`size-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${newIntervencion.es_grupal ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-200'}`}
-                                        >
-                                            {newIntervencion.es_grupal && <span className="material-symbols-outlined text-lg font-black">check</span>}
+                                {personasDisponibles.some(p => p.source === 'Familiar' && p.linked_ingreso_id) && (
+                                    <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div
+                                                onClick={() => setNewIntervencion({ ...newIntervencion, es_grupal: !newIntervencion.es_grupal })}
+                                                className={`size-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${newIntervencion.es_grupal ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-200'}`}
+                                            >
+                                                {newIntervencion.es_grupal && <span className="material-symbols-outlined text-lg font-black">check</span>}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-800 dark:text-white leading-tight">Intervención Grupal</p>
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Replicar este registro en todos los familiares vinculados</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-black text-slate-800 dark:text-white leading-tight">Intervención Grupal</p>
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Replicar este registro en todos los familiares vinculados</p>
-                                        </div>
+                                        {newIntervencion.es_grupal && (
+                                            <div className="px-3 py-1 bg-primary text-white text-[9px] font-black uppercase tracking-widest rounded-full animate-in zoom-in-50 duration-300">
+                                                Activado
+                                            </div>
+                                        )}
                                     </div>
-                                    {newIntervencion.es_grupal && (
-                                        <div className="px-3 py-1 bg-primary text-white text-[9px] font-black uppercase tracking-widest rounded-full animate-in zoom-in-50 duration-300">
-                                            Activado
-                                        </div>
-                                    )}
-                                </div>
+                                )}
                             </section>
 
                             {/* Professionals Selection (Tag style) */}

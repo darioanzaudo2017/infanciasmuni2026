@@ -51,10 +51,14 @@ const DefinicionMedidas = () => {
                     .eq('ingreso_id', ingresoId);
                 setVulneraciones(vulData || []);
 
-                // Fetch Medidas
+                // Fetch Medidas with actions count
                 const { data: medData } = await supabase
                     .from('medidas')
-                    .select('*, medidas_derechos(derecho_id)')
+                    .select(`
+                        *,
+                        medidas_derechos(derecho_id),
+                        medidas_acciones(id, estado)
+                    `)
                     .eq('ingreso_id', ingresoId)
                     .order('created_at', { ascending: false });
                 setMedidas(medData || []);
@@ -109,7 +113,11 @@ const DefinicionMedidas = () => {
             // Refresh
             const { data: medData } = await supabase
                 .from('medidas')
-                .select('*, medidas_derechos(derecho_id)')
+                .select(`
+                    *,
+                    medidas_derechos(derecho_id),
+                    medidas_acciones(id, estado)
+                `)
                 .eq('ingreso_id', ingresoId)
                 .order('created_at', { ascending: false });
             setMedidas(medData || []);
@@ -138,10 +146,38 @@ const DefinicionMedidas = () => {
                 fecha_plazo: '',
                 selectedRights: []
             });
-
         } catch (error) {
-            console.error('Error saving measure', error);
-            alert('Error al guardar medida');
+            console.error('Error saving measure:', error);
+            alert('Error al guardar la medida');
+        }
+    };
+
+    const updateMeasureStatus = async (measureId: number, newStatus: string) => {
+        try {
+            const { error } = await supabase
+                .from('medidas')
+                .update({ estado: newStatus })
+                .eq('id', measureId);
+
+            if (error) throw error;
+
+            setMedidas(prev => prev.map(m => m.id === measureId ? { ...m, estado: newStatus } : m));
+
+            // Track in audit
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const actionPrefix = 'STATUS_';
+                const actionName = newStatus.toUpperCase().replace(' ', '_');
+                await supabase.from('auditoria').insert({
+                    tabla: 'medidas',
+                    registro_id: measureId,
+                    accion: (actionPrefix + actionName).slice(0, 20),
+                    usuario_id: user.id
+                });
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Error al actualizar el estado');
         }
     };
 
@@ -264,14 +300,6 @@ const DefinicionMedidas = () => {
                         </div>
                         <div className="flex gap-3">
                             <button
-                                onClick={() => navigate(`/expedientes/${expedienteId}/cierre/${ingresoId}`)}
-                                disabled={medidas.length === 0}
-                                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all shrink-0 border ${medidas.length === 0 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-gray-900 shadow-sm'}`}
-                            >
-                                <span className="material-symbols-outlined">gavel</span>
-                                Cierre de Intervención
-                            </button>
-                            <button
                                 onClick={() => setShowModal(true)}
                                 className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all shrink-0"
                             >
@@ -304,17 +332,64 @@ const DefinicionMedidas = () => {
                     {medidas.map((m) => (
                         <div
                             key={m.id}
-                            onClick={() => navigate(`/expedientes/${expedienteId}/definicion/${ingresoId}/medida/${m.id}`)}
-                            className="measure-card bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm p-6 flex flex-col hover:-translate-y-1 transition-transform duration-200 cursor-pointer group"
+                            className="measure-card bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm p-6 flex flex-col hover:shadow-md transition-all duration-200 group relative"
                         >
                             <div className="flex justify-between items-start mb-4">
-                                <div className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-bold uppercase tracking-widest">Medida Activa</div>
-                                <span className="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors">arrow_forward</span>
+                                <div className="flex gap-2">
+                                    {['pendiente', 'en proceso', 'completa'].map((status) => (
+                                        <button
+                                            key={status}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                updateMeasureStatus(m.id, status);
+                                            }}
+                                            className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${m.estado === status
+                                                ? status === 'completa' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' :
+                                                    status === 'en proceso' ? 'bg-primary text-white shadow-lg shadow-primary/20' :
+                                                        'bg-slate-500 text-white shadow-lg shadow-slate-500/20'
+                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-400 hover:bg-slate-200'
+                                                }`}
+                                        >
+                                            {status}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => navigate(`/expedientes/${expedienteId}/definicion/${ingresoId}/medida/${m.id}`)}
+                                    className="material-symbols-outlined text-gray-400 hover:text-primary transition-colors p-1"
+                                >
+                                    arrow_forward
+                                </button>
                             </div>
-                            <h3 className="text-md font-bold mb-2 dark:text-white line-clamp-2">{m.medida_propuesta}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6 line-clamp-3">
-                                {m.descripcion}
-                            </p>
+                            <div onClick={() => navigate(`/expedientes/${expedienteId}/definicion/${ingresoId}/medida/${m.id}`)} className="cursor-pointer flex-1">
+                                <h3 className="text-md font-bold mb-2 dark:text-white line-clamp-2">{m.medida_propuesta}</h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4 line-clamp-3">
+                                    {m.descripcion}
+                                </p>
+
+                                {/* Action Progress Summary */}
+                                {m.medidas_acciones && m.medidas_acciones.length > 0 && (
+                                    <div className="mb-6 bg-gray-50/50 dark:bg-zinc-800/30 p-4 rounded-xl border border-gray-100 dark:border-zinc-800/50">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-primary text-sm">checklist_rtl</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Plan de Acción</span>
+                                            </div>
+                                            <span className="text-[10px] font-black text-primary">
+                                                {m.medidas_acciones.filter((a: any) => a.estado === 'completado').length}/{m.medidas_acciones.length}
+                                            </span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-primary rounded-full transition-all duration-500"
+                                                style={{
+                                                    width: `${Math.round((m.medidas_acciones.filter((a: any) => a.estado === 'completado').length / m.medidas_acciones.length) * 100)}%`
+                                                }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="space-y-3 mb-6 mt-auto">
                                 <div className="flex items-center justify-between text-xs">

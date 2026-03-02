@@ -89,7 +89,7 @@ const Sidebar = () => {
                 </div>
             </nav>
 
-            <div className="p-4 border-t border-[#f0f2f5] dark:border-[#333]">
+            <div className="p-4 border-t border-[#f0f2f5] dark:border-[#333] flex flex-col gap-2">
                 <div className="flex items-center gap-3 px-2">
                     <div className="size-9 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-primary font-bold text-xs">
                         {userProfile?.nombre_completo?.substring(0, 2).toUpperCase() || 'U'}
@@ -107,13 +107,12 @@ const Sidebar = () => {
                                     {userProfile.servicios_proteccion.nombre}
                                 </span>
                             )}
-                            {userProfile?.zonas?.nombre && (
-                                <span className="text-[10px] text-[#60708a] border-l border-slate-300 pl-2">
-                                    {userProfile.zonas.nombre}
-                                </span>
-                            )}
                         </div>
                     </div>
+                </div>
+                <div className="mt-2 px-2 flex flex-col gap-0.5">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Versión 1.0.0</p>
+                    <p className="text-[9px] text-gray-400">Actualizado: 02/03/2026 09:44</p>
                 </div>
             </div>
         </aside>

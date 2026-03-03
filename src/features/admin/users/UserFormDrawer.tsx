@@ -331,7 +331,7 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                     <button
                         form="userForm"
                         disabled={submitting || loading}
-                        className="flex-[2] px-4 py-3 rounded-lg bg-primary text-slate-900 font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="flex-[2] px-4 py-3 rounded-lg bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50"
                     >
                         {submitting ? (
                             <div className="flex items-center justify-center gap-2">

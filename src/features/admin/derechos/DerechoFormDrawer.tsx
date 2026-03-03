@@ -197,7 +197,7 @@ const DerechoFormDrawer: React.FC<DerechoFormDrawerProps> = ({
                     <button
                         form="derechoForm"
                         disabled={isSaving}
-                        className="flex-[2] px-4 py-3 rounded-lg bg-primary text-slate-900 font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="flex-[2] px-4 py-3 rounded-lg bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50"
                     >
                         {isSaving ? 'Guardando...' : (derecho ? 'Guardar Cambios' : 'Agregar Derecho')}
                     </button>

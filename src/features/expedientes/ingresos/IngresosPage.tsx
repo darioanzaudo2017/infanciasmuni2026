@@ -298,7 +298,7 @@ const IngresosPage: React.FC = () => {
                         <div className="flex-1 space-y-2 text-center md:text-left">
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                                 <h1 className="text-3xl font-black tracking-tight">{headerData.nino_nombre} {headerData.nino_apellido}</h1>
-                                <span className="px-3 py-1 bg-primary text-[#112121] text-[10px] font-black rounded-full uppercase tracking-widest">
+                                <span className="px-3 py-1 bg-primary text-white text-[10px] font-black rounded-full uppercase tracking-widest">
                                     {headerData.expediente_activo ? 'Expediente Activo' : 'Expediente Inactivo'}
                                 </span>
                             </div>
@@ -326,7 +326,7 @@ const IngresosPage: React.FC = () => {
                                 <span className="text-[10px] font-black text-[#638888] uppercase tracking-widest">Profesional Responsable</span>
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-bold">{headerData.profesional_asignado_nombre || 'No asignado'}</span>
-                                    <div className="size-8 rounded-full bg-primary flex items-center justify-center text-[#112121] font-black text-xs">
+                                    <div className="size-8 rounded-full bg-primary flex items-center justify-center text-white font-black text-xs">
                                         {headerData.profesional_asignado_nombre?.substring(0, 2).toUpperCase() || '??'}
                                     </div>
                                 </div>
@@ -355,7 +355,7 @@ const IngresosPage: React.FC = () => {
                     className={`flex min-w-[140px] items-center gap-2 justify-center rounded-lg h-11 px-6 text-sm font-bold leading-normal transition-all group
                         ${hasActiveCase
                             ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                            : 'bg-primary text-[#112121] hover:shadow-lg hover:shadow-primary/20 cursor-pointer'
+                            : 'bg-primary text-white hover:shadow-lg hover:shadow-primary/20 cursor-pointer'
                         }`}
                     title={hasActiveCase ? "Ya existe un caso activo para este expediente" : "Abrir nuevo ingreso"}
                 >
@@ -544,7 +544,7 @@ const IngresosPage: React.FC = () => {
                             <button
                                 onClick={() => setShowConfirmModal(true)}
                                 disabled={!transferData.destinoSpdId || !transferData.motivo}
-                                className="px-8 py-2.5 rounded-xl bg-primary text-[#112121] font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-8 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Confirmar Transferencia
                             </button>

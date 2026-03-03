@@ -701,7 +701,7 @@ const IngresoDetail = () => {
                         )}
                         <button
                             onClick={handleFinalizeStage}
-                            className="flex items-center justify-center rounded-xl h-9 px-5 bg-primary text-[#112121] text-[11px] font-bold hover:brightness-110 transition-all shadow-sm uppercase tracking-wider"
+                            className="flex items-center justify-center rounded-xl h-9 px-5 bg-primary text-white text-[11px] font-bold hover:brightness-110 transition-all shadow-sm uppercase tracking-wider"
                         >
                             Finalizar Etapa
                         </button>
@@ -877,9 +877,9 @@ const IngresoDetail = () => {
                                     </div>
                                     <button
                                         onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/ampliacion/${ingreso.id}`)}
-                                        className="px-8 h-12 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                        className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
                                     >
-                                        Ir al Módulo de Trabajo
+                                        Agregar intervenciones de ampliación de información
                                     </button>
                                 </div>
 
@@ -969,7 +969,7 @@ const IngresoDetail = () => {
                                     </div>
                                     <button
                                         onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/sintesis/${ingreso.id}`)}
-                                        className="px-8 h-12 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                        className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
                                     >
                                         {ingreso.informe_sintesis ? 'Editar Informe' : 'Redactar Informe'}
                                     </button>
@@ -1064,7 +1064,7 @@ const IngresoDetail = () => {
                                         </button>
                                         <button
                                             onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`)}
-                                            className="px-8 h-12 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                            className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
                                         >
                                             Gestionar Medidas
                                         </button>

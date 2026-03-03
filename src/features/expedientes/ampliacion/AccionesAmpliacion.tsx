@@ -17,6 +17,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
     const [personasDisponibles, setPersonasDisponibles] = useState<any[]>([]);
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
     const [selectedIntervencion, setSelectedIntervencion] = useState<any | null>(null);
+    const [editingIntervencion, setEditingIntervencion] = useState<any | null>(null);
 
     // Form state for new intervention
     const [newIntervencion, setNewIntervencion] = useState({
@@ -65,6 +66,32 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 vinculo: 'NNyA'
             });
         }
+    };
+
+    const handleEditClick = (item: any) => {
+        setEditingIntervencion(item);
+        setNewIntervencion({
+            tipo_entrevistado: item.tipo_entrevistado,
+            fecha: item.fecha,
+            hora: item.hora,
+            entrevistado_nombre: item.entrevistado_nombre,
+            vinculo: item.vinculo,
+            convive: item.convive,
+            telefono: item.telefono || '',
+            dni: item.dni || '',
+            edad: item.edad?.toString() || '',
+            ocupacion: item.ocupacion || '',
+            direccion: item.direccion || '',
+            nombre_institucion: item.nombre_institucion || '',
+            registro: item.registro,
+            fortalezas: item.fortalezas || '',
+            observaciones_sugerencias: item.observaciones_sugerencias || '',
+            asistencia: item.asistencia,
+            profesionales_ids: (item.form2_intervencion_profesionales || []).map((p: any) => p.usuario_id),
+            documentos: [],
+            es_grupal: false
+        });
+        setIsModalOpen(true);
     };
 
     const fetchIntervenciones = async () => {
@@ -133,8 +160,24 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
             };
 
             // 2. Save main intervention
-            const { data: intervencion, error: intErr } = await supabase.from('form2_intervenciones').insert(interventionData).select().single();
-            if (intErr) throw intErr;
+            let intervencion;
+            if (editingIntervencion) {
+                const { data, error: updErr } = await supabase
+                    .from('form2_intervenciones')
+                    .update(interventionData)
+                    .eq('id', editingIntervencion.id)
+                    .select()
+                    .single();
+                if (updErr) throw updErr;
+                intervencion = data;
+
+                // Refresh Professionals for main
+                await supabase.from('form2_intervencion_profesionales').delete().eq('intervencion_id', editingIntervencion.id);
+            } else {
+                const { data, error: intErr } = await supabase.from('form2_intervenciones').insert(interventionData).select().single();
+                if (intErr) throw intErr;
+                intervencion = data;
+            }
 
             // 3. Save Professionals for main
             if (newIntervencion.profesionales_ids.length > 0) {
@@ -145,12 +188,12 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 await supabase.from('form2_intervencion_profesionales').insert(profPayload);
             }
 
-            // 4. Handle Group Replication
+            // 4. Handle Group Replication (Solo en nuevas intervenciones)
             const replicatedIds: Record<string, string> = {};
             // Filtrar familiares de personasDisponibles que tengan vinculación
             const familiarSource = personasDisponibles.filter(p => p.source === 'Familiar' && p.linked_ingreso_id);
 
-            if (newIntervencion.es_grupal && familiarSource.length > 0) {
+            if (!editingIntervencion && newIntervencion.es_grupal && familiarSource.length > 0) {
                 for (const member of familiarSource) {
                     try {
                         const { data: replicatedInt, error: repErr } = await supabase.from('form2_intervenciones').insert({
@@ -230,12 +273,13 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 await supabase.from('auditoria').insert({
                     tabla: 'ingresos',
                     registro_id: ingreso.id,
-                    accion: 'NUEVA_INTERVENCION_GRUPAL',
+                    accion: editingIntervencion ? 'EDICION_INTERVENCION' : 'NUEVA_INTERVENCION_GRUPAL',
                     usuario_id: user.id
                 });
             }
 
             setIsModalOpen(false);
+            setEditingIntervencion(null);
             setNewIntervencion({
                 tipo_entrevistado: 'Adulto',
                 fecha: format(new Date(), 'yyyy-MM-dd'),
@@ -288,7 +332,10 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                             <p className="text-[#60728a] dark:text-slate-400 text-sm max-w-2xl font-medium italic">"{planificacion.objetivos.substring(0, 100)}..."</p>
                         </div>
                         <div className="flex gap-3 relative z-10">
-                            <button onClick={() => setIsModalOpen(true)} className="px-6 h-14 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
+                            <button onClick={() => {
+                                setEditingIntervencion(null);
+                                setIsModalOpen(true);
+                            }} className="px-6 h-14 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
                                 <span className="material-symbols-outlined text-xl">add_box</span>
                                 <span>Nueva Intervención</span>
                             </button>
@@ -423,6 +470,13 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                                         <span className="material-symbols-outlined">visibility</span>
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => handleEditClick(item)}
+                                                    className="shrink-0 p-2 text-slate-300 hover:text-amber-500 transition-all"
+                                                    title="Editar registro"
+                                                >
+                                                    <span className="material-symbols-outlined">edit</span>
+                                                </button>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-50 dark:border-slate-800">
                                                 <div className="flex -space-x-3">
@@ -454,10 +508,15 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                         {/* Header */}
                         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div>
-                                <h2 className="text-[#111418] dark:text-white text-2xl font-black leading-tight uppercase tracking-tight">Registro de Intervención</h2>
+                                <h2 className="text-[#111418] dark:text-white text-2xl font-black leading-tight uppercase tracking-tight">
+                                    {editingIntervencion ? 'Editar Intervención' : 'Registro de Intervención'}
+                                </h2>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Etapa 2 - Ampliación de Información</p>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                            <button onClick={() => {
+                                setIsModalOpen(false);
+                                setEditingIntervencion(null);
+                            }} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
                                 <span className="material-symbols-outlined text-slate-500">close</span>
                             </button>
                         </div>
@@ -824,7 +883,10 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
 
                         {/* Footer */}
                         <div className="px-8 py-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 flex items-center justify-end gap-4">
-                            <button onClick={() => setIsModalOpen(false)} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50">
+                            <button onClick={() => {
+                                setIsModalOpen(false);
+                                setEditingIntervencion(null);
+                            }} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50">
                                 Cancelar
                             </button>
                             <button
@@ -832,7 +894,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 disabled={isSaving}
                                 className="bg-primary hover:bg-primary/90 text-white px-10 h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all font-bold disabled:opacity-50"
                             >
-                                {isSaving ? 'Guardando...' : 'Guardar Intervención'}
+                                {isSaving ? 'Guardando...' : editingIntervencion ? 'Actualizar Intervención' : 'Guardar Intervención'}
                             </button>
                         </div>
                     </div>

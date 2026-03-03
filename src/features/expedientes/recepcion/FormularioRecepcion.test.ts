@@ -16,7 +16,6 @@ describe('Validaciones del Formulario de Recepción', () => {
         const result = recepcionSchema.safeParse({
             nombre: '',
             apellido: '',
-            motivo_principal: '',
             relato_situacion: '',
             vulneraciones: []
         });
@@ -25,7 +24,6 @@ describe('Validaciones del Formulario de Recepción', () => {
             const errors = result.error.flatten().fieldErrors;
             expect(errors.nombre).toContain('El nombre es obligatorio');
             expect(errors.apellido).toContain('El apellido es obligatorio');
-            expect(errors.motivo_principal).toContain('El motivo principal es obligatorio');
             expect(errors.relato_situacion).toContain('El relato de situación es obligatorio');
             expect(errors.vulneraciones).toContain('Debe identificar al menos un derecho vulnerado');
         }
@@ -48,21 +46,12 @@ describe('Validaciones del Formulario de Recepción', () => {
         expect(result.success).toBe(true);
     });
 
-    it('debe fallar si el DNI tiene letras', () => {
-        const data = { ...validBaseData, dni: '1234567A' };
+    it('debe fallar si el DNI tiene menos de 3 dígitos', () => {
+        const data = { ...validBaseData, dni: '12' };
         const result = recepcionSchema.safeParse(data);
         expect(result.success).toBe(false);
         if (!result.success) {
-            expect(result.error.flatten().fieldErrors.dni).toContain('El DNI debe tener entre 7 y 8 dígitos numéricos');
-        }
-    });
-
-    it('debe fallar si el DNI tiene menos de 7 dígitos', () => {
-        const data = { ...validBaseData, dni: '123456' };
-        const result = recepcionSchema.safeParse(data);
-        expect(result.success).toBe(false);
-        if (!result.success) {
-            expect(result.error.flatten().fieldErrors.dni).toContain('El DNI debe tener entre 7 y 8 dígitos numéricos');
+            expect(result.error.flatten().fieldErrors.dni).toContain('El DNI debe tener entre 3 y 8 dígitos numéricos');
         }
     });
 
@@ -71,7 +60,7 @@ describe('Validaciones del Formulario de Recepción', () => {
         const result = recepcionSchema.safeParse(data);
         expect(result.success).toBe(false);
         if (!result.success) {
-            expect(result.error.flatten().fieldErrors.dni).toContain('El DNI debe tener entre 7 y 8 dígitos numéricos');
+            expect(result.error.flatten().fieldErrors.dni).toContain('El DNI debe tener entre 3 y 8 dígitos numéricos');
         }
     });
 

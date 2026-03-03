@@ -28,10 +28,11 @@ export const recepcionSchema = z.object({
     asiste_regularmente: z.boolean().default(true),
 
     // Paso 5: Motivo de Intervención
-    motivo_principal: z.string().min(1, 'El motivo principal es obligatorio'),
-    gravedad: z.string().refine(val => ['Baja', 'Moderada', 'Urgente'].includes(val), {
-        message: 'La gravedad debe ser Baja, Moderada o Urgente'
-    }),
+    motivo_principal: z.string().optional(),
+    gravedad: z.string().optional().refine(
+        (val) => !val || ['Baja', 'Moderada', 'Urgente'].includes(val),
+        { message: 'La gravedad debe ser Baja, Moderada o Urgente' }
+    ),
     relato_situacion: z.string().min(1, 'El relato de situación es obligatorio'),
 
     // Paso 6: Vulneración de Derechos

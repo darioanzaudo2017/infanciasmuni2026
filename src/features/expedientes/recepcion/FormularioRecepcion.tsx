@@ -1960,99 +1960,11 @@ const FormularioRecepcion: React.FC = () => {
                                 {/* Header / Context */}
                                 <div className="flex flex-col gap-2">
                                     <h1 className="text-[#111418] dark:text-white text-3xl font-black leading-tight tracking-tight">Motivo de Consulta e Intervención</h1>
-                                    <p className="text-[#60708a] dark:text-slate-400 text-base max-w-2xl">Categorice la vulneración principal y realice un relato detallado de la situación detectada.</p>
+                                    <p className="text-[#60708a] dark:text-slate-400 text-base max-w-2xl">Realice un relato detallado de la situación detectada en este primer contacto.</p>
                                 </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    {/* Left Column: Categorization */}
-                                    <div className="lg:col-span-12 flex flex-col gap-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <section className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm space-y-6">
-                                                <h2 className="text-lg font-bold flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-primary">category</span>
-                                                    Categorización del Motivo
-                                                </h2>
-
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <label className="block mb-2 text-[10px] font-black text-[#60708a] uppercase tracking-widest">Motivo Principal</label>
-                                                        <select
-                                                            className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-bold text-sm"
-                                                            value={formData.motivo_principal}
-                                                            onChange={(e) => setFormData({ ...formData, motivo_principal: e.target.value })}
-                                                        >
-                                                            <option value="">Seleccione el tipo de vulneración</option>
-                                                            <option value="maltrato_fisico">Maltrato Físico</option>
-                                                            <option value="negligencia">Negligencia / Descuido Grave</option>
-                                                            <option value="abuso_sexual">Presunto Abuso Sexual (ASI)</option>
-                                                            <option value="calle">Situación de Calle</option>
-                                                            <option value="trabajo">Trabajo Infantil Prohibido</option>
-                                                            <option value="identidad">Vulneración de Derecho a la Identidad</option>
-                                                            <option value="educacion">Deserción Escolar Crónica</option>
-                                                            <option value="otros">Otras vulneraciones</option>
-                                                        </select>
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="block mb-2 text-[10px] font-black text-[#60708a] uppercase tracking-widest">Gravedad Inicial</label>
-                                                        <div className="grid grid-cols-3 gap-2">
-                                                            {['Leve', 'Moderada', 'Urgente'].map((g) => (
-                                                                <button
-                                                                    key={g}
-                                                                    onClick={() => setFormData({ ...formData, gravedad: g })}
-                                                                    className={`py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all border-2 ${formData.gravedad === g
-                                                                        ? g === 'Urgente' ? 'border-red-500 bg-red-50 text-red-600 dark:bg-red-900/20' : 'border-primary bg-primary/10 text-primary'
-                                                                        : 'border-slate-100 dark:border-slate-800 text-slate-400'
-                                                                        }`}
-                                                                >
-                                                                    {g}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            <section className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm space-y-6">
-                                                <h2 className="text-lg font-bold flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-primary">gavel</span>
-                                                    Derechos Afectados
-                                                </h2>
-                                                <p className="text-xs text-[#60708a] font-medium leading-relaxed">Seleccione los derechos que se consideran vulnerados en este primer contacto.</p>
-
-                                                <div className="flex flex-wrap gap-2">
-                                                    {[
-                                                        { id: 81, label: 'Vida e Integridad' },
-                                                        { id: 96, label: 'Identidad' },
-                                                        { id: 109, label: 'Salud' },
-                                                        { id: 115, label: 'Educación' },
-                                                        { id: 121, label: 'Libertad' },
-                                                        { id: 123, label: 'Juego' }
-                                                    ].map((d) => {
-                                                        const isSelected = formData.derechos_seleccionados.includes(d.id);
-                                                        return (
-                                                            <button
-                                                                key={d.id}
-                                                                onClick={() => {
-                                                                    const current = formData.derechos_seleccionados;
-                                                                    const next = isSelected
-                                                                        ? current.filter(id => id !== d.id)
-                                                                        : [...current, d.id];
-                                                                    setFormData({ ...formData, derechos_seleccionados: next });
-                                                                }}
-                                                                className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-tight transition-all border ${isSelected
-                                                                    ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                                                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-[#60708a]'
-                                                                    }`}
-                                                            >
-                                                                {d.label}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </section>
-                                        </div>
-
+                                <div className="grid grid-cols-1 gap-8">
+                                    <div className="flex flex-col gap-6">
                                         {/* Narrative Description Full Width */}
                                         <section className={`bg-white dark:bg-slate-900 rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${formData.relato_situacion.length < 50 ? 'border-amber-200 dark:border-amber-900/30' : 'border-primary/20 dark:border-slate-800'}`}>
                                             <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">

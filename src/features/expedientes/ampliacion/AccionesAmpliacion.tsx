@@ -579,7 +579,12 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                                         ...newIntervencion,
                                                         entrevistado_nombre: `${p.nombre} ${p.apellido || ''}`.trim(),
                                                         vinculo: p.vinculo || 'Padre/Madre',
-                                                        convive: p.convive || false
+                                                        convive: p.convive || false,
+                                                        dni: p.dni?.toString() || '',
+                                                        telefono: p.telefono || '',
+                                                        direccion: p.direccion || '',
+                                                        edad: p.edad?.toString() || calculateAge(p.fecha_nacimiento),
+                                                        ocupacion: ''
                                                     })}
                                                     className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all flex items-center gap-2"
                                                 >

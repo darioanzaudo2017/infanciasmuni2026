@@ -229,16 +229,30 @@ const IngresoDetail = () => {
     const handleFinalizeStage = async () => {
         if (!ingreso || !ingreso.id) return;
 
-        let nextStage = '';
         const currentNorm = normalizeStage(ingreso.etapa);
+        let nextStage = '';
+
+        const stageDisplayNames: Record<string, string> = {
+            'recepcion': 'Recepción',
+            'ampliacion': 'Ampliación',
+            'informe_sintesis': 'Informe Síntesis',
+            'sintesis': 'Informe Síntesis',
+            'definicion': 'Definición',
+            'cese': 'Cese de Intervención',
+            'cerrado': 'Cerrado'
+        };
+
+        const currentStageName = stageDisplayNames[currentNorm] || 'Etapa Actual';
 
         if (currentNorm === 'recepcion') nextStage = 'ampliacion';
-        else if (currentNorm === 'ampliacion' || activeStageIndex === 2) nextStage = 'informe_sintesis';
-        else if (currentNorm === 'informe_sintesis' || currentNorm === 'sintesis' || activeStageIndex === 3) nextStage = 'definicion';
-        else if (currentNorm === 'definicion' || activeStageIndex === 4) nextStage = 'cerrado';
+        else if (currentNorm === 'ampliacion') nextStage = 'informe_sintesis';
+        else if (currentNorm === 'informe_sintesis' || currentNorm === 'sintesis') nextStage = 'definicion';
+        else if (currentNorm === 'definicion') nextStage = 'cese';
+        else if (currentNorm === 'cese') nextStage = 'cerrado';
 
         if (nextStage) {
-            const confirm = window.confirm(`¿Está seguro que desea finalizar la etapa actual y avanzar a la etapa de ${nextStage}?`);
+            const nextStageName = stageDisplayNames[nextStage] || nextStage;
+            const confirm = window.confirm(`¿Está seguro que desea finalizar la etapa de ${currentStageName} y avanzar a la etapa de ${nextStageName}?`);
             if (confirm) {
                 try {
                     const { data: { user } } = await supabase.auth.getUser();
@@ -357,7 +371,8 @@ const IngresoDetail = () => {
         'informe_sintesis': 2,
         'sintesis': 2, // Fallback common name
         'definicion': 3,
-        'cerrado': 4
+        'cese': 4,
+        'cerrado': 5
     };
 
     const currentEtapa = normalizeStage(ingreso.etapa || 'recepcion');
@@ -381,41 +396,28 @@ const IngresoDetail = () => {
         activeStageIndex = 3;
     }
 
-    // 4. Si el cese ya está registrado, el mínimo es Cerrado (4)
+    // 4. Si el cese ya está registrado (form9), el mínimo es Cese (4)
     if (activeStageIndex < 4 && ingreso.cese) {
         activeStageIndex = 4;
     }
 
     const isClosed = ingreso.estado === 'cerrado';
 
-    const allStages = ['Recepción', 'Ampliación', 'Informe Síntesis', 'Definición de Medidas', 'Cerrado'];
+    const allStages = ['Recepción', 'Ampliación', 'Informe Síntesis', 'Definición de Medidas', 'Cese de Intervención', 'Cerrado'];
     const stages = allStages.map((name: string, idx: number) => {
         let status: 'completed' | 'active' | 'locked' = 'locked';
         let icon = 'lock';
         let date = 'Pendiente';
 
-        if (idx === 4) { // Cese Caso
-            if (isClosed) {
-                status = 'completed';
-                icon = 'verified';
-                date = 'Caso Cerrado';
-            } else if (activeStageIndex === 4) {
-                status = 'active';
-                icon = 'pending';
-                date = 'Cese Registrado';
-            } else {
-                status = 'locked';
-                icon = 'lock';
-            }
-        } else if (idx < activeStageIndex) {
+        if (idx < activeStageIndex) {
             status = 'completed';
             icon = 'check_circle';
             date = 'Completado';
         } else if (idx === activeStageIndex) {
-            if (isClosed) {
+            if (isClosed && idx === 5) {
                 status = 'completed';
-                icon = 'check_circle';
-                date = 'Completado';
+                icon = 'verified';
+                date = 'Caso Cerrado';
             } else {
                 status = 'active';
                 icon = 'pending';
@@ -427,10 +429,12 @@ const IngresoDetail = () => {
         }
 
         return {
-            name: name === 'Definición de Medidas' ? 'Definición' : name === 'Cerrado' ? 'Cese Caso' : name,
+            name: name === 'Definición de Medidas' ? 'Definición' :
+                name === 'Cese de Intervención' ? 'Cese' :
+                    name === 'Cerrado' ? 'Finalizado' : name,
             icon,
-            date,
-            status
+            status,
+            date
         };
     });
 

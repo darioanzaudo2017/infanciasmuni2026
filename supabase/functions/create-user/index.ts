@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { email, nombre_completo, rol_id, zona_id, servicio_proteccion_id, activo } = body;
+    const { email, nombre_completo, rol_id, zona_id, servicio_proteccion_id, activo, redirectTo } = body;
 
     if (!email || !nombre_completo || !rol_id) {
       return new Response(
@@ -99,8 +99,8 @@ serve(async (req) => {
         type: "invite",
         email,
         options: {
-            // Reemplaza con tu URL real si es necesario, o deja que use la Site URL por defecto
-            redirectTo: "https://rannzostkvolaxulzvsn.supabase.co/auth/v1/verify" 
+            // Usa el redirectTo que viene del frontend o el default por defecto del proyecto en Supabase
+            redirectTo: redirectTo || undefined 
         }
     });
 

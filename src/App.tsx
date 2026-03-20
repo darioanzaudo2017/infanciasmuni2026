@@ -20,6 +20,7 @@ import SolicitudSenafSummary from './features/expedientes/senaf/SolicitudSenafSu
 import SenafManagementPage from './features/expedientes/senaf/SenafManagementPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import DerechosManagementPage from './features/admin/derechos/DerechosManagementPage';
+import SetPasswordPage from './features/auth/SetPasswordPage';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/recuperar-password" element={<RecoveryPage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
 
         {/* App Routes */}
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>

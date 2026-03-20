@@ -133,7 +133,7 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                         zona_id: formData.zona_id ? parseInt(formData.zona_id) : null,
                         servicio_proteccion_id: formData.servicio_proteccion_id ? parseInt(formData.servicio_proteccion_id) : null,
                         activo: formData.activo,
-                        redirectTo: window.location.origin
+                        redirectTo: `${window.location.origin}/set-password`
                     }
                 });
 

@@ -123,8 +123,7 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
 
                 alert('Usuario actualizado exitosamente');
             } else {
-                // MODO CREACIÓN
-                const { error } = await supabase.functions.invoke('create-user', {
+                const { data, error } = await supabase.functions.invoke('create-user', {
                     body: {
                         email: formData.email,
                         nombre_completo: formData.nombre_completo,
@@ -136,7 +135,31 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                 });
 
                 if (error) throw error;
-                alert('Usuario creado exitosamente. Se ha enviado un correo de invitación.');
+
+                // Si hubo un error parcial (ej: el usuario se creó pero el link falló)
+                if (data?.error) {
+                    console.warn("Error parcial:", data.error);
+                    alert(`Usuario creado, pero hubo un problema: ${data.error}`);
+                    if (onUserCreated) onUserCreated();
+                    onClose();
+                    return;
+                }
+
+                // Si todo salió bien y tenemos el link
+                if (data?.invite_link) {
+                    const subject = encodeURIComponent("Invitación al Sistema de Protección de Derechos NNyA");
+                    const body = encodeURIComponent(
+                        `Hola ${formData.nombre_completo},\n\n` +
+                        `Se ha creado tu cuenta en el sistema. Para activar tu acceso y configurar tu contraseña, por favor haz clic en el siguiente enlace:\n\n` +
+                        `${data.invite_link}\n\n` +
+                        `Si tienes algún problema para ingresar, contacta al administrador.\n\n` +
+                        `Saludos.`
+                    );
+                    
+                    window.location.href = `mailto:${formData.email}?subject=${subject}&body=${body}`;
+                }
+
+                alert('Usuario creado exitosamente. Se ha abierto tu cliente de correo para enviar la invitación.');
             }
 
             if (onUserCreated) onUserCreated();

@@ -31,6 +31,8 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
     const [spds, setSpds] = useState<SPD[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [showInvitationModal, setShowInvitationModal] = useState(false);
+    const [invitationLink, setInvitationLink] = useState('');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -130,7 +132,8 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                         rol_id: parseInt(formData.rol_id),
                         zona_id: formData.zona_id ? parseInt(formData.zona_id) : null,
                         servicio_proteccion_id: formData.servicio_proteccion_id ? parseInt(formData.servicio_proteccion_id) : null,
-                        activo: formData.activo
+                        activo: formData.activo,
+                        redirectTo: window.location.origin
                     }
                 });
 
@@ -147,19 +150,13 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
 
                 // Si todo salió bien y tenemos el link
                 if (data?.invite_link) {
-                    const subject = encodeURIComponent("Invitación al Sistema de Protección de Derechos NNyA");
-                    const body = encodeURIComponent(
-                        `Hola ${formData.nombre_completo},\n\n` +
-                        `Se ha creado tu cuenta en el sistema. Para activar tu acceso y configurar tu contraseña, por favor haz clic en el siguiente enlace:\n\n` +
-                        `${data.invite_link}\n\n` +
-                        `Si tienes algún problema para ingresar, contacta al administrador.\n\n` +
-                        `Saludos.`
-                    );
-                    
-                    window.location.href = `mailto:${formData.email}?subject=${subject}&body=${body}`;
+                    setInvitationLink(data.invite_link);
+                    setShowInvitationModal(true);
+                    if (onUserCreated) onUserCreated();
+                    return; // No cerramos el drawer todavía para que el modal se vea encima o solo
                 }
 
-                alert('Usuario creado exitosamente. Se ha abierto tu cliente de correo para enviar la invitación.');
+                alert('Usuario creado exitosamente.');
             }
 
             if (onUserCreated) onUserCreated();
@@ -365,6 +362,82 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                     </button>
                 </div>
             </div>
+
+            {/* Modal de Invitación Premium */}
+            {showInvitationModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div 
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-fade-in"
+                        onClick={() => {
+                            setShowInvitationModal(false);
+                            onClose();
+                        }}
+                    ></div>
+                    
+                    <div className="relative glass p-8 rounded-2xl shadow-2xl max-w-md w-full animate-zoom-in flex flex-col items-center text-center">
+                        <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-6">
+                            <span className="material-symbols-outlined text-primary text-4xl">mark_email_read</span>
+                        </div>
+                        
+                        <h2 className="text-[#111818] dark:text-white text-2xl font-bold mb-2">¡Usuario Creado!</h2>
+                        <p className="text-[#638888] dark:text-[#a3bdbd] text-sm mb-8">
+                            Se ha generado el acceso para <span className="font-bold text-primary">{formData.email}</span>. 
+                            Copia el enlace o envíalo directamente por correo.
+                        </p>
+                        
+                        <div className="w-full mb-6">
+                            <p className="text-left text-xs font-bold text-[#638888] mb-2 uppercase tracking-wider">Enlace de Activación</p>
+                            <div className="flex gap-2">
+                                <input 
+                                    readOnly 
+                                    value={invitationLink}
+                                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-600 dark:text-slate-300 outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(invitationLink);
+                                        // Podríamos añadir un mini toast aquí
+                                    }}
+                                    className="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors group"
+                                    title="Copiar enlace"
+                                >
+                                    <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-sm group-active:scale-90 transition-transform">content_copy</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-3 w-full">
+                            <button
+                                onClick={() => {
+                                    const subject = encodeURIComponent("Invitación al Sistema de Protección de Derechos NNyA");
+                                    const body = encodeURIComponent(
+                                        `Hola ${formData.nombre_completo},\n\n` +
+                                        `Se ha creado tu cuenta en el sistema. Para activar tu acceso y configurar tu contraseña, por favor haz clic en el siguiente enlace:\n\n` +
+                                        `${invitationLink}\n\n` +
+                                        `Si tienes algún problema para ingresar, contacta al administrador.\n\n` +
+                                        `Saludos.`
+                                    );
+                                    window.location.href = `mailto:${formData.email}?subject=${subject}&body=${body}`;
+                                }}
+                                className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                            >
+                                <span className="material-symbols-outlined">send</span>
+                                Enviar por Correo
+                            </button>
+                            
+                            <button
+                                onClick={() => {
+                                    setShowInvitationModal(false);
+                                    onClose();
+                                }}
+                                className="w-full py-3 text-slate-500 dark:text-slate-400 font-medium text-sm hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                            >
+                                Finalizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

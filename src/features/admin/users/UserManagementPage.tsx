@@ -30,6 +30,7 @@ const UserManagementPage: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [resendingEmail, setResendingEmail] = useState<string | null>(null);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -67,6 +68,61 @@ const UserManagementPage: React.FC = () => {
     const handleNew = () => {
         setSelectedUser(null);
         setIsDrawerOpen(true);
+    };
+
+    const handleResendEmail = async (user: UserProfile) => {
+        setResendingEmail(user.id);
+        try {
+            const { data, error } = await supabase.functions.invoke('create-user', {
+                body: { 
+                    email: user.email,
+                    nombre_completo: user.nombre_completo,
+                    rol_id: user.usuarios_roles?.[0]?.rol_id,
+                    redirectTo: `${window.location.origin}/set-password`
+                }
+            });
+
+            if (error) throw error;
+
+            const isConfirmed = data.is_confirmed;
+            const inviteLink = data.invite_link;
+
+            let subject = "";
+            let body = "";
+
+            if (isConfirmed) {
+                subject = encodeURIComponent("Acceso al Sistema de Protección de Derechos NNyA");
+                body = encodeURIComponent(
+                    `Hola ${user.nombre_completo},\n\n` +
+                    `Tu cuenta en el sistema ya se encuentra activa. Puedes acceder directamente desde el siguiente enlace:\n\n` +
+                    `${window.location.origin}\n\n` +
+                    `Saludos.`
+                );
+            } else {
+                subject = encodeURIComponent("Recordatorio: Invitación al Sistema de Protección de Derechos NNyA");
+                body = encodeURIComponent(
+                    `Hola ${user.nombre_completo},\n\n` +
+                    `Te enviamos un recordatorio para activar tu cuenta en el sistema. Para configurar tu contraseña, por favor haz clic en el siguiente enlace:\n\n` +
+                    `${inviteLink}\n\n` +
+                    `Si tienes algún problema para ingresar, contacta al administrador.\n\n` +
+                    `Saludos.`
+                );
+            }
+
+            const mailtoUrl = `mailto:${user.email}?subject=${subject}&body=${body}`;
+            const link = document.createElement('a');
+            link.href = mailtoUrl;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (err) {
+            console.error('Error resending email:', err);
+            alert('Error al intentar re-enviar el correo.');
+        } finally {
+            setResendingEmail(null);
+        }
     };
 
     return (
@@ -169,13 +225,27 @@ const UserManagementPage: React.FC = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <button
-                                                        onClick={() => handleEdit(user)}
-                                                        className="text-[#658686] dark:text-[#a0b0b0] hover:text-primary transition-colors p-2 rounded-lg"
-                                                        title="Editar Usuario"
-                                                    >
-                                                        <span className="material-symbols-outlined">edit</span>
-                                                    </button>
+                                                    <div className="flex justify-end gap-1">
+                                                        <button
+                                                            onClick={() => handleResendEmail(user)}
+                                                            disabled={resendingEmail === user.id}
+                                                            className={`text-[#658686] dark:text-[#a0b0b0] hover:text-primary transition-colors p-2 rounded-lg flex items-center justify-center ${resendingEmail === user.id ? 'animate-pulse' : ''}`}
+                                                            title="Re-enviar Acceso por Email"
+                                                        >
+                                                            {resendingEmail === user.id ? (
+                                                                <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                                            ) : (
+                                                                <span className="material-symbols-outlined text-xl">mail</span>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEdit(user)}
+                                                            className="text-[#658686] dark:text-[#a0b0b0] hover:text-primary transition-colors p-2 rounded-lg"
+                                                            title="Editar Usuario"
+                                                        >
+                                                            <span className="material-symbols-outlined text-xl">edit</span>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

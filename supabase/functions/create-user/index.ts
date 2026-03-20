@@ -40,6 +40,7 @@ serve(async (req) => {
     });
 
     let userId = authData?.user?.id;
+    let isConfirmed = !!authData?.user?.email_confirmed_at;
 
     if (authError) {
       console.error("Auth Error:", authError);
@@ -48,10 +49,11 @@ serve(async (req) => {
       if (authError.message.includes("already registered") || authError.status === 422) {
         console.log("Usuario ya existe en Auth, intentando recuperar ID...");
         const { data: listUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = listUsers?.users?.find(u => u.email === email);
+        const existingUser = listUsers?.users?.find((u: any) => u.email === email);
         
         if (existingUser) {
           userId = existingUser.id;
+          isConfirmed = !!existingUser.email_confirmed_at;
         } else {
           return new Response(
             JSON.stringify({ error: `El usuario ya existe pero no se pudo recuperar: ${authError.message}` }),
@@ -137,9 +139,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Usuario creado exitosamente",
+        message: "Operación exitosa",
         user_id: userId,
-        invite_link: linkData?.properties?.action_link
+        invite_link: linkData?.properties?.action_link,
+        is_confirmed: isConfirmed
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -33,6 +33,7 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
     const [submitting, setSubmitting] = useState(false);
     const [showInvitationModal, setShowInvitationModal] = useState(false);
     const [invitationLink, setInvitationLink] = useState('');
+    const [copied, setCopied] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -396,12 +397,15 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                                 <button 
                                     onClick={() => {
                                         navigator.clipboard.writeText(invitationLink);
-                                        // Podríamos añadir un mini toast aquí
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 2000);
                                     }}
-                                    className="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors group"
-                                    title="Copiar enlace"
+                                    className={`p-2 rounded-lg transition-all duration-300 flex items-center justify-center ${copied ? 'bg-green-100 dark:bg-green-900/30' : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                    title={copied ? "¡Copiado!" : "Copiar enlace"}
                                 >
-                                    <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-sm group-active:scale-90 transition-transform">content_copy</span>
+                                    <span className={`material-symbols-outlined text-sm transition-all ${copied ? 'text-green-600 dark:text-green-400 scale-110' : 'text-slate-600 dark:text-slate-300'}`}>
+                                        {copied ? 'check' : 'content_copy'}
+                                    </span>
                                 </button>
                             </div>
                         </div>
@@ -417,7 +421,16 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                                         `Si tienes algún problema para ingresar, contacta al administrador.\n\n` +
                                         `Saludos.`
                                     );
-                                    window.location.href = `mailto:${formData.email}?subject=${subject}&body=${body}`;
+                                    
+                                    const mailtoUrl = `mailto:${formData.email}?subject=${subject}&body=${body}`;
+                                    
+                                    // Crear un elemento <a> invisible para disparar el mailto de forma más robusta
+                                    const link = document.createElement('a');
+                                    link.href = mailtoUrl;
+                                    link.target = '_blank'; // Abre el cliente fuera de la ventana actual si es posible
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
                                 }}
                                 className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                             >

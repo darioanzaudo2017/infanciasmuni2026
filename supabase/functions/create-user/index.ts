@@ -35,19 +35,36 @@ serve(async (req) => {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
-      email_confirm: true, // Auto-confirm email because we'll send the set-password link
+      // email_confirm: true, // ELIMINADO: Si confirmamos, no se puede invitar
       user_metadata: { nombre_completo }
     });
 
+    let userId = authData?.user?.id;
+
     if (authError) {
       console.error("Auth Error:", authError);
-      return new Response(
-        JSON.stringify({ error: `Error al crear usuario en Auth: ${authError.message}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      
+      // Si el usuario ya existe, intentamos obtenerlo para generar el link de todos modos
+      if (authError.message.includes("already registered") || authError.status === 422) {
+        console.log("Usuario ya existe en Auth, intentando recuperar ID...");
+        const { data: listUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = listUsers?.users?.find(u => u.email === email);
+        
+        if (existingUser) {
+          userId = existingUser.id;
+        } else {
+          return new Response(
+            JSON.stringify({ error: `El usuario ya existe pero no se pudo recuperar: ${authError.message}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } else {
+        return new Response(
+          JSON.stringify({ error: `Error al crear usuario en Auth: ${authError.message}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
-
-    const userId = authData.user?.id;
     if (!userId) {
       return new Response(
         JSON.stringify({ error: "No se pudo obtener el ID del usuario creado" }),
@@ -56,16 +73,16 @@ serve(async (req) => {
     }
 
     // 2. Insert into usuarios table
-    const { error: profileError } = await supabaseAdmin
-      .from("usuarios")
-      .insert({
-        id: userId,
-        email,
-        nombre_completo,
-        zona_id: zona_id || null,
-        servicio_proteccion_id: servicio_proteccion_id || null,
-        activo: activo !== undefined ? activo : true
-      });
+      const { error: profileError } = await supabaseAdmin
+        .from("usuarios")
+        .upsert({
+          id: userId,
+          email,
+          nombre_completo,
+          zona_id: zona_id || null,
+          servicio_proteccion_id: servicio_proteccion_id || null,
+          activo: activo !== undefined ? activo : true
+        });
 
     if (profileError) {
       console.error("Profile Error:", profileError);
@@ -77,12 +94,12 @@ serve(async (req) => {
     }
 
     // 3. Insert into usuarios_roles table
-    const { error: roleError } = await supabaseAdmin
-      .from("usuarios_roles")
-      .insert({
-        usuario_id: userId,
-        rol_id: rol_id
-      });
+      const { error: roleError } = await supabaseAdmin
+        .from("usuarios_roles")
+        .upsert({
+          usuario_id: userId,
+          rol_id: rol_id
+        });
 
     if (roleError) {
       console.error("Role Error:", roleError);
@@ -106,6 +123,15 @@ serve(async (req) => {
 
     if (linkError) {
       console.error("Link Error:", linkError);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Usuario creado/actualizado, pero falló la generación del link de invitación.",
+          user_id: userId,
+          error: linkError.message
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(

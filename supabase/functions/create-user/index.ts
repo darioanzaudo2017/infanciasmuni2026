@@ -113,27 +113,34 @@ serve(async (req) => {
       );
     }
 
-    // 4. GENERATE THE INVITATION LINK (but don't send automatic email)
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: "invite",
-        email,
-        options: {
-            // Usa el redirectTo que viene del frontend o el default por defecto del proyecto en Supabase
-            redirectTo: redirectTo || undefined 
-        }
-    });
+    // 4. GENERATE THE INVITATION LINK (only if not confirmed)
+    let linkData = null;
+    let linkError = null;
 
-    if (linkError) {
-      console.error("Link Error:", linkError);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Usuario creado/actualizado, pero falló la generación del link de invitación.",
-          user_id: userId,
-          error: linkError.message
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!isConfirmed) {
+        const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+            type: "invite",
+            email,
+            options: {
+                redirectTo: redirectTo || undefined 
+            }
+        });
+        linkData = data;
+        linkError = error;
+
+        if (linkError) {
+            console.error("Link Error:", linkError);
+            return new Response(
+                JSON.stringify({ 
+                    success: true, 
+                    message: "Usuario creado/actualizado, pero falló la generación del link de invitación.",
+                    user_id: userId,
+                    error: linkError.message,
+                    is_confirmed: false
+                }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
     }
 
     return new Response(

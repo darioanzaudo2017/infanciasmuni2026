@@ -8,6 +8,7 @@ import IntervencionesPDF from './IntervencionesPDF';
 import { generateExpedientePDF } from './generateExpedientePDF';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
 import { buscarVinculacionPorDni } from '../../../services/vinculacionService';
+import EmailNotificationModal from './EmailNotificationModal';
 
 interface IngresoDetalle {
     id: number;
@@ -69,6 +70,7 @@ const IngresoDetail = () => {
     const [showPreview, setShowPreview] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [pendingFiles, setPendingFiles] = useState<any[]>([]);
     const [isDiscoveringLinks, setIsDiscoveringLinks] = useState(false);
 
@@ -1379,12 +1381,21 @@ const IngresoDetail = () => {
                                         <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Cese de Intervención</h3>
                                         <p className="text-slate-500 font-medium text-sm italic">Cierre formal del expediente y conclusión del proceso.</p>
                                     </div>
-                                    <button
-                                        onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/cierre/${ingreso.id}`)}
-                                        className="px-8 h-12 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
-                                    >
-                                        Ver Formulario de Cese
-                                    </button>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setIsEmailModalOpen(true)}
+                                            className="px-8 h-12 bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg border border-slate-200 dark:border-zinc-700 hover:scale-105 active:scale-95 transition-all text-sm font-bold flex items-center gap-2"
+                                        >
+                                            <span className="material-symbols-outlined text-base">mail</span>
+                                            Notificar por Email
+                                        </button>
+                                        <button
+                                            onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/cierre/${ingreso.id}`)}
+                                            className="px-8 h-12 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                        >
+                                            Ver Formulario de Cese
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {ingreso.cese ? (
@@ -1910,6 +1921,12 @@ const IngresoDetail = () => {
                     </div>
                 </div>
             )}
+            
+            <EmailNotificationModal 
+                isOpen={isEmailModalOpen}
+                onClose={() => setIsEmailModalOpen(false)}
+                ingreso={ingreso}
+            />
         </main>
     );
 };

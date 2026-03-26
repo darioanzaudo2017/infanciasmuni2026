@@ -34,6 +34,7 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
     const [showInvitationModal, setShowInvitationModal] = useState(false);
     const [invitationLink, setInvitationLink] = useState('');
     const [copied, setCopied] = useState(false);
+    const [sendingResend, setSendingResend] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -423,19 +424,70 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                                     );
                                     
                                     const mailtoUrl = `mailto:${formData.email}?subject=${subject}&body=${body}`;
-                                    
-                                    // Crear un elemento <a> invisible para disparar el mailto de forma más robusta
-                                    const link = document.createElement('a');
-                                    link.href = mailtoUrl;
-                                    link.target = '_blank'; // Abre el cliente fuera de la ventana actual si es posible
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
+                                    window.location.href = mailtoUrl;
                                 }}
-                                className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                className="w-full py-3 text-primary text-sm font-semibold hover:underline flex items-center justify-center gap-1"
                             >
-                                <span className="material-symbols-outlined">send</span>
-                                Enviar por Correo
+                                <span className="material-symbols-outlined text-sm">alternate_email</span>
+                                Abrir en cliente de correo local
+                            </button>
+
+                            <button
+                                onClick={async () => {
+                                    setSendingResend(true);
+                                    try {
+                                        const { error: sendError } = await supabase.functions.invoke('send-email', {
+                                            body: {
+                                                to: formData.email,
+                                                subject: "Invitación al Sistema de Protección de Derechos NNyA",
+                                                html: `
+                                                    <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+                                                        <div style="background-color: #1a2e2e; padding: 20px; text-align: center;">
+                                                            <h1 style="color: white; margin: 0; font-size: 20px;">Sistema de Protección de Derechos NNyA</h1>
+                                                        </div>
+                                                        <div style="padding: 30px;">
+                                                            <h2 style="color: #1a2e2e; margin-top: 0;">¡Hola ${formData.nombre_completo}!</h2>
+                                                            <p>Se ha creado tu cuenta institucional en nuestra plataforma.</p>
+                                                            <p>Para activar tu acceso y configurar tu contraseña, por favor haz clic en el siguiente botón:</p>
+                                                            <div style="text-align: center; margin: 30px 0;">
+                                                                <a href="${invitationLink}" 
+                                                                   style="display: inline-block; padding: 14px 28px; background-color: #00897b; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                                                   Activar mi cuenta y acceder
+                                                                </a>
+                                                            </div>
+                                                            <p style="font-size: 14px; color: #666; border-top: 1px solid #eee; pt-20">
+                                                                Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                                                                <span style="color: #00897b; overflow-wrap: break-word;">${invitationLink}</span>
+                                                            </p>
+                                                        </div>
+                                                        <div style="background-color: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #888;">
+                                                            &copy; 2026 Sistema de Infancias. Este es un mensaje automático.
+                                                        </div>
+                                                    </div>
+                                                `
+                                            }
+                                        });
+
+                                        if (sendError) throw sendError;
+                                        alert('¡Invitación enviada con éxito!');
+                                        setShowInvitationModal(false);
+                                        onClose();
+                                    } catch (err) {
+                                        console.error('Error al enviar con Resend:', err);
+                                        alert('Error al enviar el correo automático. Intenta con el cliente local.');
+                                    } finally {
+                                        setSendingResend(false);
+                                    }
+                                }}
+                                disabled={sendingResend}
+                                className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {sendingResend ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                ) : (
+                                    <span className="material-symbols-outlined">send_and_archive</span>
+                                )}
+                                {sendingResend ? 'Enviando...' : 'Enviar Invitación Institucional'}
                             </button>
                             
                             <button

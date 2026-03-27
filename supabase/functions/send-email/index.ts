@@ -47,7 +47,7 @@ serve(async (req) => {
                 Authorization: `Bearer ${RESEND_API_KEY}`,
             },
             body: JSON.stringify({
-                from: from || "Sistema de Protección <notificaciones@sistemadeinfancias.com.ar>",
+                from: from || "Sistema de Protección <notificaciones@sistemasdeinfancias2024.com.ar>",
                 to: Array.isArray(to) ? to : [to],
                 subject,
                 html,

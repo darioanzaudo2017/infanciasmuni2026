@@ -194,61 +194,34 @@ const IngresosPage: React.FC = () => {
         if (!id || !transferData.destinoSpdId || !headerData) return;
 
         const destinoSpdIdNum = parseInt(transferData.destinoSpdId, 10);
-        console.log('Iniciando transferencia:', { expedienteId: id, destinoSpdId: destinoSpdIdNum });
+        console.log('Iniciando transferencia RPC:', { expedienteId: id, destinoSpdId: destinoSpdIdNum });
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No user found');
-
-            // 1. Get current expediente to know current SPD
-            const { data: exp } = await supabase
-                .from('expedientes')
-                .select('servicio_proteccion_id')
-                .eq('id', id)
-                .single();
-
-            console.log('SPD Actual:', exp?.servicio_proteccion_id, '-> Nuevo SPD:', destinoSpdIdNum);
-
-            // 2. Insert transfer record
-            const { error: transferError } = await supabase.from('transferencias_expedientes').insert({
-                expediente_id: parseInt(id),
-                spd_origen_id: exp?.servicio_proteccion_id,
-                spd_destino_id: destinoSpdIdNum,
-                usuario_emisor_id: user.id,
-                fecha_transferencia: transferData.fecha,
-                motivo: transferData.motivo
+            // 1. Llamada atómica a la función RPC
+            const { error: rpcError } = await supabase.rpc('transferir_expediente', {
+                p_expediente_id: parseInt(id),
+                p_spd_destino_id: destinoSpdIdNum,
+                p_motivo: transferData.motivo
             });
 
-            if (transferError) throw transferError;
+            if (rpcError) throw rpcError;
 
-            // 3. Update expediente current SPD and Zona
-            const selectedSpd = spds.find(s => String(s.id) === String(destinoSpdIdNum));
-            const { error: updateError, data: updateData } = await supabase.from('expedientes')
-                .update({
-                    servicio_proteccion_id: destinoSpdIdNum,
-                    zona_id: selectedSpd?.zona_id
-                })
-                .eq('id', id)
-                .select();
-
-            console.log('Resultado del UPDATE:', updateData, updateError);
-
-            if (updateError) throw updateError;
-
-            // 4. Send notifications to users in destination SPD
+            // 2. Enviar notificaciones a los usuarios del SPD destino
             const { data: destUsers } = await supabase
                 .from('usuarios')
                 .select('id')
-                .eq('servicio_proteccion_id', transferData.destinoSpdId);
+                .eq('servicio_proteccion_id', destinoSpdIdNum);
 
             if (destUsers && destUsers.length > 0) {
                 const notifications = destUsers.map(u => ({
                     usuario_id: u.id,
                     titulo: 'Expediente Transferido',
-                    mensaje: `Se ha transferido el expediente #${headerData.expediente_numero} a su SPD.`,
+                    descripcion: `Se ha transferido el expediente #${headerData.expediente_numero} a su SPD.`,
                     tipo: 'info',
-                    link: `/expedientes/${id}/ingresos`
+                    expediente_id: parseInt(id)
                 }));
+                
+                // Usamos 'descripcion' según el esquema en supabase_schema.sql
                 await supabase.from('notificaciones').insert(notifications);
             }
 
@@ -256,9 +229,9 @@ const IngresosPage: React.FC = () => {
             setShowConfirmModal(false);
             setShowTransferModal(false);
             window.location.reload();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error in transfer:', error);
-            alert('Error al transferir el expediente');
+            alert(error.message || 'Error al transferir el expediente');
         }
     };
 

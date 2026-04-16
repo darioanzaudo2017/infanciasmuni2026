@@ -415,7 +415,7 @@ const InformeSintesis = () => {
                                             <span className="material-symbols-outlined text-6xl text-slate-300">folder_shared</span>
                                         </div>
                                         <div className="p-6 md:col-span-2">
-                                            <h4 className="font-bold text-lg mb-4">Información del Sistema de Ingreso</h4>
+                                            <h4 className="font-bold text-lg mb-4">Información de la Recepción de la Demanda</h4>
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
                                                 <div className="col-span-1 md:col-span-2 space-y-1">
@@ -468,7 +468,7 @@ const InformeSintesis = () => {
                                     <span className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                                         <span className="material-symbols-outlined text-[20px]">gavel</span>
                                     </span>
-                                    Fundamento de la Intervención
+                                    Fundamentos de la Medida de Protección Integral
                                 </h2>
                                 <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm">
                                     <label className="block text-sm font-bold text-gray-500 uppercase mb-3">Marco Normativo y Justificación Técnica</label>
@@ -518,7 +518,7 @@ const InformeSintesis = () => {
                                     <span className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                                         <span className="material-symbols-outlined text-[20px]">list_alt</span>
                                     </span>
-                                    Plan de Acción Sugerido
+                                    Medidas de Protección Integral sugeridas
                                 </h2>
                                 <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm">
                                     <label className="block text-sm font-bold text-gray-500 uppercase mb-3">Estrategias y Próximos Pasos</label>

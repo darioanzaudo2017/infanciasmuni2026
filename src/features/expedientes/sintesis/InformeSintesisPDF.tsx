@@ -171,7 +171,7 @@ const InformeSintesisPDF: React.FC<InformeSintesisPDFProps> = ({
 
                 {/* Antecedentes */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Antecedentes e Información de Ingreso</Text>
+                    <Text style={styles.sectionTitle}>Información de la Recepción de la Demanda</Text>
 
                     <Text style={styles.label}>Motivo de Intervención</Text>
                     <Text style={styles.value}>{motivoRecepcion?.motivo_principal || 'No especificado'}</Text>
@@ -193,7 +193,7 @@ const InformeSintesisPDF: React.FC<InformeSintesisPDFProps> = ({
 
                 {/* Fundamento */}
                 <View style={[styles.section, { backgroundColor: '#fff', border: '1px solid #eee' }]}>
-                    <Text style={styles.sectionTitle}>Fundamento de la Intervención</Text>
+                    <Text style={styles.sectionTitle}>Fundamentos de la Medida de Protección Integral</Text>
                     <Text style={styles.value}>{informe.fundamento_normativo || 'Sin contenido'}</Text>
                 </View>
 
@@ -205,7 +205,7 @@ const InformeSintesisPDF: React.FC<InformeSintesisPDFProps> = ({
 
                 {/* Plan de Acción */}
                 <View style={[styles.section, { backgroundColor: '#fff', border: '1px solid #eee' }]}>
-                    <Text style={styles.sectionTitle}>Plan de Acción</Text>
+                    <Text style={styles.sectionTitle}>Medidas de Protección Integral sugeridas</Text>
                     <Text style={styles.value}>{informe.plan_accion || 'Sin contenido'}</Text>
                 </View>
 

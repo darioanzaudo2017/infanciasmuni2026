@@ -203,23 +203,25 @@ const CierreIngreso = () => {
                         { label: 'Expedientes', path: '/expedientes' },
                         { label: 'Historial de Ingresos', path: `/expedientes/${expedienteId}/ingresos` },
                         { label: 'Detalle de Legajo', path: `/expedientes/${expedienteId}/ingresos/${ingresoId}` },
-                        { label: 'Cierre de Ingreso', active: true }
+                        { label: 'Cese de Intervención', active: true }
                     ]}
                 />
 
                 {/* Page Heading */}
                 <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-10">
                     <div className="flex flex-col gap-2">
-                        <h1 className="text-[#121617] dark:text-white text-4xl font-black leading-tight tracking-tight">Formulario de Cese y Cierre de Ingreso</h1>
-                        <p className="text-[#658086] text-lg font-medium">Expediente: Cierre de Intervención</p>
+                        <h1 className="text-[#121617] dark:text-white text-4xl font-black leading-tight tracking-tight">Cese de Intervención</h1>
+                        <p className="text-[#658086] text-lg font-medium">Expediente: Cese de Intervención</p>
                     </div>
-                    <button
-                        onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}/resumen`)}
-                        className="flex items-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1a2b2e] border border-[#e5e7eb] dark:border-[#2d3a3d] text-[#121617] dark:text-white text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm"
-                    >
-                        <span className="material-symbols-outlined text-lg">history</span>
-                        <span>Ver Historial</span>
-                    </button>
+                    {solicitudId && (
+                        <button
+                            onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}/resumen`)}
+                            className="flex items-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1a2b2e] border border-[#e5e7eb] dark:border-[#2d3a3d] text-[#121617] dark:text-white text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm"
+                        >
+                            <span className="material-symbols-outlined text-lg">history</span>
+                            <span>Ver Historial de Solicitud</span>
+                        </button>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -319,44 +321,46 @@ const CierreIngreso = () => {
                                 </div>
 
                                 {/* Inline History/Tracking Section */}
-                                <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
-                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary">timeline</span>
-                                        Seguimiento de Elevación
-                                    </h3>
-                                    <div className="bg-[#f6f8f8] dark:bg-[#121e20] rounded-xl p-4 border border-[#e5e7eb] dark:border-[#2d3a3d]">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <p className="text-sm text-gray-500 font-medium">Estado de Solicitud:</p>
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${senafStatus === 'Aprobado' ? 'bg-green-100 text-green-700' :
-                                                senafStatus?.includes('Observado') ? 'bg-red-100 text-red-700' :
-                                                    'bg-amber-100 text-amber-700'
-                                                }`}>
-                                                {senafStatus || 'No iniciada'}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col gap-3">
-                                            <button
-                                                onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`)}
-                                                className="w-full py-3 bg-white dark:bg-[#1a2b2e] border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
-                                            >
-                                                <span className="material-symbols-outlined text-lg">visibility</span>
-                                                {isLockedForRole ? 'Revisar Solicitud SENAF' : 'Ver Historial Completo y Detalles'}
-                                            </button>
-
-                                            {documentoUrl && (
-                                                <a
-                                                    href={documentoUrl}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="w-full py-3 bg-primary/5 border border-primary/20 rounded-lg text-primary font-bold text-sm hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+                                {(formData.motivo_cese === 'solicitud_medida_excepcional' || solicitudId) && (
+                                    <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
+                                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-primary">timeline</span>
+                                            Seguimiento de Elevación
+                                        </h3>
+                                        <div className="bg-[#f6f8f8] dark:bg-[#121e20] rounded-xl p-4 border border-[#e5e7eb] dark:border-[#2d3a3d]">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <p className="text-sm text-gray-500 font-medium">Estado de Solicitud:</p>
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${senafStatus === 'Aprobado' ? 'bg-green-100 text-green-700' :
+                                                    senafStatus?.includes('Observado') ? 'bg-red-100 text-red-700' :
+                                                        'bg-amber-100 text-amber-700'
+                                                    }`}>
+                                                    {senafStatus || 'No iniciada'}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col gap-3">
+                                                <button
+                                                    onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`)}
+                                                    className="w-full py-3 bg-white dark:bg-[#1a2b2e] border border-primary/30 rounded-lg text-primary font-bold text-sm hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
                                                 >
-                                                    <span className="material-symbols-outlined text-lg">description</span>
-                                                    Ver Solicitud Subida (Adjunto)
-                                                </a>
-                                            )}
+                                                    <span className="material-symbols-outlined text-lg">visibility</span>
+                                                    {isLockedForRole ? 'Revisar Solicitud SENAF' : 'Ver Historial Completo y Detalles'}
+                                                </button>
+
+                                                {documentoUrl && (
+                                                    <a
+                                                        href={documentoUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="w-full py-3 bg-primary/5 border border-primary/20 rounded-lg text-primary font-bold text-sm hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        <span className="material-symbols-outlined text-lg">description</span>
+                                                        Ver Solicitud Subida (Adjunto)
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </section>
                     </div>

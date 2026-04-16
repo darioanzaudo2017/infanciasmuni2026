@@ -628,36 +628,57 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                             onChange={e => setNewIntervencion({ ...newIntervencion, entrevistado_nombre: e.target.value })}
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Vínculo</label>
-                                        <select
-                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none appearance-none"
-                                            value={newIntervencion.vinculo}
-                                            onChange={e => setNewIntervencion({ ...newIntervencion, vinculo: e.target.value })}
-                                        >
-                                            <option>Padre/Madre</option>
-                                            <option>Tío/a</option>
-                                            <option>Abuelo/a</option>
-                                            <option>Referente afectivo</option>
-                                            <option>Institución</option>
-                                            <option>Vecino/a</option>
-                                            <option>Director/a</option>
-                                            <option>Docente</option>
-                                            <option>NNyA</option>
-                                            <option>Otros</option>
-                                        </select>
-                                    </div>
+                                    {newIntervencion.tipo_entrevistado !== 'Institución' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Vínculo</label>
+                                            <select
+                                                className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none appearance-none"
+                                                value={newIntervencion.vinculo}
+                                                onChange={e => setNewIntervencion({ ...newIntervencion, vinculo: e.target.value })}
+                                            >
+                                                {newIntervencion.tipo_entrevistado === 'NNyA' ? (
+                                                    <>
+                                                        <option>NNyA</option>
+                                                        <option>Hermano/a</option>
+                                                        <option>Tío/a materno</option>
+                                                        <option>Tío/a paterno</option>
+                                                        <option>Primo/a materno</option>
+                                                        <option>Primo/a paterno</option>
+                                                        <option>Vecino/a</option>
+                                                        <option>Otro</option>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <option>Padre/Madre</option>
+                                                        <option>Padre afín / Madre afín</option>
+                                                        <option>Hermano/a</option>
+                                                        <option>Abuelo/a materno</option>
+                                                        <option>Abuelo/a paterno</option>
+                                                        <option>Tío/a materno</option>
+                                                        <option>Tío/a paterno</option>
+                                                        <option>Primo/a materno</option>
+                                                        <option>Primo/a paterno</option>
+                                                        <option>Referente afectivo</option>
+                                                        <option>Vecino/a</option>
+                                                        <option>Otros</option>
+                                                    </>
+                                                )}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     {/* Additional Personal Data Fields */}
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">DNI</label>
-                                        <input
-                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
-                                            placeholder="Sin puntos"
-                                            value={newIntervencion.dni}
-                                            onChange={e => setNewIntervencion({ ...newIntervencion, dni: e.target.value })}
-                                        />
-                                    </div>
+                                    {newIntervencion.tipo_entrevistado !== 'Institución' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">DNI</label>
+                                            <input
+                                                className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                                placeholder="Sin puntos"
+                                                value={newIntervencion.dni}
+                                                onChange={e => setNewIntervencion({ ...newIntervencion, dni: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Teléfono</label>
                                         <input
@@ -667,16 +688,18 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                             onChange={e => setNewIntervencion({ ...newIntervencion, telefono: e.target.value })}
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Edad</label>
-                                        <input
-                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
-                                            type="number"
-                                            placeholder="Años"
-                                            value={newIntervencion.edad}
-                                            onChange={e => setNewIntervencion({ ...newIntervencion, edad: e.target.value })}
-                                        />
-                                    </div>
+                                    {newIntervencion.tipo_entrevistado !== 'Institución' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Edad</label>
+                                            <input
+                                                className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                                type="number"
+                                                placeholder="Años"
+                                                value={newIntervencion.edad}
+                                                onChange={e => setNewIntervencion({ ...newIntervencion, edad: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Ocupación</label>
                                         <input

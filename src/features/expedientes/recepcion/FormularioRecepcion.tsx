@@ -926,7 +926,7 @@ const FormularioRecepcion: React.FC = () => {
             {/* Sidebar Navigation */}
             <aside className="w-80 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col overflow-y-auto hidden lg:flex">
                 <div className="p-8">
-                    <h2 className="text-xs font-bold text-[#60708a] mb-6 uppercase tracking-[0.2em]">Pasos del Proceso</h2>
+                    <h2 className="text-xs font-bold text-[#60708a] mb-6 uppercase tracking-[0.2em]">Recepcion de la demanda</h2>
                     <nav className="flex flex-col gap-2">
                         {steps.map((step) => {
                             const isActive = currentStep === step.id;
@@ -1117,93 +1117,6 @@ const FormularioRecepcion: React.FC = () => {
                                     </section>
                                 )}
 
-                                <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                                        <h3 className="text-lg font-bold tracking-tight">Asignación de Servicio de Protección</h3>
-                                    </div>
-                                    <div className="p-8 space-y-6">
-                                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 flex gap-4">
-                                            <span className="material-symbols-outlined text-primary">info</span>
-                                            <p className="text-sm text-slate-600 dark:text-slate-300">
-                                                {currentRole === 'Administrador' || currentRole === 'Coordinador'
-                                                    ? 'Como Administrador/Coordinador, debe seleccionar el SPD responsable de este nuevo caso.'
-                                                    : 'Como Profesional, el caso será automáticamente asignado a su Servicio de Protección (SPD) de origen.'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">SPD Responsable</label>
-                                            {currentRole !== 'Administrador' && currentRole !== 'Coordinador' ? (
-                                                <div className="w-full h-12 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center px-4 border border-[#dbdfe6] dark:border-slate-700 font-bold text-sm">
-                                                    {userProfile?.servicios_proteccion?.nombre || 'Cargando...'}
-                                                </div>
-                                            ) : (
-                                                <select
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
-                                                    value={formData.spd_id}
-                                                    onChange={(e) => setFormData({ ...formData, spd_id: e.target.value })}
-                                                >
-                                                    <option value="">Seleccionar Servicio de Protección</option>
-                                                    {spds.map(spd => <option key={spd.id} value={spd.id}>{spd.nombre}</option>)}
-                                                </select>
-                                            )}
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                                        <h3 className="text-lg font-bold tracking-tight">Origen de la Consulta / Derivación</h3>
-                                    </div>
-                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Vía de Ingreso</label>
-                                            <select
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
-                                                value={formData.derivacion.via_ingreso}
-                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, via_ingreso: e.target.value } })}
-                                            >
-                                                <option value="">Seleccione vía...</option>
-                                                <option value="Oficio Judicial">Oficio Judicial</option>
-                                                <option value="Demanda Espontánea">Demanda Espontánea / Presencial</option>
-                                                <option value="Línea 102">Línea 102 / Telefónica</option>
-                                                <option value="Institución">Derivación Institucional</option>
-                                                <option value="Otro">Otro</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
-                                            <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
-                                                placeholder="Ej: SAC 12345/2024"
-                                                value={formData.derivacion.oficio_numero}
-                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, oficio_numero: e.target.value } })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nombre del Solicitante / Informante</label>
-                                            <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
-                                                placeholder="Nombre y Apellido"
-                                                value={formData.derivacion.nombre_solicitante}
-                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, nombre_solicitante: e.target.value } })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Cargo / Parentesco</label>
-                                            <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
-                                                placeholder="Ej: Tía, Director Escuela X, Juez..."
-                                                value={formData.derivacion.cargo_solicitante}
-                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, cargo_solicitante: e.target.value } })}
-                                            />
-                                        </div>
-                                    </div>
-                                </section>
-                            </div>
-                        )}
-
-                        {currentStep === 2 && (
-                            <div className="space-y-8">
                                 {/* Domicilio y Localización */}
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
                                     <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
@@ -1316,6 +1229,94 @@ const FormularioRecepcion: React.FC = () => {
                                         </div>
                                     </div>
                                 </section>
+
+                                <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
+                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                        <h3 className="text-lg font-bold tracking-tight">Asignación de Servicio de Protección</h3>
+                                    </div>
+                                    <div className="p-8 space-y-6">
+                                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 flex gap-4">
+                                            <span className="material-symbols-outlined text-primary">info</span>
+                                            <p className="text-sm text-slate-600 dark:text-slate-300">
+                                                {currentRole === 'Administrador' || currentRole === 'Coordinador'
+                                                    ? 'Como Administrador/Coordinador, debe seleccionar el SPD responsable de este nuevo caso.'
+                                                    : 'Como Profesional, el caso será automáticamente asignado a su Servicio de Protección (SPD) de origen.'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">SPD Responsable</label>
+                                            {currentRole !== 'Administrador' && currentRole !== 'Coordinador' ? (
+                                                <div className="w-full h-12 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center px-4 border border-[#dbdfe6] dark:border-slate-700 font-bold text-sm">
+                                                    {userProfile?.servicios_proteccion?.nombre || 'Cargando...'}
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                                    value={formData.spd_id}
+                                                    onChange={(e) => setFormData({ ...formData, spd_id: e.target.value })}
+                                                >
+                                                    <option value="">Seleccionar Servicio de Protección</option>
+                                                    {spds.map(spd => <option key={spd.id} value={spd.id}>{spd.nombre}</option>)}
+                                                </select>
+                                            )}
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
+                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                        <h3 className="text-lg font-bold tracking-tight">Origen de la Consulta / Derivación</h3>
+                                    </div>
+                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Vía de Ingreso</label>
+                                            <select
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                                value={formData.derivacion.via_ingreso}
+                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, via_ingreso: e.target.value } })}
+                                            >
+                                                <option value="">Seleccione vía...</option>
+                                                <option value="Oficio Judicial">Oficio Judicial</option>
+                                                <option value="Demanda Espontánea">Demanda Espontánea / Presencial</option>
+                                                <option value="Línea 102">Línea 102 / Telefónica</option>
+                                                <option value="Institución">Derivación Institucional</option>
+                                                <option value="Otro">Otro</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
+                                            <input
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                placeholder="Ej: SAC 12345/2024"
+                                                value={formData.derivacion.oficio_numero}
+                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, oficio_numero: e.target.value } })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nombre del Solicitante / Informante</label>
+                                            <input
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                placeholder="Nombre y Apellido"
+                                                value={formData.derivacion.nombre_solicitante}
+                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, nombre_solicitante: e.target.value } })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Cargo / Parentesco</label>
+                                            <input
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                placeholder="Ej: Tía, Director Escuela X, Juez..."
+                                                value={formData.derivacion.cargo_solicitante}
+                                                onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, cargo_solicitante: e.target.value } })}
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        )}
+
+                        {currentStep === 2 && (
+                            <div className="space-y-8">
 
                                 {/* Trayectoria Educativa */}
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
@@ -1691,9 +1692,13 @@ const FormularioRecepcion: React.FC = () => {
                                                                 <option>Madre</option>
                                                                 <option>Padre</option>
                                                                 <option>Hermano/a</option>
-                                                                <option>Abuelo/a</option>
-                                                                <option>Tío/a</option>
-                                                                <option>Padrastro/Madrastra</option>
+                                                                <option>Abuelo/a materno</option>
+                                                                <option>Abuelo/a paterno</option>
+                                                                <option>Tío/a materno</option>
+                                                                <option>Tío/a paterno</option>
+                                                                <option>Primo/a materno</option>
+                                                                <option>Primo/a paterno</option>
+                                                                <option>Madre afín / Padre afín</option>
                                                                 <option>Otro</option>
                                                             </select>
                                                         </div>
@@ -2261,20 +2266,22 @@ const FormularioRecepcion: React.FC = () => {
                                         </div>
                                     </section>
 
-                                    <section className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-[#60708a] dark:text-slate-400">Observaciones y fundamentación</label>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                {formData.observaciones_cierre.length} carácteres
-                                            </span>
-                                        </div>
-                                        <textarea
-                                            className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-6 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none dark:text-white font-medium text-lg leading-relaxed min-h-[250px]"
-                                            placeholder="Describa los motivos técnicos de la decisión tomada..."
-                                            value={formData.observaciones_cierre}
-                                            onChange={(e) => setFormData({ ...formData, observaciones_cierre: e.target.value })}
-                                        />
-                                    </section>
+                                    {formData.decision_id === 'asesoramiento' && (
+                                        <section className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-[#60708a] dark:text-slate-400">Resultado o definición del asesoramiento</label>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                    {formData.observaciones_cierre.length} carácteres
+                                                </span>
+                                            </div>
+                                            <textarea
+                                                className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-6 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none dark:text-white font-medium text-lg leading-relaxed min-h-[250px]"
+                                                placeholder="Describa los motivos técnicos de la decisión tomada..."
+                                                value={formData.observaciones_cierre}
+                                                onChange={(e) => setFormData({ ...formData, observaciones_cierre: e.target.value })}
+                                            />
+                                        </section>
+                                    )}
                                 </div>
 
                                 {/* Right Column: Summary Panel */}

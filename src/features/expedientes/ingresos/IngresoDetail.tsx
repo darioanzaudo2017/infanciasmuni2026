@@ -849,8 +849,8 @@ const IngresoDetail = () => {
                     {/* Operation Tabs */}
                     <div className="flex border-b border-[#f0f2f5] dark:border-[#333] px-2">
                         {[
-                            { id: 'recepcion', label: 'Ficha de Recepción', icon: 'assignment' },
-                            ...(activeStageIndex >= 1 ? [{ id: 'ampliacion', label: 'Ficha de Ampliación', icon: 'insights' }] : []),
+                            { id: 'recepcion', label: ' Recepción de demanda', icon: 'assignment' },
+                            ...(activeStageIndex >= 1 ? [{ id: 'ampliacion', label: 'Ampliación y verificación de información', icon: 'insights' }] : []),
                             ...(activeStageIndex >= 2 || (ingreso.intervenciones && ingreso.intervenciones.length > 0) ? [{ id: 'sintesis', label: 'Informe Síntesis', icon: 'gavel' }] : []),
                             ...(activeStageIndex >= 3 ? [{ id: 'definicion', label: 'Definición de Medidas', icon: 'security' }] : []),
                             ...((ingreso.cese || ingreso.estado === 'cerrado' || measuresSummary.length > 0) ? [{ id: 'cese', label: 'Cese de Intervención', icon: 'verified' }] : []),
@@ -1921,8 +1921,8 @@ const IngresoDetail = () => {
                     </div>
                 </div>
             )}
-            
-            <EmailNotificationModal 
+
+            <EmailNotificationModal
                 isOpen={isEmailModalOpen}
                 onClose={() => setIsEmailModalOpen(false)}
                 ingreso={ingreso}

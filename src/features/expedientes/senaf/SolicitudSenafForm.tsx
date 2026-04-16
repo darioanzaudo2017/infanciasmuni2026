@@ -69,19 +69,35 @@ const SolicitudSenafForm = () => {
                     setUserRole(profile?.usuarios_roles?.[0]?.roles?.nombre || 'Profesional');
                 }
 
-                // Fetch Ingreso Details (to know assigned professional)
-                const { data: ingreso } = await supabase
+                // Fetch Ingreso Details and check Cese reason
+                const { data: ingreso, error: ingresoError } = await supabase
                     .from('ingresos')
-                    .select('profesional_asignado_id')
+                    .select('profesional_asignado_id, cese:form9_cese_ingreso(*)')
                     .eq('id', ingresoId)
                     .single();
-                if (ingreso) setAssignedProfId(ingreso.profesional_asignado_id);
 
+                if (ingresoError || !ingreso) {
+                    throw new Error("No se encontró el ingreso especificado.");
+                }
+
+                setAssignedProfId(ingreso.profesional_asignado_id);
+
+                // PROTECTION: Check if cese reason is correct
+                // If there's no cese or the reason is not SENAF, redirect unless there's already a SENAF record (for history)
                 const { data: senafRecord } = await supabase
                     .from('solicitudes_senaf')
                     .select('*')
                     .eq('ingreso_id', ingresoId)
                     .maybeSingle();
+
+                const ceseRow = Array.isArray(ingreso.cese) ? ingreso.cese[0] : ingreso.cese;
+                const matchesMotive = ceseRow?.motivo_cese === 'solicitud_medida_excepcional';
+
+                if (!matchesMotive && !senafRecord) {
+                    alert("Para acceder a este módulo, debe seleccionar 'Solicitud de medida excepcional' en el formulario de Cese de Intervención.");
+                    navigate(`/expedientes/${expedienteId}/ingresos/${ingresoId}`);
+                    return;
+                }
 
                 if (senafRecord) {
                     setSolicitudId(senafRecord.id);

@@ -585,36 +585,7 @@ const Dashboard = () => {
             </div>
 
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <button
-                    onClick={() => window.location.href = '/expedientes/nuevo'}
-                    className="flex items-center justify-between p-4 bg-primary text-white rounded-xl shadow-md hover:bg-blue-600 transition-all group"
-                >
-                    <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined">add_circle</span>
-                        <span className="font-bold">Nuevo Expediente</span>
-                    </div>
-                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </button>
-                <button
-                    onClick={() => window.location.href = '/expedientes'}
-                    className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 text-primary border border-primary/20 rounded-xl shadow-sm hover:shadow-md transition-all group"
-                >
-                    <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined">folder_open</span>
-                        <span className="font-bold">Ver Expedientes</span>
-                    </div>
-                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </button>
-                <button className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 text-[#111418] dark:text-white border border-[#e5e7eb] dark:border-[#333] rounded-xl shadow-sm hover:shadow-md transition-all group">
-                    <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined">print</span>
-                        <span className="font-bold">Generar Estadística</span>
-                    </div>
-                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                </button>
-            </div>
+
         </div>
     );
 };

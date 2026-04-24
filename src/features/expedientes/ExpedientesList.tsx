@@ -33,6 +33,8 @@ const ExpedientesList = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
 
+    const [statusFilter, setStatusFilter] = useState('Todos los estados');
+
     useEffect(() => {
         const fetchExpedientes = async () => {
             setLoading(true);
@@ -56,12 +58,16 @@ const ExpedientesList = () => {
 
     const filteredExpedientes = (expedientes || []).filter((row: ExpedienteRow) => {
         const search = searchTerm.toLowerCase();
-        return (
-            row.numero?.toLowerCase().includes(search) ||
+        const matchesSearch = row.numero?.toLowerCase().includes(search) ||
             row.nino_nombre?.toLowerCase().includes(search) ||
             row.nino_apellido?.toLowerCase().includes(search) ||
-            row.nino_dni?.toString().includes(search)
-        );
+            row.nino_dni?.toString().includes(search);
+            
+        let matchesStatus = true;
+        if (statusFilter === 'Activos') matchesStatus = row.activo === true;
+        if (statusFilter === 'Cerrados') matchesStatus = row.activo === false;
+
+        return matchesSearch && matchesStatus;
     });
 
     return (
@@ -74,7 +80,14 @@ const ExpedientesList = () => {
             />
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 leading-tight">Bandeja de Expedientes</h1>
+                    <div className="flex items-center gap-3 mb-1">
+                        <h1 className="text-2xl font-bold text-slate-900 leading-tight">Bandeja de Expedientes</h1>
+                        {!loading && (
+                            <span className="bg-primary/10 text-primary text-sm font-bold px-3 py-0.5 rounded-full border border-primary/20 shadow-sm">
+                                {filteredExpedientes.length} {filteredExpedientes.length === 1 ? 'resultado' : 'resultados'}
+                            </span>
+                        )}
+                    </div>
                     <p className="text-slate-500 text-sm">Gestiona y realiza seguimiento de todos los casos de vulneración.</p>
                 </div>
                 <Link to="/expedientes/nuevo">
@@ -97,7 +110,11 @@ const ExpedientesList = () => {
                     />
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
-                    <select className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 text-slate-700">
+                    <select 
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 text-slate-700"
+                    >
                         <option>Todos los estados</option>
                         <option>Activos</option>
                         <option>Cerrados</option>

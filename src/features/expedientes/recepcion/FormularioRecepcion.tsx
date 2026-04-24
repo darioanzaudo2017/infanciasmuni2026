@@ -661,6 +661,12 @@ const FormularioRecepcion: React.FC = () => {
             let selectedSpd = spds.find(s => String(s.id) === String(spdId));
             let zonaId = selectedSpd?.zona_id || userProfile?.zona_id;
 
+            if (!spdId) {
+                alert('Debe asignar un Servicio de Protección de Derechos (SPD) para crear o actualizar el expediente.');
+                setIsSaving(false);
+                return;
+            }
+
             if (!expedienteId) {
                 // Try to find an active expediente for this nino
                 const { data: existingExp } = await supabase

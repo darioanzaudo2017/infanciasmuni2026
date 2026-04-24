@@ -8,13 +8,15 @@ import {
     ExternalLink,
     Download,
     Calendar,
-    User
+    User,
+    Bell
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
+import { useNotifications } from '../../hooks/useNotifications';
 
 interface ExpedienteRow {
     id: number;
@@ -34,6 +36,7 @@ const ExpedientesList = () => {
     const [loading, setLoading] = useState(true);
 
     const [statusFilter, setStatusFilter] = useState('Todos los estados');
+    const { notifications } = useNotifications();
 
     useEffect(() => {
         const fetchExpedientes = async () => {
@@ -69,6 +72,18 @@ const ExpedientesList = () => {
 
         return matchesSearch && matchesStatus;
     });
+
+    const hasUnreadNotification = (row: ExpedienteRow) => {
+        if (!row.activo) return false; // Solo expedientes activos muestran novedad
+
+        return notifications.some(n => 
+            !n.leida && 
+            (
+                (n.link && n.link.includes(`/expedientes/${row.id}/`)) || 
+                (n as any).expediente_id === row.id
+            )
+        );
+    };
 
     return (
         <div className="space-y-6 text-slate-800">
@@ -151,10 +166,21 @@ const ExpedientesList = () => {
                                 </tr>
                             ) : (
                                 filteredExpedientes.map((row: ExpedienteRow) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <tr key={row.id} className={`hover:bg-slate-50/50 transition-colors group ${hasUnreadNotification(row) ? 'bg-amber-50/30' : ''}`}>
                                         <td className="px-6 py-5">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="font-bold text-slate-900 text-base tracking-tight">{row.numero}</span>
+                                            <div className="flex flex-col gap-1 relative">
+                                                <div className="flex items-center gap-2">
+                                                    {hasUnreadNotification(row) && (
+                                                        <div className="size-2 bg-amber-500 rounded-full animate-pulse absolute -left-3 top-1.5" title="Tienes notificaciones sin leer sobre este expediente"></div>
+                                                    )}
+                                                    <span className="font-bold text-slate-900 text-base tracking-tight">{row.numero}</span>
+                                                    {hasUnreadNotification(row) && (
+                                                        <span className="flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
+                                                            <Bell size={10} />
+                                                            Novedad
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 uppercase">
                                                     <Calendar size={12} className="text-slate-300" /> Apertura: {format(new Date(row.fecha_apertura), 'dd MMM yyyy')}
                                                 </span>

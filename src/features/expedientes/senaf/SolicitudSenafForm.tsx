@@ -176,22 +176,26 @@ const SolicitudSenafForm = () => {
                     const now = new Date().toISOString();
                     const link = `/expedientes/${expedienteId}/senaf/${ingresoId}`;
 
-                    // Fetch users once to avoid complex join-based filters in DB
-                    const { data: allUsers } = await supabase
-                        .from('usuarios')
-                        .select('id, servicio_proteccion_id, usuarios_roles(roles(nombre))');
+                    // Fetch all roles to find coordinators and admins securely
+                    const { data: rolesData } = await supabase
+                        .from('usuarios_roles')
+                        .select('usuario_id, roles!inner(nombre)');
 
-                    if (allUsers) {
-                        const admins = allUsers.filter(u => (u.usuarios_roles as any[])?.some(r => r.roles?.nombre === 'Administrador'));
-                        const allCoordinators = allUsers.filter(u =>
-                            (u.usuarios_roles as any[])?.some(r => r.roles?.nombre === 'Coordinador')
-                        );
+                    if (rolesData) {
+                        const adminIds = rolesData
+                            .filter((ur: any) => ur.roles?.nombre?.toLowerCase() === 'administrador')
+                            .map((ur: any) => ur.usuario_id);
+                            
+                        const coordinatorIds = rolesData
+                            .filter((ur: any) => ur.roles?.nombre?.toLowerCase() === 'coordinador')
+                            .map((ur: any) => ur.usuario_id);
 
                         // 1. Notify Coordinators when Professional elevates
                         if (action === 'elevate' && userRole === 'Profesional') {
-                            allCoordinators.forEach((coord: any) => {
+                            coordinatorIds.forEach((id: string) => {
                                 notificationPayloads.push({
-                                    usuario_id: coord.id,
+                                    usuario_id: id,
+                                    expediente_id: parseInt(expedienteId || '0'),
                                     titulo: 'Nueva Solicitud SENAF',
                                     mensaje: `Se ha elevado una solicitud para el expediente #${expedienteId}.`,
                                     tipo: 'info',
@@ -203,9 +207,10 @@ const SolicitudSenafForm = () => {
 
                         // 2. Notify Admins when Coordinator elevates
                         if (action === 'elevate' && userRole === 'Coordinador') {
-                            admins.forEach(admin => {
+                            adminIds.forEach((id: string) => {
                                 notificationPayloads.push({
-                                    usuario_id: admin.id,
+                                    usuario_id: id,
+                                    expediente_id: parseInt(expedienteId || '0'),
                                     titulo: 'Revisión SENAF Requerida',
                                     mensaje: `Un coordinador ha elevado una solicitud para aprobación final (#${expedienteId}).`,
                                     tipo: 'info',
@@ -219,6 +224,7 @@ const SolicitudSenafForm = () => {
                         if (action === 'observe' && assignedProfId) {
                             notificationPayloads.push({
                                 usuario_id: assignedProfId,
+                                expediente_id: parseInt(expedienteId || '0'),
                                 titulo: 'Solicitud SENAF Observada',
                                 mensaje: 'Tu solicitud ha sido observada y requiere cambios.',
                                 tipo: 'warning',
@@ -232,6 +238,7 @@ const SolicitudSenafForm = () => {
                             if (assignedProfId) {
                                 notificationPayloads.push({
                                     usuario_id: assignedProfId,
+                                    expediente_id: parseInt(expedienteId || '0'),
                                     titulo: 'Solicitud SENAF APROBADA',
                                     mensaje: `¡Buenas noticias! La solicitud del expediente #${expedienteId} fue aprobada.`,
                                     tipo: 'success',
@@ -239,10 +246,11 @@ const SolicitudSenafForm = () => {
                                     created_at: now
                                 });
                             }
-                            allCoordinators.forEach((coord: any) => {
-                                if (coord.id !== user?.id) {
+                            coordinatorIds.forEach((id: string) => {
+                                if (id !== user?.id) {
                                     notificationPayloads.push({
-                                        usuario_id: coord.id,
+                                        usuario_id: id,
+                                        expediente_id: parseInt(expedienteId || '0'),
                                         titulo: 'SENAF Aprobada y Cerrada',
                                         mensaje: `Se completó la solicitud para el expediente #${expedienteId}.`,
                                         tipo: 'success',
@@ -255,7 +263,8 @@ const SolicitudSenafForm = () => {
                     }
 
                     if (notificationPayloads.length > 0) {
-                        await supabase.from('notificaciones').insert(notificationPayloads);
+                        const { error: notifError } = await supabase.from('notificaciones').insert(notificationPayloads);
+                        if (notifError) console.error('Supabase Notification Insert Error:', notifError);
                     }
                 } catch (notifError) {
                     console.error('Error creating notifications:', notifError);

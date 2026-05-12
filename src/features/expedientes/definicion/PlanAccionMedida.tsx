@@ -93,8 +93,6 @@ const PlanAccionMedida = () => {
         const nextStatus = currentStatus === 'pendiente' ? 'en_curso' : currentStatus === 'en_curso' ? 'completado' : 'pendiente';
         try {
             await supabase.from('medidas_acciones').update({ estado: nextStatus }).eq('id', accionId);
-            // Refresh
-            const { data: aData } = await supabase.from('medidas_acciones').select('*').eq('id', accionId).single(); // Solo esta acción para optimizar o refresh completo
             setAcciones(prev => prev.map(a => a.id === accionId ? { ...a, estado: nextStatus } : a));
         } catch (error) {
             console.error(error);

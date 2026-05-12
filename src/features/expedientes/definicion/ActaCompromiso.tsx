@@ -16,9 +16,9 @@ const ActaCompromiso = () => {
     const [vulneraciones, setVulneraciones] = useState<any[]>([]);
     const [medidas, setMedidas] = useState<any[]>([]);
 
-    const [familyCompromise, setFamilyCompromise] = useState('Garantizar la asistencia regular al centro educativo y acompañar el tratamiento psicológico.');
-    const [institutionCompromise, setInstitutionCompromise] = useState('Proveer vacante en taller de oficios, gestionar subsidio de transporte y realizar seguimiento quincenal.');
-    const [otherCompromise, setOtherCompromise] = useState('La escuela se compromete a informar inasistencias de manera inmediata.');
+    const [familyCompromise, setFamilyCompromise] = useState('[... completar aquí ...]');
+    const [institutionCompromise, setInstitutionCompromise] = useState('[... completar aquí ...]');
+    const [otherCompromise, setOtherCompromise] = useState('[... completar aquí ...]');
 
     const toggleParticipant = (id: string) => {
         setParticipants(prev => prev.map(p =>
@@ -335,44 +335,63 @@ const ActaCompromiso = () => {
 
                                         <div className="space-y-4">
                                             <div>
-                                                <p className="font-bold underline mb-1">El Servicio:</p>
+                                                <p className="font-bold underline mb-2 text-[#411f89] dark:text-[#a78bfa]">El Servicio:</p>
                                                 <div
-                                                    className="print:hidden p-3 border border-dashed border-[#d1d0d5] dark:border-[#3d3848] rounded bg-white dark:bg-[#2d2838] text-sm outline-none"
+                                                    className={`print:hidden p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
+                                                        ${institutionCompromise === '[... completar aquí ...]' 
+                                                            ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
+                                                            : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
                                                     contentEditable={true}
+                                                    onFocus={(e) => { if (institutionCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setInstitutionCompromise(''); } }}
+                                                    onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setInstitutionCompromise('[... completar aquí ...]'); } }}
                                                     onInput={(e) => setInstitutionCompromise(e.currentTarget.textContent || '')}
                                                     suppressContentEditableWarning={true}
                                                 >
                                                     {institutionCompromise}
                                                 </div>
-                                                <p className="hidden print:block text-justify border-b border-black/20 pb-1">{institutionCompromise}</p>
+                                                <p className="hidden print:block text-justify border-b border-black/10 pb-2 min-h-[1.5em]">
+                                                    {institutionCompromise === '[... completar aquí ...]' ? '' : institutionCompromise}
+                                                </p>
                                             </div>
 
                                             <div>
-                                                <p className="font-bold underline mb-1">La Familia:</p>
+                                                <p className="font-bold underline mb-2 text-[#411f89] dark:text-[#a78bfa]">La Familia:</p>
                                                 <div
-                                                    className="print:hidden p-3 border border-dashed border-[#d1d0d5] dark:border-[#3d3848] rounded bg-white dark:bg-[#2d2838] text-sm outline-none"
+                                                    className={`print:hidden p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
+                                                        ${familyCompromise === '[... completar aquí ...]' 
+                                                            ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
+                                                            : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
                                                     contentEditable={true}
+                                                    onFocus={(e) => { if (familyCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setFamilyCompromise(''); } }}
+                                                    onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setFamilyCompromise('[... completar aquí ...]'); } }}
                                                     onInput={(e) => setFamilyCompromise(e.currentTarget.textContent || '')}
                                                     suppressContentEditableWarning={true}
                                                 >
                                                     {familyCompromise}
                                                 </div>
-                                                <p className="hidden print:block text-justify border-b border-black/20 pb-1">{familyCompromise}</p>
+                                                <p className="hidden print:block text-justify border-b border-black/10 pb-2 min-h-[1.5em]">
+                                                    {familyCompromise === '[... completar aquí ...]' ? '' : familyCompromise}
+                                                </p>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <p>Se deja constancia que por su parte la institución/organismo:</p>
+                                            <p className="font-bold mb-2">Se deja constancia que por su parte la institución/organismo:</p>
                                             <div
-                                                className="print:hidden p-3 border border-dashed border-[#d1d0d5] dark:border-[#3d3848] rounded bg-white dark:bg-[#2d2838] text-sm outline-none mt-1"
+                                                className={`print:hidden p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
+                                                    ${otherCompromise === '[... completar aquí ...]' 
+                                                        ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
+                                                        : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
                                                 contentEditable={true}
+                                                onFocus={(e) => { if (otherCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setOtherCompromise(''); } }}
+                                                onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setOtherCompromise('[... completar aquí ...]'); } }}
                                                 onInput={(e) => setOtherCompromise(e.currentTarget.textContent || '')}
                                                 suppressContentEditableWarning={true}
                                             >
                                                 {otherCompromise}
                                             </div>
-                                            <p className="hidden print:block text-justify mt-1">
-                                                <span className="italic">{otherCompromise}</span>
+                                            <p className="hidden print:block text-justify mt-2 min-h-[1.5em]">
+                                                <span className="italic">{otherCompromise === '[... completar aquí ...]' ? '' : otherCompromise}</span>
                                             </p>
                                         </div>
 

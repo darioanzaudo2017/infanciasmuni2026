@@ -97,13 +97,13 @@ DROP POLICY IF EXISTS "RLS_USUARIOS" ON usuarios;
 CREATE POLICY "RLS_USUARIOS" ON usuarios
 FOR ALL TO authenticated
 USING (id = auth.uid() OR es_admin() OR es_coordinador())
-WITH CHECK (id = auth.uid() OR es_admin());
+WITH CHECK (id = auth.uid() OR es_admin() OR es_coordinador());
 
 DROP POLICY IF EXISTS "RLS_USUARIOS_ROLES" ON usuarios_roles;
 CREATE POLICY "RLS_USUARIOS_ROLES" ON usuarios_roles
 FOR ALL TO authenticated
-USING (usuario_id = auth.uid() OR es_admin())
-WITH CHECK (es_admin());
+USING (usuario_id = auth.uid() OR es_admin() OR es_coordinador())
+WITH CHECK (es_admin() OR es_coordinador());
 
 -- 4. POLÍTICAS PARA NINOS (Paso previo al expediente)
 ---------------------------------------------------------------------

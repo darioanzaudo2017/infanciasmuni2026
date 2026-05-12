@@ -15,6 +15,7 @@ const DefinicionMedidas = () => {
     const [medidas, setMedidas] = useState<any[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     // Form state
     const [newMedida, setNewMedida] = useState<{
@@ -85,8 +86,8 @@ const DefinicionMedidas = () => {
     }, [ingresoId]);
 
     const handleSaveMedida = async () => {
-        if (!ingresoId || !newMedida.medida_propuesta) return;
-
+        if (!ingresoId || !newMedida.medida_propuesta || saving) return;
+        setSaving(true);
         try {
             // Save Medida
             const { data: insertedMedida, error } = await supabase.from('medidas').insert({
@@ -149,6 +150,8 @@ const DefinicionMedidas = () => {
         } catch (error) {
             console.error('Error saving measure:', error);
             alert('Error al guardar la medida');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -178,6 +181,39 @@ const DefinicionMedidas = () => {
         } catch (error) {
             console.error('Error updating status:', error);
             alert('Error al actualizar el estado');
+        }
+    };
+
+    const handleDeleteMedida = async (measureId: number) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar esta medida? Esta acción eliminará también todas las acciones vinculadas y no se puede deshacer.')) return;
+
+        try {
+            // Delete related data first (just in case cascade is not set in DB)
+            await supabase.from('medidas_derechos').delete().eq('medida_id', measureId);
+            await supabase.from('medidas_acciones').delete().eq('medida_id', measureId);
+            
+            const { error } = await supabase
+                .from('medidas')
+                .delete()
+                .eq('id', measureId);
+
+            if (error) throw error;
+
+            setMedidas(prev => prev.filter(m => m.id !== measureId));
+
+            // Track in audit
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('auditoria').insert({
+                    tabla: 'medidas',
+                    registro_id: measureId,
+                    accion: 'ELIMINAR_MEDIDA',
+                    usuario_id: user.id
+                });
+            }
+        } catch (error) {
+            console.error('Error deleting measure:', error);
+            alert('Error al eliminar la medida. Verifique los permisos o si existen dependencias activas.');
         }
     };
 
@@ -274,7 +310,18 @@ const DefinicionMedidas = () => {
 
                         <div className="px-8 py-6 bg-gray-50 dark:bg-zinc-800/50 flex justify-end gap-4 border-t border-gray-100 dark:border-gray-800">
                             <button onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancelar</button>
-                            <button onClick={handleSaveMedida} className="px-8 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110">Guardar Medida</button>
+                            <button 
+                                onClick={handleSaveMedida} 
+                                disabled={saving}
+                                className="px-8 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {saving ? (
+                                    <>
+                                        <div className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                        Guardando...
+                                    </>
+                                ) : 'Guardar Medida'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -354,12 +401,25 @@ const DefinicionMedidas = () => {
                                         </button>
                                     ))}
                                 </div>
-                                <button
-                                    onClick={() => navigate(`/expedientes/${expedienteId}/definicion/${ingresoId}/medida/${m.id}`)}
-                                    className="material-symbols-outlined text-gray-400 hover:text-primary transition-colors p-1"
-                                >
-                                    arrow_forward
-                                </button>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteMedida(m.id);
+                                        }}
+                                        className="material-symbols-outlined text-gray-400 hover:text-red-500 transition-colors p-1"
+                                        title="Eliminar Medida"
+                                    >
+                                        delete
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(`/expedientes/${expedienteId}/definicion/${ingresoId}/medida/${m.id}`)}
+                                        className="material-symbols-outlined text-gray-400 hover:text-primary transition-colors p-1"
+                                        title="Ver detalles"
+                                    >
+                                        arrow_forward
+                                    </button>
+                                </div>
                             </div>
                             <div onClick={() => navigate(`/expedientes/${expedienteId}/definicion/${ingresoId}/medida/${m.id}`)} className="cursor-pointer flex-1">
                                 <h3 className="text-md font-bold mb-2 dark:text-white line-clamp-2">{m.medida_propuesta}</h3>

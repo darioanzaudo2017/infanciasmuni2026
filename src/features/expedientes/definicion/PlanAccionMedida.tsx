@@ -1,14 +1,16 @@
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
 
 const PlanAccionMedida = () => {
     const { medidaId, expedienteId, ingresoId } = useParams<{ medidaId: string; expedienteId: string; ingresoId: string }>();
+    const navigate = useNavigate();
     const [medida, setMedida] = useState<any>(null);
     const [acciones, setAcciones] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
     // Form state
@@ -41,7 +43,8 @@ const PlanAccionMedida = () => {
     }, [medidaId]);
 
     const handleSaveAccion = async () => {
-        if (!newAccion.nombre || !medidaId) return;
+        if (!newAccion.nombre || !medidaId || saving) return;
+        setSaving(true);
         try {
             const { error } = await supabase.from('medidas_acciones').insert({
                 medida_id: medidaId,
@@ -81,6 +84,8 @@ const PlanAccionMedida = () => {
         } catch (error) {
             console.error('Error saving action', error);
             alert('Error al guardar acción');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -89,10 +94,54 @@ const PlanAccionMedida = () => {
         try {
             await supabase.from('medidas_acciones').update({ estado: nextStatus }).eq('id', accionId);
             // Refresh
-            const { data: aData } = await supabase.from('medidas_acciones').select('*').eq('medida_id', medidaId).order('created_at', { ascending: true });
-            setAcciones(aData || []);
+            const { data: aData } = await supabase.from('medidas_acciones').select('*').eq('id', accionId).single(); // Solo esta acción para optimizar o refresh completo
+            setAcciones(prev => prev.map(a => a.id === accionId ? { ...a, estado: nextStatus } : a));
         } catch (error) {
             console.error(error);
+        }
+    };
+
+    const handleDeleteMedida = async () => {
+        if (!window.confirm('¿Está seguro de que desea eliminar esta medida? Esta acción eliminará también todas las acciones vinculadas y no se puede deshacer.')) return;
+
+        try {
+            // Delete related data first
+            await supabase.from('medidas_derechos').delete().eq('medida_id', medidaId);
+            await supabase.from('medidas_acciones').delete().eq('medida_id', medidaId);
+            
+            const { error } = await supabase
+                .from('medidas')
+                .delete()
+                .eq('id', medidaId);
+
+            if (error) throw error;
+
+            // Track in audit
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('auditoria').insert({
+                    tabla: 'medidas',
+                    registro_id: parseInt(medidaId!),
+                    accion: 'ELIMINAR_MEDIDA',
+                    usuario_id: user.id
+                });
+            }
+
+            navigate(`/expedientes/${expedienteId}/definicion/${ingresoId}`);
+        } catch (error) {
+            console.error('Error deleting measure:', error);
+            alert('Error al eliminar la medida.');
+        }
+    };
+
+    const handleDeleteAccion = async (accionId: number) => {
+        if (!window.confirm('¿Eliminar esta acción del plan?')) return;
+        try {
+            await supabase.from('medidas_acciones').delete().eq('id', accionId);
+            setAcciones(prev => prev.filter(a => a.id !== accionId));
+        } catch (error) {
+            console.error(error);
+            alert('Error al eliminar la acción');
         }
     };
 
@@ -193,7 +242,18 @@ const PlanAccionMedida = () => {
                         </div>
                         <div className="px-8 py-6 bg-gray-50 dark:bg-zinc-800/50 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-800">
                             <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl font-bold text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancelar</button>
-                            <button onClick={handleSaveAccion} className="px-6 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-lg shadow-primary/20 hover:brightness-110">Guardar</button>
+                            <button 
+                                onClick={handleSaveAccion} 
+                                disabled={saving}
+                                className="px-6 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-lg shadow-primary/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {saving ? (
+                                    <>
+                                        <div className="size-3 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                        Guardando...
+                                    </>
+                                ) : 'Guardar'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -215,8 +275,17 @@ const PlanAccionMedida = () => {
                 {/* Header */}
                 <div className="mb-10">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-                        <div>
-                            <h1 className="text-3xl font-black tracking-tight mb-2 dark:text-white">{medida.medida_propuesta}</h1>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                                <h1 className="text-3xl font-black tracking-tight dark:text-white">{medida.medida_propuesta}</h1>
+                                <button 
+                                    onClick={handleDeleteMedida}
+                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                    title="Eliminar Medida"
+                                >
+                                    <span className="material-symbols-outlined">delete</span>
+                                </button>
+                            </div>
                             <p className="text-gray-500 dark:text-gray-400 max-w-2xl">{medida.descripcion}</p>
                         </div>
                         <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
@@ -304,13 +373,22 @@ const PlanAccionMedida = () => {
 
                                 <div className="flex flex-col items-center min-w-[80px]">
                                     <span className="text-[10px] text-gray-400 uppercase font-bold mb-1">Estado</span>
-                                    <button onClick={() => handleUpdateStatus(accion.id, accion.estado)} className="text-gray-300 hover:text-primary transition-colors">
-                                        {accion.estado === 'completado' ? (
-                                            <span className="material-symbols-outlined text-emerald-500" style={{ fontVariationSettings: "'FILL' 1" }}>check_box</span>
-                                        ) : (
-                                            <span className="material-symbols-outlined">check_box_outline_blank</span>
-                                        )}
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => handleUpdateStatus(accion.id, accion.estado)} className="text-gray-300 hover:text-primary transition-colors">
+                                            {accion.estado === 'completado' ? (
+                                                <span className="material-symbols-outlined text-emerald-500" style={{ fontVariationSettings: "'FILL' 1" }}>check_box</span>
+                                            ) : (
+                                                <span className="material-symbols-outlined">check_box_outline_blank</span>
+                                            )}
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteAccion(accion.id)}
+                                            className="text-gray-300 hover:text-red-500 transition-colors"
+                                            title="Eliminar Acción"
+                                        >
+                                            <span className="material-symbols-outlined">delete</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

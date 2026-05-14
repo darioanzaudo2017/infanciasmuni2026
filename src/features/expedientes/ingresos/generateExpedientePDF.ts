@@ -210,12 +210,13 @@ export const generateExpedientePDF = async (
 
         autoTable(doc, {
             startY: yPos,
-            head: [['Nombre', 'Vínculo', 'Edad', 'Ocupación']],
+            head: [['Nombre', 'Vínculo', 'Edad', 'Ocupación', 'Educación']],
             body: ingreso.grupo_familiar.map((fam: any) => [
                 fam.nombre || 'N/A',
                 fam.vinculo || 'N/A',
                 fam.edad?.toString() || 'N/A',
-                fam.ocupacion || 'N/A'
+                fam.ocupacion || 'N/A',
+                fam.nivel_educativo || 'N/A'
             ]),
             theme: 'grid',
             headStyles: { fillColor: [37, 123, 244], fontSize: 9 },

@@ -1235,34 +1235,52 @@ const IngresoDetail = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 {ingreso.grupo_familiar?.map((m, i) => (
-                                                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50/50 dark:bg-zinc-800/30 rounded-xl border border-slate-100 dark:border-zinc-800 text-[11px] group">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="font-bold">{m.nombre} {m.apellido}</span>
-                                                                {m.linked_expediente_id && (
-                                                                    <Link
-                                                                        to={`/expedientes/${m.linked_expediente_id}${m.linked_ingreso_id ? `/ingresos/${m.linked_ingreso_id}` : ''}`}
-                                                                        className="material-symbols-outlined text-primary text-sm hover:scale-110 transition-transform"
-                                                                        title="Ver Expediente Vinculado"
-                                                                    >
-                                                                        link
-                                                                    </Link>
+                                                    <div key={i} className="flex flex-col gap-2 p-3 bg-slate-50/50 dark:bg-zinc-800/30 rounded-xl border border-slate-100 dark:border-zinc-800 text-[11px]">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="font-bold">{m.nombre} {m.apellido}</span>
+                                                                    {m.linked_expediente_id && (
+                                                                        <Link
+                                                                            to={`/expedientes/${m.linked_expediente_id}${m.linked_ingreso_id ? `/ingresos/${m.linked_ingreso_id}` : ''}`}
+                                                                            className="material-symbols-outlined text-primary text-sm hover:scale-110 transition-transform"
+                                                                            title="Ver Expediente Vinculado"
+                                                                        >
+                                                                            link
+                                                                        </Link>
+                                                                    )}
+                                                                </div>
+                                                                {(m.edad || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento))) && (
+                                                                    <span className="text-[#60708a] font-bold text-[10px]">({m.edad || calculateAge(m.fecha_nacimiento)} años)</span>
+                                                                )}
+                                                                {((m.edad && parseInt(m.edad) < 18) || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento) < 18)) && (
+                                                                    <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1">
+                                                                        <span className="material-symbols-outlined text-[10px]">child_care</span>
+                                                                        NNyA
+                                                                    </span>
+                                                                )}
+                                                                <span className="px-2 py-0.5 bg-slate-200 dark:bg-zinc-700 rounded-full text-[9px] uppercase font-black">{m.vinculo}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                <span className={m.convive ? "text-emerald-500 font-bold" : "text-slate-400"}>{m.convive ? 'Convive' : 'No convive'}</span>
+                                                            </div>
+                                                        </div>
+                                                        {(m.ocupacion || m.nivel_educativo) && (
+                                                            <div className="flex gap-4 pl-1 text-[10px] text-slate-500 font-medium">
+                                                                {m.ocupacion && (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <span className="material-symbols-outlined text-[12px]">work</span>
+                                                                        {m.ocupacion}
+                                                                    </span>
+                                                                )}
+                                                                {m.nivel_educativo && (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <span className="material-symbols-outlined text-[12px]">school</span>
+                                                                        {m.nivel_educativo}
+                                                                    </span>
                                                                 )}
                                                             </div>
-                                                            {(m.edad || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento))) && (
-                                                                <span className="text-[#60708a] font-bold text-[10px]">({m.edad || calculateAge(m.fecha_nacimiento)} años)</span>
-                                                            )}
-                                                            {((m.edad && parseInt(m.edad) < 18) || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento) < 18)) && (
-                                                                <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1">
-                                                                    <span className="material-symbols-outlined text-[10px]">child_care</span>
-                                                                    NNyA
-                                                                </span>
-                                                            )}
-                                                            <span className="px-2 py-0.5 bg-slate-200 dark:bg-zinc-700 rounded-full text-[9px] uppercase font-black">{m.vinculo}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <span className={m.convive ? "text-emerald-500 font-bold" : "text-slate-400"}>{m.convive ? 'Convive' : 'No convive'}</span>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 ))}
                                                 {(!ingreso.grupo_familiar || ingreso.grupo_familiar.length === 0) && (

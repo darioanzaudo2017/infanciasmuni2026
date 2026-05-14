@@ -106,7 +106,7 @@ const PlanAccionMedida = () => {
             // Delete related data first
             await supabase.from('medidas_derechos').delete().eq('medida_id', medidaId);
             await supabase.from('medidas_acciones').delete().eq('medida_id', medidaId);
-            
+
             const { error } = await supabase
                 .from('medidas')
                 .delete()
@@ -240,8 +240,8 @@ const PlanAccionMedida = () => {
                         </div>
                         <div className="px-8 py-6 bg-gray-50 dark:bg-zinc-800/50 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-800">
                             <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl font-bold text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancelar</button>
-                            <button 
-                                onClick={handleSaveAccion} 
+                            <button
+                                onClick={handleSaveAccion}
                                 disabled={saving}
                                 className="px-6 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-lg shadow-primary/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
@@ -276,7 +276,7 @@ const PlanAccionMedida = () => {
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                                 <h1 className="text-3xl font-black tracking-tight dark:text-white">{medida.medida_propuesta}</h1>
-                                <button 
+                                <button
                                     onClick={handleDeleteMedida}
                                     className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                                     title="Eliminar Medida"
@@ -379,7 +379,7 @@ const PlanAccionMedida = () => {
                                                 <span className="material-symbols-outlined">check_box_outline_blank</span>
                                             )}
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleDeleteAccion(accion.id)}
                                             className="text-gray-300 hover:text-red-500 transition-colors"
                                             title="Eliminar Acción"

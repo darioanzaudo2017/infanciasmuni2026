@@ -97,6 +97,8 @@ const FormularioRecepcion: React.FC = () => {
         fecha_nacimiento: '',
         vinculo: '',
         telefono: '',
+        ocupacion: '',
+        nivel_educativo: '',
         convive: true,
         direccion: '',
         edad: '',
@@ -407,6 +409,8 @@ const FormularioRecepcion: React.FC = () => {
             fecha_nacimiento: '',
             vinculo: '',
             telefono: '',
+            ocupacion: '',
+            nivel_educativo: '',
             convive: true,
             direccion: '',
             edad: '',
@@ -835,6 +839,8 @@ const FormularioRecepcion: React.FC = () => {
                     telefono: m.telefono,
                     direccion: m.direccion,
                     edad: m.edad,
+                    ocupacion: m.ocupacion,
+                    nivel_educativo: m.nivel_educativo,
                     observaciones: m.observaciones,
                     linked_expediente_id: m.linked_expediente_id,
                     linked_ingreso_id: m.linked_ingreso_id
@@ -1108,6 +1114,19 @@ const FormularioRecepcion: React.FC = () => {
                                                         setFormData({ ...formData, fecha_nacimiento: dob, edad: suggestedAge });
                                                     }}
                                                 />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Género</label>
+                                                <select
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    value={formData.genero}
+                                                    onChange={(e) => setFormData({ ...formData, genero: e.target.value })}
+                                                >
+                                                    <option value="">Seleccionar género</option>
+                                                    <option value="Masculino">Masculino</option>
+                                                    <option value="Femenino">Femenino</option>
+                                                    <option value="Otro">Otro</option>
+                                                </select>
                                             </div>
                                             <div>
                                                 <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Edad (Años)</label>
@@ -1706,6 +1725,42 @@ const FormularioRecepcion: React.FC = () => {
                                                                 <option>Primo/a paterno</option>
                                                                 <option>Madre afín / Padre afín</option>
                                                                 <option>Otro</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Ocupación</label>
+                                                            <select
+                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold appearance-none outline-none"
+                                                                value={currentMember.ocupacion}
+                                                                onChange={(e) => setCurrentMember({ ...currentMember, ocupacion: e.target.value })}
+                                                            >
+                                                                <option value="">Seleccione una opción</option>
+                                                                <option>Empleado/a</option>
+                                                                <option>Desempleado/a</option>
+                                                                <option>Trabajo informal</option>
+                                                                <option>Jubilado/a</option>
+                                                                <option>Ama/o de casa</option>
+                                                                <option>Estudiante</option>
+                                                                <option>Otro</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nivel Educativo</label>
+                                                            <select
+                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold appearance-none outline-none"
+                                                                value={currentMember.nivel_educativo}
+                                                                onChange={(e) => setCurrentMember({ ...currentMember, nivel_educativo: e.target.value })}
+                                                            >
+                                                                <option value="">Seleccione una opción</option>
+                                                                <option>Sin instrucción</option>
+                                                                <option>Primario incompleto</option>
+                                                                <option>Primario completo</option>
+                                                                <option>Secundario incompleto</option>
+                                                                <option>Secundario completo</option>
+                                                                <option>Terciario/universitario incompleto</option>
+                                                                <option>Terciario/universitario completo</option>
                                                             </select>
                                                         </div>
 

@@ -1,6 +1,33 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 const RecoveryPage = () => {
+    const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [sent, setSent] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/set-password`,
+            });
+
+            if (resetError) throw resetError;
+            setSent(true);
+        } catch (err: any) {
+            console.error('Error al solicitar recuperación:', err);
+            setError(err.message || 'Ocurrió un error al procesar su solicitud.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-manrope transition-colors duration-300">
             {/* Top Navigation Bar */}
@@ -31,48 +58,91 @@ const RecoveryPage = () => {
                     {/* Branding/Illustration Placeholder */}
                     <div className="flex justify-center mb-8">
                         <div className="relative w-24 h-24 bg-primary-recovery/10 rounded-full flex items-center justify-center">
-                            <span className="material-symbols-outlined text-primary-recovery text-5xl">lock_reset</span>
+                            <span className="material-symbols-outlined text-primary-recovery text-5xl">
+                                {sent ? 'mark_email_read' : 'lock_reset'}
+                            </span>
                         </div>
                     </div>
                     {/* Recovery Card */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-[#e2e8e8] dark:border-slate-800 overflow-hidden">
                         <div className="p-8">
-                            {/* Headline Section */}
-                            <div className="text-center mb-8">
-                                <h1 className="text-2xl font-bold text-[#121717] dark:text-white mb-3">Recuperar Contraseña</h1>
-                                <p className="text-[#658686] dark:text-slate-400 text-sm leading-relaxed">
-                                    Ingrese su correo electrónico institucional y le enviaremos un enlace seguro para restablecer su contraseña.
-                                </p>
-                            </div>
-                            {/* Form Section */}
-                            <form className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-semibold text-[#121717] dark:text-slate-200" htmlFor="email">
-                                        Correo electrónico institucional
-                                    </label>
-                                    <div className="relative group">
-                                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-primary-recovery transition-colors">mail</span>
-                                        <input
-                                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border border-[#dce5e5] dark:border-slate-700 rounded-lg text-[#121717] dark:text-white focus:ring-2 focus:ring-primary-recovery/20 focus:border-primary-recovery outline-none transition-all placeholder:text-[#a0b0b0]"
-                                            id="email"
-                                            placeholder="ej. usuario@organismo.gob.ar"
-                                            required
-                                            type="email"
-                                        />
-                                    </div>
-                                    <p className="text-[11px] text-[#658686] dark:text-slate-500 italic mt-1.5 flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-xs">info</span>
-                                        Debe ser una cuenta oficial finalizada en @organismo.gob.ar
+                            {sent ? (
+                                <div className="text-center py-4">
+                                    <h1 className="text-2xl font-bold text-[#121717] dark:text-white mb-4">¡Correo Enviado!</h1>
+                                    <p className="text-[#658686] dark:text-slate-400 text-sm leading-relaxed mb-6">
+                                        Hemos enviado un enlace de recuperación a <span className="font-bold text-primary-recovery">{email}</span>. 
+                                        Por favor, revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.
                                     </p>
+                                    <div className="p-4 bg-primary-recovery/5 dark:bg-primary-recovery/10 rounded-lg text-xs text-primary-recovery/80 leading-relaxed text-left">
+                                        <p className="font-bold mb-1 italic flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-xs">info</span>
+                                            ¿No recibiste el correo?
+                                        </p>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                            <li>Revisa tu carpeta de correo no deseado o spam.</li>
+                                            <li>Asegúrate de haber ingresado correctamente tu correo institucional.</li>
+                                            <li>Espera unos minutos antes de intentar nuevamente.</li>
+                                        </ul>
+                                    </div>
                                 </div>
-                                <button
-                                    className="w-full bg-primary-recovery hover:bg-primary-recovery/90 text-white font-bold py-3.5 rounded-lg transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
-                                    type="submit"
-                                >
-                                    <span>Enviar enlace de recuperación</span>
-                                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                                </button>
-                            </form>
+                            ) : (
+                                <>
+                                    {/* Headline Section */}
+                                    <div className="text-center mb-8">
+                                        <h1 className="text-2xl font-bold text-[#121717] dark:text-white mb-3">Recuperar Contraseña</h1>
+                                        <p className="text-[#658686] dark:text-slate-400 text-sm leading-relaxed">
+                                            Ingrese su correo electrónico institucional y le enviaremos un enlace seguro para restablecer su contraseña.
+                                        </p>
+                                    </div>
+
+                                    {error && (
+                                        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3 text-red-600 dark:text-red-400 text-sm animate-in fade-in zoom-in duration-300">
+                                            <span className="material-symbols-outlined text-lg">error_outline</span>
+                                            <p className="font-medium">{error}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Form Section */}
+                                    <form onSubmit={handleSubmit} className="space-y-6">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-[#121717] dark:text-slate-200" htmlFor="email">
+                                                Correo electrónico institucional
+                                            </label>
+                                            <div className="relative group">
+                                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-primary-recovery transition-colors">mail</span>
+                                                <input
+                                                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-800 border border-[#dce5e5] dark:border-slate-700 rounded-lg text-[#121717] dark:text-white focus:ring-2 focus:ring-primary-recovery/20 focus:border-primary-recovery outline-none transition-all placeholder:text-[#a0b0b0]"
+                                                    id="email"
+                                                    placeholder="ej. usuario@organismo.gob.ar"
+                                                    required
+                                                    type="email"
+                                                    value={email}
+                                                    onChange={(e) => setEmail(e.target.value)}
+                                                    disabled={loading}
+                                                />
+                                            </div>
+                                            <p className="text-[11px] text-[#658686] dark:text-slate-500 italic mt-1.5 flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-xs">info</span>
+                                                Debe ser una cuenta oficial finalizada en @organismo.gob.ar
+                                            </p>
+                                        </div>
+                                        <button
+                                            className={`w-full bg-primary-recovery hover:bg-primary-recovery/90 text-white font-bold py-3.5 rounded-lg transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                            type="submit"
+                                            disabled={loading}
+                                        >
+                                            {loading ? (
+                                                <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            ) : (
+                                                <>
+                                                    <span>Enviar enlace de recuperación</span>
+                                                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+                                </>
+                            )}
                             {/* Alert / Info Box */}
                             <div className="mt-8 p-4 bg-primary-recovery/5 dark:bg-primary-recovery/10 border border-primary-recovery/10 rounded-lg flex gap-3">
                                 <span className="material-symbols-outlined text-primary-recovery text-xl flex-shrink-0">verified_user</span>
@@ -113,5 +183,6 @@ const RecoveryPage = () => {
         </div>
     );
 };
+
 
 export default RecoveryPage;

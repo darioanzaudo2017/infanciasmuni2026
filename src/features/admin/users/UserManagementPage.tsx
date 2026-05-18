@@ -36,6 +36,14 @@ const UserManagementPage: React.FC = () => {
     const [copied, setCopied] = useState(false);
     const [sendingResend, setSendingResend] = useState(false);
     const [invitingUser, setInvitingUser] = useState<{ email: string; nombre_completo: string } | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredUsers = users.filter((user) => {
+        const term = searchTerm.toLowerCase().trim();
+        const nameMatch = user.nombre_completo?.toLowerCase().includes(term) || false;
+        const emailMatch = user.email?.toLowerCase().includes(term) || false;
+        return nameMatch || emailMatch;
+    });
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -92,13 +100,13 @@ const UserManagementPage: React.FC = () => {
             const isConfirmed = data.is_confirmed;
             const inviteLink = data.invite_link;
 
-            if (isConfirmed) {
-                alert('El usuario ya activó su cuenta anteriormente.');
+            if (isConfirmed || !inviteLink) {
+                alert(`El usuario ${user.email} ya activó su cuenta y tiene acceso al sistema.`);
             } else {
                 // En lugar de enviar directo, abrimos el modal con el link
                 setInvitationLink(inviteLink);
-                setInvitingUser({ 
-                    email: user.email, 
+                setInvitingUser({
+                    email: user.email,
                     nombre_completo: user.nombre_completo || 'Usuario' 
                 });
                 setShowInvitationModal(true);
@@ -188,23 +196,59 @@ const UserManagementPage: React.FC = () => {
                 />
 
                 {/* Filters Section */}
-                <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-[#dce5e5] dark:border-[#333] shadow-sm">
-                    <span className="text-sm font-bold text-[#658686] dark:text-[#a0b0b0] mr-2">Filtrar por:</span>
-                    <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#f0f4f4] dark:bg-zinc-800 hover:bg-primary/10 transition-colors text-sm font-medium dark:text-white">
-                        <span>Rol: Todos</span>
-                        <span className="material-symbols-outlined text-lg">expand_more</span>
-                    </button>
-                    <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#f0f4f4] dark:bg-zinc-800 hover:bg-primary/10 transition-colors text-sm font-medium dark:text-white">
-                        <span>SPD: Todos</span>
-                        <span className="material-symbols-outlined text-lg">expand_more</span>
-                    </button>
-                    <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#f0f4f4] dark:bg-zinc-800 hover:bg-primary/10 transition-colors text-sm font-medium dark:text-white">
-                        <span>Zona: Todas</span>
-                        <span className="material-symbols-outlined text-lg">expand_more</span>
-                    </button>
-                    <div className="ml-auto">
-                        <button className="text-primary text-xs font-bold uppercase tracking-wider hover:underline">Limpiar Filtros</button>
+                <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-[#dce5e5] dark:border-[#333] shadow-sm">
+                    {/* Buscador por Nombre y Email */}
+                    <div className="relative flex-1 min-w-[260px] max-w-md">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <span className="material-symbols-outlined text-[#658686] dark:text-[#a0b0b0] text-xl">search</span>
+                        </span>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre o email..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-10 py-2 text-sm rounded-lg border border-[#dce5e5] dark:border-[#333] bg-[#f0f4f4] dark:bg-zinc-800 text-slate-800 dark:text-white placeholder-[#658686] dark:placeholder-[#a0b0b0]/60 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                        />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#658686] hover:text-slate-800 dark:hover:text-white transition-colors"
+                                title="Limpiar búsqueda"
+                            >
+                                <span className="material-symbols-outlined text-lg">close</span>
+                            </button>
+                        )}
                     </div>
+
+                    <div className="h-6 w-[1px] bg-[#dce5e5] dark:bg-[#333] hidden md:block"></div>
+
+                    {/* Filtros existentes */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-sm font-bold text-[#658686] dark:text-[#a0b0b0]">Filtrar por:</span>
+                        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#f0f4f4] dark:bg-zinc-800 hover:bg-primary/10 transition-colors text-sm font-medium dark:text-white">
+                            <span>Rol: Todos</span>
+                            <span className="material-symbols-outlined text-lg">expand_more</span>
+                        </button>
+                        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#f0f4f4] dark:bg-zinc-800 hover:bg-primary/10 transition-colors text-sm font-medium dark:text-white">
+                            <span>SPD: Todos</span>
+                            <span className="material-symbols-outlined text-lg">expand_more</span>
+                        </button>
+                        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#f0f4f4] dark:bg-zinc-800 hover:bg-primary/10 transition-colors text-sm font-medium dark:text-white">
+                            <span>Zona: Todas</span>
+                            <span className="material-symbols-outlined text-lg">expand_more</span>
+                        </button>
+                    </div>
+
+                    {searchTerm && (
+                        <div className="ml-auto">
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                className="text-primary text-xs font-bold uppercase tracking-wider hover:underline transition-colors"
+                            >
+                                Limpiar Filtros
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Main Data Table Container */}
@@ -228,7 +272,7 @@ const UserManagementPage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#dce5e5] dark:divide-[#333]">
-                                    {users.map((user) => {
+                                    {filteredUsers.map((user) => {
                                         const role = user.usuarios_roles?.[0]?.roles?.nombre || 'Sin Rol';
                                         return (
                                             <tr key={user.id} className={`hover:bg-[#f6f8f8] dark:hover:bg-zinc-800 transition-colors group ${!user.activo ? 'opacity-50' : ''}`}>
@@ -285,9 +329,11 @@ const UserManagementPage: React.FC = () => {
                                             </tr>
                                         );
                                     })}
-                                    {users.length === 0 && (
+                                    {filteredUsers.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="px-6 py-20 text-center text-[#658686]">No se encontraron usuarios</td>
+                                            <td colSpan={7} className="px-6 py-20 text-center text-[#658686]">
+                                                {searchTerm ? 'No se encontraron usuarios que coincidan con la búsqueda' : 'No se encontraron usuarios'}
+                                            </td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -295,7 +341,9 @@ const UserManagementPage: React.FC = () => {
                         </div>
                     )}
                     <div className="px-6 py-4 border-t border-[#dce5e5] dark:border-[#333] flex items-center justify-between bg-[#f6f8f8] dark:bg-zinc-800/50">
-                        <p className="text-xs font-medium text-[#658686] dark:text-[#a0b0b0]">Mostrando <span className="text-[#121717] dark:text-white">{users.length}</span> usuarios</p>
+                        <p className="text-xs font-medium text-[#658686] dark:text-[#a0b0b0]">
+                            Mostrando <span className="text-[#121717] dark:text-white">{filteredUsers.length}</span> de <span className="text-[#121717] dark:text-white">{users.length}</span> usuarios
+                        </p>
                     </div>
                 </div>
             </div>

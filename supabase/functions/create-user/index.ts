@@ -44,19 +44,34 @@ serve(async (req) => {
 
     if (authError) {
       console.error("Auth Error:", authError);
-      
-      // Si el usuario ya existe, intentamos obtenerlo para generar el link de todos modos
+
+      // Si el usuario ya existe, recuperarlo por email para generar nuevo link de invitación
       if (authError.message.includes("already registered") || authError.status === 422) {
-        console.log("Usuario ya existe en Auth, intentando recuperar ID...");
-        const { data: listUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = listUsers?.users?.find((u: any) => u.email === email);
-        
+        console.log("Usuario ya existe en Auth, recuperando por email...");
+
+        const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000
+        });
+
+        if (listError) {
+          console.error("List Error:", listError);
+          return new Response(
+            JSON.stringify({ error: `Error al buscar usuario existente: ${listError.message}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const existingUser = users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+
         if (existingUser) {
           userId = existingUser.id;
-          isConfirmed = !!existingUser.email_confirmed_at;
+          // Forzar isConfirmed = false para siempre generar un nuevo link de invitación
+          isConfirmed = false;
+          console.log(`Usuario encontrado: ${userId}, generando nuevo link de invitación`);
         } else {
           return new Response(
-            JSON.stringify({ error: `El usuario ya existe pero no se pudo recuperar: ${authError.message}` }),
+            JSON.stringify({ error: `No se encontró el usuario con email ${email} en el sistema` }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }

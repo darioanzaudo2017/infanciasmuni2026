@@ -37,6 +37,12 @@ const UserManagementPage: React.FC = () => {
     const [sendingResend, setSendingResend] = useState(false);
     const [invitingUser, setInvitingUser] = useState<{ email: string; nombre_completo: string } | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
 
     const filteredUsers = users.filter((user) => {
         const term = searchTerm.toLowerCase().trim();
@@ -44,6 +50,11 @@ const UserManagementPage: React.FC = () => {
         const emailMatch = user.email?.toLowerCase().includes(term) || false;
         return nameMatch || emailMatch;
     });
+
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -272,7 +283,7 @@ const UserManagementPage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#dce5e5] dark:divide-[#333]">
-                                    {filteredUsers.map((user) => {
+                                    {paginatedUsers.map((user) => {
                                         const role = user.usuarios_roles?.[0]?.roles?.nombre || 'Sin Rol';
                                         return (
                                             <tr key={user.id} className={`hover:bg-[#f6f8f8] dark:hover:bg-zinc-800 transition-colors group ${!user.activo ? 'opacity-50' : ''}`}>
@@ -340,10 +351,59 @@ const UserManagementPage: React.FC = () => {
                             </table>
                         </div>
                     )}
-                    <div className="px-6 py-4 border-t border-[#dce5e5] dark:border-[#333] flex items-center justify-between bg-[#f6f8f8] dark:bg-zinc-800/50">
+                    <div className="px-6 py-4 border-t border-[#dce5e5] dark:border-[#333] flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#f6f8f8] dark:bg-zinc-800/50">
                         <p className="text-xs font-medium text-[#658686] dark:text-[#a0b0b0]">
-                            Mostrando <span className="text-[#121717] dark:text-white">{filteredUsers.length}</span> de <span className="text-[#121717] dark:text-white">{users.length}</span> usuarios
+                            Mostrando <span className="text-[#121717] dark:text-white">
+                                {filteredUsers.length > 0 ? startIndex + 1 : 0}
+                            </span> a <span className="text-[#121717] dark:text-white">
+                                {Math.min(endIndex, filteredUsers.length)}
+                            </span> de <span className="text-[#121717] dark:text-white">
+                                {filteredUsers.length}
+                            </span> usuarios
+                            {searchTerm && ` (filtrado de ${users.length} en total)`}
                         </p>
+
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={currentPage === 1}
+                                    className="p-1 rounded-md hover:bg-primary/10 text-[#658686] hover:text-primary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+                                    title="Primera página"
+                                >
+                                    <span className="material-symbols-outlined text-lg">first_page</span>
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-1 rounded-md hover:bg-primary/10 text-[#658686] hover:text-primary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+                                    title="Página anterior"
+                                >
+                                    <span className="material-symbols-outlined text-lg">chevron_left</span>
+                                </button>
+                                
+                                <span className="text-xs font-semibold px-3 py-1 bg-white dark:bg-zinc-800 border border-[#dce5e5] dark:border-[#333] rounded-md text-slate-700 dark:text-white">
+                                    Pág. {currentPage} de {totalPages}
+                                </span>
+
+                                <button
+                                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    className="p-1 rounded-md hover:bg-primary/10 text-[#658686] hover:text-primary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+                                    title="Página siguiente"
+                                >
+                                    <span className="material-symbols-outlined text-lg">chevron_right</span>
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={currentPage === totalPages}
+                                    className="p-1 rounded-md hover:bg-primary/10 text-[#658686] hover:text-primary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+                                    title="Última página"
+                                >
+                                    <span className="material-symbols-outlined text-lg">last_page</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

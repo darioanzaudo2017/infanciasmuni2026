@@ -135,9 +135,7 @@ const FormularioRecepcion: React.FC = () => {
 
     // Reset form when navigating to a new case
     useEffect(() => {
-        console.log('FormularioRecepcion mounted/updated - ingresoId:', ingresoId);
         if (!ingresoId) {
-            console.log('Resetting form for new case');
             setFormData({
                 ...INITIAL_FORM_DATA,
                 nino_id: searchParams.get('nino_id') || '',
@@ -147,7 +145,7 @@ const FormularioRecepcion: React.FC = () => {
             setCurrentStep(1);
             setNinoData(null);
         }
-    }, [ingresoId, searchParams.toString()]); // Use toString() to detect param changes
+    }, [ingresoId]); // Solo depende de ingresoId para evitar re-renders por cambios en searchParams
 
     // Load existing ingreso data or fetch nino data for new cases
     useEffect(() => {
@@ -270,16 +268,14 @@ const FormularioRecepcion: React.FC = () => {
         };
 
         if (ingresoId) {
-            console.log('Loading existing ingreso:', ingresoId);
             void fetchExistingData();
         } else {
             const ninoId = searchParams.get('nino_id');
             if (ninoId) {
-                console.log('Loading nino data for new case:', ninoId);
                 void fetchNino(ninoId);
             }
         }
-    }, [ingresoId, searchParams.toString()]);
+    }, [ingresoId]); // Solo depende de ingresoId para evitar recargas por cambios en searchParams durante el guardado
 
     // Load initial auth and catalog data
     useEffect(() => {
@@ -604,6 +600,8 @@ const FormularioRecepcion: React.FC = () => {
     };
 
     const handleFinalizarRecepcion = async () => {
+        if (isSaving) return;
+
         const validVulneraciones = formData.vulneraciones.filter(v => v.derecho_id);
 
         if (!formData.relato_situacion || validVulneraciones.length === 0) {
@@ -839,8 +837,8 @@ const FormularioRecepcion: React.FC = () => {
                     telefono: m.telefono,
                     direccion: m.direccion,
                     edad: m.edad,
-                    ocupacion: m.ocupacion,
-                    nivel_educativo: m.nivel_educativo,
+                    ocupacion: m.ocupacion || null,
+                    nivel_educativo: m.nivel_educativo || null,
                     observaciones: m.observaciones,
                     linked_expediente_id: m.linked_expediente_id,
                     linked_ingreso_id: m.linked_ingreso_id
@@ -891,27 +889,18 @@ const FormularioRecepcion: React.FC = () => {
                             console.error('Error subiendo archivo en recepcion:', doc.nombre, err);
                         }
                     } else if (doc.url) {
-                        // Si ya tenía una URL (edición), la mantenemos
+                        // Documento existente: re-insertar en la BD porque el delete anterior lo eliminó
                         await supabase.from('documentos').insert({
                             ingreso_id: currentIngresoId,
                             nombre: doc.nombre,
                             tipo: doc.tipo,
                             subcategoria: doc.subcategoria || 'Otro',
                             url: doc.url,
-                            origen: 'recepcion'
+                            origen: doc.origen || 'recepcion'
                         });
                     }
                 }
             }
-
-            // 5. Register audit
-            await supabase.from('auditoria').insert({
-                tabla: 'ingresos',
-                registro_id: currentIngresoId as unknown as number,
-                accion: ingresoId ? 'UPDATE' : 'INSERT',
-                usuario_id: userProfile?.id,
-                datos_nuevos: { etapa: formData.decision_id === 'abordaje_integral' ? 'ampliacion' : 'recepcion', estado: isClosing ? 'cerrado' : 'abierto' }
-            });
 
             alert('¡Recepción finalizada con éxito! El legajo ha sido creado.');
             navigate(`/expedientes/${expedienteId}/ingresos/${currentIngresoId}`);
@@ -2416,7 +2405,7 @@ const FormularioRecepcion: React.FC = () => {
                                     void handleFinalizarRecepcion();
                                 }
                             }}
-                            disabled={currentStep === 8 && isSaving}
+                            disabled={isSaving}
                             className="px-8 h-11 flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
                         >
                             {currentStep === 8 ? (isSaving ? 'Guardando...' : 'Finalizar Recepción') : 'Siguiente'}

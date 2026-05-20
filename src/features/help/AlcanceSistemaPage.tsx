@@ -131,44 +131,40 @@ const AlcanceSistemaPage: React.FC = () => {
             <div className="flex flex-wrap gap-2 p-1.5 bg-slate-100 dark:bg-zinc-800/80 rounded-xl border border-slate-200/50 dark:border-zinc-700/50">
                 <button
                     onClick={() => setActiveTab('directorio')}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
-                        activeTab === 'directorio'
+                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeTab === 'directorio'
                             ? 'bg-white dark:bg-zinc-900 text-primary dark:text-white shadow-md shadow-slate-200/50 dark:shadow-none'
                             : 'text-[#60708a] hover:text-[#004884] dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-800'
-                    }`}
+                        }`}
                 >
                     <span className="material-symbols-outlined text-lg">group</span>
                     Directorio del Equipo
                 </button>
                 <button
                     onClick={() => setActiveTab('alcance')}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
-                        activeTab === 'alcance'
+                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeTab === 'alcance'
                             ? 'bg-white dark:bg-zinc-900 text-primary dark:text-white shadow-md shadow-slate-200/50 dark:shadow-none'
                             : 'text-[#60708a] hover:text-[#004884] dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-800'
-                    }`}
+                        }`}
                 >
                     <span className="material-symbols-outlined text-lg">info</span>
                     ¿Para qué sirve el Sistema?
                 </button>
                 <button
                     onClick={() => setActiveTab('roles')}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
-                        activeTab === 'roles'
+                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeTab === 'roles'
                             ? 'bg-white dark:bg-zinc-900 text-primary dark:text-white shadow-md shadow-slate-200/50 dark:shadow-none'
                             : 'text-[#60708a] hover:text-[#004884] dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-800'
-                    }`}
+                        }`}
                 >
                     <span className="material-symbols-outlined text-lg">supervised_user_circle</span>
                     Roles y Funciones
                 </button>
                 <button
                     onClick={() => setActiveTab('seguridad')}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
-                        activeTab === 'seguridad'
+                    className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${activeTab === 'seguridad'
                             ? 'bg-white dark:bg-zinc-900 text-primary dark:text-white shadow-md shadow-slate-200/50 dark:shadow-none'
                             : 'text-[#60708a] hover:text-[#004884] dark:hover:text-white hover:bg-white/50 dark:hover:bg-zinc-800'
-                    }`}
+                        }`}
                 >
                     <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
                     Seguridad y Privacidad
@@ -187,7 +183,7 @@ const AlcanceSistemaPage: React.FC = () => {
                                     Aquí puedes buscar y conocer a los miembros del equipo que forman parte de la red de protección.
                                 </p>
                             </div>
-                            
+
                             {/* Buscador */}
                             <div className="relative w-full md:w-80">
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -264,13 +260,12 @@ const AlcanceSistemaPage: React.FC = () => {
                                                         </td>
                                                         <td className="px-6 py-4 text-sm font-mono text-[#658686] dark:text-[#a0b0b0]">{user.email}</td>
                                                         <td className="px-6 py-4">
-                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold border tracking-wider uppercase ${
-                                                                role === 'Administrador'
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold border tracking-wider uppercase ${role === 'Administrador'
                                                                     ? 'bg-primary text-white border-primary'
                                                                     : role === 'Coordinador'
                                                                         ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
                                                                         : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800'
-                                                            }`}>
+                                                                }`}>
                                                                 {role}
                                                             </span>
                                                         </td>
@@ -366,10 +361,10 @@ const AlcanceSistemaPage: React.FC = () => {
                                 <span className="material-symbols-outlined text-primary">route</span>
                                 El Camino de un Caso en la Plataforma
                             </h4>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
                                 <div className="hidden md:block absolute top-8 left-16 right-16 h-0.5 bg-slate-200 dark:bg-zinc-700 -z-0"></div>
-                                
+
                                 <div className="flex flex-col items-center text-center relative z-10 space-y-2">
                                     <div className="size-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">1</div>
                                     <p className="font-bold text-xs uppercase tracking-wider text-primary">Recepción</p>

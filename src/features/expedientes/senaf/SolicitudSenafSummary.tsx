@@ -226,7 +226,7 @@ const SolicitudSenafSummary = () => {
                 </div>
 
                 <footer className="mt-12 py-10 border-t border-zinc-200 dark:border-zinc-800 text-center">
-                    <p className="text-xs text-[#717a75] mb-4">Este documento es un resumen histórico oficial generado por el Sistema de Protección de Derechos NNyA.</p>
+                    <p className="text-xs text-[#717a75] mb-4">Este documento es un resumen histórico oficial generado por el Sistema Protección Derechos NnyA Municipal.</p>
                 </footer>
             </main>
         </div>

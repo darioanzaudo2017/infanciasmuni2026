@@ -21,6 +21,7 @@ import SenafManagementPage from './features/expedientes/senaf/SenafManagementPag
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import DerechosManagementPage from './features/admin/derechos/DerechosManagementPage';
 import SetPasswordPage from './features/auth/SetPasswordPage';
+import AlcanceSistemaPage from './features/help/AlcanceSistemaPage';
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
           <Route path="expedientes/:expedienteId/senaf/:ingresoId" element={<SolicitudSenafForm />} />
           <Route path="expedientes/:expedienteId/senaf/:ingresoId/resumen" element={<SolicitudSenafSummary />} />
           <Route path="reportes" element={<div>Reportes</div>} />
+          <Route path="alcance" element={<AlcanceSistemaPage />} />
           <Route path="configuracion" element={<div>Configuración</div>} />
         </Route>
 

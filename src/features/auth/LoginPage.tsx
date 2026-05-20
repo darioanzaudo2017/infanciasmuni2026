@@ -53,7 +53,7 @@ const LoginPage: React.FC = () => {
                             />
                         </div>
                         <div className="text-white border-l-2 border-white/30 pl-4">
-                            <h2 className="text-2xl font-bold tracking-tight">SIPNNA</h2>
+                            <h2 className="text-2xl font-bold tracking-tight">Sistema Protección Derechos NnyA Municipal</h2>
                             <p className="text-xs font-medium uppercase tracking-widest opacity-80">República Argentina</p>
                         </div>
                     </div>
@@ -68,7 +68,7 @@ const LoginPage: React.FC = () => {
                     </div>
                     {/* Footer Section */}
                     <div className="relative z-10 text-white/60 text-sm flex gap-6">
-                        <span>© 2024 SIPNNA</span>
+                        <span>© 2024 Sistema Protección Derechos NnyA Municipal</span>
                         <a className="hover:text-white transition-colors" href="#">Términos y Condiciones</a>
                         <a className="hover:text-white transition-colors" href="#">Privacidad</a>
                     </div>
@@ -84,7 +84,7 @@ const LoginPage: React.FC = () => {
                                 className="h-16 w-auto mb-4"
                                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHdmJ8KobT6ubLHNpUsRpa1jKv3IMS7h5vU6nN_NOz487HrOTGCTMvWTk3meLnzXehWMHmf-LAgRiFueMxSCp9UpxQcEVbcx7BTWkLBop0uY-pZqqIT_bF1ahFdpjQ4FsCyqs1fN_18_y9ra2Xym5VhB2kggd5-Dqbw066sWvm0pl6mF6X0TwU-xB-Cswc70crcx05u5hSaMrNtrqTU0JZgh89hRFy-VdEk3vz7gX454FKgKY8uZB3uGNzYqv708XhCc4xKOvZPG8A"
                             />
-                            <h2 className="text-3xl font-bold">SIPNNA</h2>
+                            <h2 className="text-3xl font-bold">Sistema Protección Derechos NnyA Municipal</h2>
                         </div>
                         {/* Form Header */}
                         <div className="mb-8">

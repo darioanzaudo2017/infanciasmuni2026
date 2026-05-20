@@ -117,7 +117,7 @@ const SetPasswordPage = () => {
                             <path d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" />
                         </svg>
                     </div>
-                    <h2 className="text-[#121717] dark:text-white text-xl font-extrabold tracking-tight">SIPNNA</h2>
+                    <h2 className="text-[#121717] dark:text-white text-xl font-extrabold tracking-tight">Sistema Protección Derechos NnyA Municipal</h2>
                 </div>
             </header>
 

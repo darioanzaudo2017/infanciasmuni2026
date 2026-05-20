@@ -32,6 +32,7 @@ const Sidebar = () => {
     const menuItems = [
         { title: 'Panel de Control', icon: 'dashboard', path: '/' },
         { title: 'Expedientes', icon: 'folder_shared', path: '/expedientes' },
+        { title: 'Alcance y Seguridad', icon: 'shield', path: '/alcance' },
         ...(canManageUsers ? [
             { title: 'Usuarios', icon: 'group', path: '/usuarios' },
             { title: 'Catálogo de Derechos', icon: 'gavel', path: '/derechos' },

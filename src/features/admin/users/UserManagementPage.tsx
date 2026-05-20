@@ -139,12 +139,12 @@ const UserManagementPage: React.FC = () => {
             const { error: sendError } = await supabase.functions.invoke('send-email', {
                 body: {
                     to: invitingUser.email,
-                    subject: "Invitación al Sistema de Protección de Derechos NNyA",
+                    subject: "Invitación al Sistema Protección Derechos NnyA Municipal",
                     html: `
                         <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
-                            <div style="background-color: #1a2e2e; padding: 20px; text-align: center;">
-                                <h1 style="color: white; margin: 0; font-size: 20px;">Sistema de Protección de Derechos NNyA</h1>
-                            </div>
+                             <div style="background-color: #1a2e2e; padding: 20px; text-align: center;">
+                                 <h1 style="color: white; margin: 0; font-size: 20px;">Sistema Protección Derechos NnyA Municipal</h1>
+                             </div>
                             <div style="padding: 30px;">
                                 <h2 style="color: #1a2e2e; margin-top: 0;">¡Hola ${invitingUser.nombre_completo}!</h2>
                                 <p>Te recordamos que se ha creado tu cuenta institucional en nuestra plataforma y aún no has activado tu acceso.</p>
@@ -460,7 +460,7 @@ const UserManagementPage: React.FC = () => {
                         <div className="flex flex-col gap-3 w-full">
                             <button
                                 onClick={() => {
-                                    const subject = encodeURIComponent("Invitación al Sistema de Protección de Derechos NNyA");
+                                    const subject = encodeURIComponent("Invitación al Sistema Protección Derechos NnyA Municipal");
                                     const body = encodeURIComponent(
                                         `Hola ${invitingUser.nombre_completo},\n\n` +
                                         `Se ha generado un nuevo acceso a tu cuenta en el sistema. Para activar tu acceso y configurar tu contraseña, por favor haz clic en el siguiente enlace:\n\n` +

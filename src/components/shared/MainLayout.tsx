@@ -30,7 +30,7 @@ const MainLayout = () => {
                     </div>
 
                     <footer className="px-8 py-4 text-[10px] text-[#60708a] flex justify-between items-center opacity-60">
-                        <p>© 2024 SIPNNA - Sistema de Gestión de Protección Integral de Niñez, Adolescencia y Familia</p>
+                        <p>© 2024 Sistema Protección Derechos NnyA Municipal</p>
                         <div className="flex gap-4">
                             <span className="flex items-center gap-1">
                                 <div className="size-1.5 bg-success rounded-full"></div>

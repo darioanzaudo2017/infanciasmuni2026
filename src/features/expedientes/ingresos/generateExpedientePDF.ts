@@ -653,7 +653,7 @@ export const generateExpedientePDF = async (
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
         doc.text(
-            `Página ${i} de ${pageCount} • SIPNNA - Sistema de Protección Integral`,
+            `Página ${i} de ${pageCount} • Sistema Protección Derechos NnyA Municipal`,
             pageWidth / 2,
             pageHeight - 10,
             { align: 'center' }

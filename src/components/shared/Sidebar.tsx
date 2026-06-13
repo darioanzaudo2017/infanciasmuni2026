@@ -113,7 +113,7 @@ const Sidebar = () => {
                 </div>
                 <div className="mt-2 px-2 flex flex-col gap-0.5">
                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Versión 1.0.0</p>
-                    <p className="text-[9px] text-gray-400">Actualizado: 13/04/2026 21:10</p>
+                    <p className="text-[9px] text-gray-400">Actualizado: 13/06/2026 14:30</p>
                 </div>
             </div>
         </aside>

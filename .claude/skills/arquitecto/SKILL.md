@@ -61,6 +61,20 @@ No leer ninguna skill todavía.
 3. Si sí → cargar `vercel-deploy`
 4. Antes de cualquier push a main → ofrecer: "¿Querés que haga una auditoría de seguridad primero?"
 
+### Antes de cualquier push a main — actualizar fecha de versión
+
+**Siempre** antes de hacer `git push`, actualizar la fecha en `src/components/shared/Sidebar.tsx`:
+
+```tsx
+// Buscar esta línea y actualizar con la fecha actual (formato dd/mm/yyyy hh:mm):
+<p className="text-[9px] text-gray-400">Actualizado: 13/04/2026 21:10</p>
+```
+
+Reemplazar con la fecha y hora local del momento del commit. Ejemplo:
+```tsx
+<p className="text-[9px] text-gray-400">Actualizado: 13/06/2026 14:30</p>
+```
+
 ### Auditoría de seguridad
 1. Ofrecer: "La auditoría cubre 5 capas: keys expuestas, .gitignore, git history, RLS y MCP. ¿Arranco?"
 2. Si sí → cargar `security-audit`

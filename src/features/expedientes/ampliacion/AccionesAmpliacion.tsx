@@ -18,6 +18,16 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
     const [selectedIntervencion, setSelectedIntervencion] = useState<any | null>(null);
     const [editingIntervencion, setEditingIntervencion] = useState<any | null>(null);
+    const [busquedaProfesional, setBusquedaProfesional] = useState('');
+
+    type Participante = {
+        nombre: string;
+        vinculo: string;
+        tipo_entrevistado: string;
+        dni: string;
+        edad: string;
+        convive: boolean;
+    };
 
     // Form state for new intervention
     const [newIntervencion, setNewIntervencion] = useState({
@@ -39,8 +49,34 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
         asistencia: 'Asistió',
         profesionales_ids: [] as string[],
         documentos: [] as { file: File; nombre: string; subcategoria: string }[],
-        es_grupal: false
+        es_grupal: false,
+        participantes: [] as Participante[]
     });
+
+    const participanteVacio = (): Participante => ({
+        nombre: '',
+        vinculo: 'Padre/Madre',
+        tipo_entrevistado: 'Adulto',
+        dni: '',
+        edad: '',
+        convive: false
+    });
+
+    const addParticipante = () => {
+        setNewIntervencion(prev => ({ ...prev, participantes: [...prev.participantes, participanteVacio()] }));
+    };
+
+    const updateParticipante = (idx: number, field: keyof Participante, value: string | boolean) => {
+        setNewIntervencion(prev => {
+            const updated = [...prev.participantes];
+            updated[idx] = { ...updated[idx], [field]: value };
+            return { ...prev, participantes: updated };
+        });
+    };
+
+    const removeParticipante = (idx: number) => {
+        setNewIntervencion(prev => ({ ...prev, participantes: prev.participantes.filter((_, i) => i !== idx) }));
+    };
 
     const calculateAge = (birthDate: string) => {
         if (!birthDate) return '';
@@ -89,7 +125,8 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
             asistencia: item.asistencia,
             profesionales_ids: (item.form2_intervencion_profesionales || []).map((p: any) => p.usuario_id),
             documentos: [],
-            es_grupal: false
+            es_grupal: false,
+            participantes: (item.participantes || []) as Participante[]
         });
         setIsModalOpen(true);
     };
@@ -156,7 +193,8 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 fortalezas: newIntervencion.fortalezas,
                 observaciones_sugerencias: newIntervencion.observaciones_sugerencias,
                 asistencia: newIntervencion.asistencia,
-                es_grupal: newIntervencion.es_grupal
+                es_grupal: newIntervencion.es_grupal,
+                participantes: newIntervencion.participantes.length > 0 ? newIntervencion.participantes : []
             };
 
             // 2. Save main intervention
@@ -280,6 +318,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
 
             setIsModalOpen(false);
             setEditingIntervencion(null);
+            setBusquedaProfesional('');
             setNewIntervencion({
                 tipo_entrevistado: 'Adulto',
                 fecha: format(new Date(), 'yyyy-MM-dd'),
@@ -299,7 +338,8 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                 asistencia: 'Asistió',
                 profesionales_ids: [],
                 documentos: [],
-                es_grupal: false
+                es_grupal: false,
+                participantes: []
             });
             void fetchIntervenciones();
         } catch (error: any) {
@@ -334,6 +374,29 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                         <div className="flex gap-3 relative z-10">
                             <button onClick={() => {
                                 setEditingIntervencion(null);
+                                setNewIntervencion({
+                                    tipo_entrevistado: 'Adulto',
+                                    fecha: format(new Date(), 'yyyy-MM-dd'),
+                                    hora: format(new Date(), 'HH:mm'),
+                                    entrevistado_nombre: '',
+                                    vinculo: 'Padre/Madre',
+                                    convive: false,
+                                    telefono: '',
+                                    dni: '',
+                                    edad: '',
+                                    ocupacion: '',
+                                    direccion: '',
+                                    nombre_institucion: '',
+                                    registro: '',
+                                    fortalezas: '',
+                                    observaciones_sugerencias: '',
+                                    asistencia: 'Asistió',
+                                    profesionales_ids: [],
+                                    documentos: [],
+                                    es_grupal: false,
+                                    participantes: []
+                                });
+                                setBusquedaProfesional('');
                                 setIsModalOpen(true);
                             }} className="px-6 h-14 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
                                 <span className="material-symbols-outlined text-xl">add_box</span>
@@ -489,6 +552,12 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
                                                     {item.vinculo} • {item.tipo_entrevistado}
                                                 </span>
+                                                {(item.participantes || []).length > 0 && (
+                                                    <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-xs">group</span>
+                                                        +{item.participantes.length} participante{item.participantes.length > 1 ? 's' : ''}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -509,9 +578,9 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div>
                                 <h2 className="text-[#111418] dark:text-white text-2xl font-black leading-tight uppercase tracking-tight">
-                                    {editingIntervencion ? 'Editar Intervención' : 'Registro de Intervención'}
+                                    {editingIntervencion ? 'Editar Intervención' : 'Ampliación y verificación de información'}
                                 </h2>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Etapa 2 - Ampliación de Información</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Etapa 2 - Ampliación y Verificación de Información</p>
                             </div>
                             <button onClick={() => {
                                 setIsModalOpen(false);
@@ -649,8 +718,10 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <option>Padre/Madre</option>
-                                                        <option>Padre afín / Madre afín</option>
+                                                        <option>Madre</option>
+                                                        <option>Padre</option>
+                                                        <option>Madre afín</option>
+                                                        <option>Padre afín</option>
                                                         <option>Hermano/a</option>
                                                         <option>Abuelo/a materno</option>
                                                         <option>Abuelo/a paterno</option>
@@ -660,7 +731,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                                         <option>Primo/a paterno</option>
                                                         <option>Referente afectivo</option>
                                                         <option>Vecino/a</option>
-                                                        <option>Otros</option>
+                                                        <option>Otro</option>
                                                     </>
                                                 )}
                                             </select>
@@ -700,15 +771,17 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                             />
                                         </div>
                                     )}
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Ocupación</label>
-                                        <input
-                                            className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
-                                            placeholder="Profesión u oficio"
-                                            value={newIntervencion.ocupacion}
-                                            onChange={e => setNewIntervencion({ ...newIntervencion, ocupacion: e.target.value })}
-                                        />
-                                    </div>
+                                    {newIntervencion.tipo_entrevistado !== 'Institución' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Ocupación</label>
+                                            <input
+                                                className="w-full h-14 rounded-2xl border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                                placeholder="Profesión u oficio"
+                                                value={newIntervencion.ocupacion}
+                                                onChange={e => setNewIntervencion({ ...newIntervencion, ocupacion: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Dirección</label>
                                         <input
@@ -730,10 +803,163 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 </div>
                             </section>
 
+                            {/* Participantes adicionales */}
+                            <section className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-[#111418] dark:text-white text-sm font-black uppercase tracking-widest flex items-center gap-3">
+                                        <span className="material-symbols-outlined text-primary">group</span>
+                                        Otros Participantes
+                                        {newIntervencion.participantes.length > 0 && (
+                                            <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-black">{newIntervencion.participantes.length}</span>
+                                        )}
+                                    </h3>
+                                    <button
+                                        onClick={addParticipante}
+                                        className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all flex items-center gap-2"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">person_add</span>
+                                        Agregar
+                                    </button>
+                                </div>
+
+                                {personasDisponibles.length > 0 && (
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sugerencias del grupo familiar / red de apoyo</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {personasDisponibles.map((p, i) => {
+                                                const yaAgregado = newIntervencion.participantes.some(
+                                                    part => part.nombre === `${p.nombre} ${p.apellido || ''}`.trim()
+                                                );
+                                                return (
+                                                    <button
+                                                        key={i}
+                                                        disabled={yaAgregado}
+                                                        onClick={() => {
+                                                            if (yaAgregado) return;
+                                                            setNewIntervencion(prev => ({
+                                                                ...prev,
+                                                                participantes: [...prev.participantes, {
+                                                                    nombre: `${p.nombre} ${p.apellido || ''}`.trim(),
+                                                                    vinculo: p.vinculo || 'Padre/Madre',
+                                                                    tipo_entrevistado: 'Adulto',
+                                                                    dni: p.dni?.toString() || '',
+                                                                    edad: p.edad?.toString() || calculateAge(p.fecha_nacimiento),
+                                                                    convive: p.convive || false
+                                                                }]
+                                                            }));
+                                                        }}
+                                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${yaAgregado ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-default' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-primary hover:text-primary'}`}
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">{yaAgregado ? 'check' : (p.source === 'Familiar' ? 'home' : 'group')}</span>
+                                                        {p.nombre} ({p.vinculo})
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {newIntervencion.participantes.length === 0 ? (
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center py-4">Sin participantes adicionales</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {newIntervencion.participantes.map((p, idx) => (
+                                            <div key={idx} className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-black text-primary uppercase tracking-widest">Participante {idx + 1}</span>
+                                                    <button onClick={() => removeParticipante(idx)} className="p-1 text-rose-400 hover:text-rose-600 transition-colors">
+                                                        <span className="material-symbols-outlined text-lg">close</span>
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nombre</label>
+                                                        <input
+                                                            className="w-full h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                                            placeholder="Nombre completo"
+                                                            value={p.nombre}
+                                                            onChange={e => updateParticipante(idx, 'nombre', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tipo</label>
+                                                        <div className="flex h-11 items-center justify-center rounded-xl bg-slate-200/50 dark:bg-slate-700/50 p-1">
+                                                            {['Adulto', 'NNyA', 'Institución'].map(type => (
+                                                                <button
+                                                                    key={type}
+                                                                    onClick={() => updateParticipante(idx, 'tipo_entrevistado', type)}
+                                                                    className={`flex-1 h-full rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${p.tipo_entrevistado === type ? 'bg-white dark:bg-slate-700 text-primary shadow-sm' : 'text-slate-500'}`}
+                                                                >
+                                                                    {type}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Vínculo</label>
+                                                        <select
+                                                            className="w-full h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-bold focus:ring-2 focus:ring-primary outline-none appearance-none"
+                                                            value={p.vinculo}
+                                                            onChange={e => updateParticipante(idx, 'vinculo', e.target.value)}
+                                                        >
+                                                            <option>Madre</option>
+                                                            <option>Padre</option>
+                                                            <option>Madre afín</option>
+                                                            <option>Padre afín</option>
+                                                            <option>Hermano/a</option>
+                                                            <option>Abuelo/a materno</option>
+                                                            <option>Abuelo/a paterno</option>
+                                                            <option>Tío/a materno</option>
+                                                            <option>Tío/a paterno</option>
+                                                            <option>Primo/a materno</option>
+                                                            <option>Primo/a paterno</option>
+                                                            <option>NNyA</option>
+                                                            <option>Referente afectivo</option>
+                                                            <option>Vecino/a</option>
+                                                            <option>Otro</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">DNI</label>
+                                                        <input
+                                                            className="w-full h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                                            placeholder="Sin puntos"
+                                                            value={p.dni}
+                                                            onChange={e => updateParticipante(idx, 'dni', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Edad</label>
+                                                        <input
+                                                            className="w-full h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                                                            type="number"
+                                                            placeholder="Años"
+                                                            value={p.edad}
+                                                            onChange={e => updateParticipante(idx, 'edad', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-3 pt-5">
+                                                        <div
+                                                            onClick={() => updateParticipante(idx, 'convive', !p.convive)}
+                                                            className={`size-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer ${p.convive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}
+                                                        >
+                                                            {p.convive && <span className="material-symbols-outlined text-[12px]">check</span>}
+                                                        </div>
+                                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">¿Convive con el NNyA?</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+
                             {/* Summary / Record */}
                             <section className="space-y-6">
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Relato y Hallazgos de la Intervención</label>
+                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">
+                                        {newIntervencion.tipo_entrevistado === 'Institución' ? 'Relato' : 'Relato y Hallazgos de la Intervención'}
+                                    </label>
                                     <textarea
                                         className="w-full p-8 rounded-[32px] border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold italic focus:ring-2 focus:ring-primary outline-none shadow-sm min-h-[160px]"
                                         placeholder="Describa aquí lo conversado, clima de la entrevista, preocupaciones detectadas y compromisos asumidos..."
@@ -743,20 +969,24 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 </div>
 
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Fortalezas</label>
+                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">
+                                        {newIntervencion.tipo_entrevistado === 'Institución' ? 'Observaciones' : 'Fortalezas'}
+                                    </label>
                                     <textarea
                                         className="w-full p-6 rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold focus:ring-2 focus:ring-primary outline-none shadow-sm min-h-[100px]"
-                                        placeholder="Registre aquí las fortalezas detectadas durante la intervención..."
+                                        placeholder={newIntervencion.tipo_entrevistado === 'Institución' ? 'Observaciones sobre la situación...' : 'Registre aquí las fortalezas detectadas durante la intervención...'}
                                         value={newIntervencion.fortalezas}
                                         onChange={e => setNewIntervencion({ ...newIntervencion, fortalezas: e.target.value })}
                                     />
                                 </div>
 
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Observaciones y Sugerencias</label>
+                                    <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">
+                                        {newIntervencion.tipo_entrevistado === 'Institución' ? 'Acuerdos' : 'Observaciones y Sugerencias'}
+                                    </label>
                                     <textarea
                                         className="w-full p-6 rounded-2xl border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold focus:ring-2 focus:ring-primary outline-none shadow-sm min-h-[100px]"
-                                        placeholder="Propuestas, derivaciones o sugerencias de acción..."
+                                        placeholder={newIntervencion.tipo_entrevistado === 'Institución' ? 'Acuerdos alcanzados con la institución...' : 'Propuestas, derivaciones o sugerencias de acción...'}
                                         value={newIntervencion.observaciones_sugerencias}
                                         onChange={e => setNewIntervencion({ ...newIntervencion, observaciones_sugerencias: e.target.value })}
                                     />
@@ -788,8 +1018,25 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                             {/* Professionals Selection (Tag style) */}
                             <section className="space-y-4">
                                 <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Profesionales Intervinientes</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {usuarios.map(u => {
+                                <input
+                                    type="text"
+                                    placeholder="Buscar profesional..."
+                                    value={busquedaProfesional}
+                                    onChange={e => setBusquedaProfesional(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                                />
+                                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                                    {usuarios
+                                        .filter(u =>
+                                            newIntervencion.profesionales_ids.includes(u.id) ||
+                                            u.nombre_completo.toLowerCase().includes(busquedaProfesional.toLowerCase())
+                                        )
+                                        .sort((a, b) => {
+                                            const aS = newIntervencion.profesionales_ids.includes(a.id);
+                                            const bS = newIntervencion.profesionales_ids.includes(b.id);
+                                            return aS === bS ? 0 : aS ? -1 : 1;
+                                        })
+                                        .map(u => {
                                         const isSel = newIntervencion.profesionales_ids.includes(u.id);
                                         return (
                                             <button
@@ -1116,6 +1363,29 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 </div>
                             </div>
                         </div>
+
+                        {(selectedIntervencion.participantes || []).length > 0 && (
+                            <div className="px-10 md:px-14 py-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+                                    <span className="material-symbols-outlined text-lg">group</span>
+                                    Otros Participantes ({selectedIntervencion.participantes.length})
+                                </h4>
+                                <div className="flex flex-wrap gap-3">
+                                    {(selectedIntervencion.participantes as Participante[]).map((p, i) => (
+                                        <div key={i} className="flex items-center gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                                            <span className="material-symbols-outlined text-sm text-slate-400">person</span>
+                                            <div>
+                                                <p className="text-xs font-black text-slate-700 dark:text-white">{p.nombre}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{p.vinculo} · {p.tipo_entrevistado}{p.edad ? ` · ${p.edad} años` : ''}</p>
+                                            </div>
+                                            {p.convive && (
+                                                <span className="text-[8px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest">Convive</span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="p-8 md:px-14 md:py-8 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
                             <div className="flex items-center gap-4">

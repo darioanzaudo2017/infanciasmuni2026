@@ -141,7 +141,7 @@ const IngresosPage: React.FC = () => {
                 .insert({
                     expediente_id: parseInt(id),
                     numero_ingreso: nextNumero,
-                    fecha_ingreso: new Date().toISOString().split('T')[0],
+                    fecha_ingreso: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
                     es_emergencia: false,
                     etapa: 'Recepción',
                     estado: 'Activo',
@@ -387,7 +387,7 @@ const IngresosPage: React.FC = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-5 text-sm font-medium text-[#111818] dark:text-gray-300">
-                                                    {format(new Date(ingreso.fecha_ingreso), "dd MMM yyyy", { locale: es })}
+                                                    {format(new Date(ingreso.fecha_ingreso + 'T12:00:00'), "dd MMM yyyy", { locale: es })}
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center gap-3">
@@ -430,7 +430,7 @@ const IngresosPage: React.FC = () => {
                                                         <div className="flex items-center gap-4 text-xs font-medium text-[#638888]">
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="material-symbols-outlined text-sm">event_busy</span>
-                                                                <span>Cerrado el: {ingreso.fecha_cierre && format(new Date(ingreso.fecha_cierre), "dd/MM/yyyy")}</span>
+                                                                <span>Cerrado el: {ingreso.fecha_cierre && format(new Date(ingreso.fecha_cierre + 'T12:00:00'), "dd/MM/yyyy")}</span>
                                                             </div>
                                                             <div className="flex items-center gap-1.5 flex-1">
                                                                 <span className="material-symbols-outlined text-sm">chat_bubble</span>

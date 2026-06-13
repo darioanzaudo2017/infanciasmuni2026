@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -186,9 +187,18 @@ const Dashboard = () => {
     return (
         <div>
             {/* Título */}
-            <div className="mb-6">
-                <h2 className="text-2xl font-bold tracking-tight dark:text-white">Panel de Control</h2>
-                <p className="text-[#60708a] mt-1">Estado general del sistema según tu perfil de acceso.</p>
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">Panel de Control</h2>
+                    <p className="text-[#60708a] mt-1">Estado general del sistema según tu perfil de acceso.</p>
+                </div>
+                <Link
+                    to="/expedientes/nuevo"
+                    className="flex items-center gap-2 px-6 h-12 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                >
+                    <span className="material-symbols-outlined text-xl">add_box</span>
+                    Nuevo Expediente
+                </Link>
             </div>
 
             {/* Filtros */}

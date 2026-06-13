@@ -36,7 +36,7 @@ export async function crearExpedienteConIngreso(
                     nombre: ninoData.nombre,
                     apellido: ninoData.apellido,
                     fecha_nacimiento: ninoData.fecha_nacimiento,
-                    genero: ninoData.genero
+                    genero: ninoData.genero || null
                 })
                 .select()
                 .single();
@@ -71,7 +71,7 @@ export async function crearExpedienteConIngreso(
             zona_id: zonaId,
             profesional_id: usuarioId,
             numero: numeroExpediente,
-            fecha_apertura: new Date().toISOString().split('T')[0],
+            fecha_apertura: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
             activo: true
         })
         .select()
@@ -84,7 +84,7 @@ export async function crearExpedienteConIngreso(
         .insert({
             expediente_id: expediente.id,
             numero_ingreso: 1,
-            fecha_ingreso: new Date().toISOString().split('T')[0],
+            fecha_ingreso: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
             etapa: 'recepcion',
             estado: 'abierto',
             profesional_asignado_id: usuarioId,

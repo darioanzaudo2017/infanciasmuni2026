@@ -737,13 +737,6 @@ const IngresoDetail = () => {
                     </div>
 
                     {/* Micro Stats Row */}
-                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center hover:shadow-lg transition-shadow">
-                        <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none mb-1">Profesional</p>
-                        <p className="text-[#111818] dark:text-white text-sm font-bold truncate">
-                            {ingreso.profesional_asignado_nombre || 'Sin asignar'}
-                        </p>
-                    </div>
-
                     <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center border-l-4 border-l-primary hover:shadow-lg transition-shadow">
                         <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none mb-1">Días Totales</p>
                         <div className="flex items-center gap-2">
@@ -1004,7 +997,7 @@ const IngresoDetail = () => {
                                         </div>
 
                                         <div className="bg-gradient-to-br from-primary/5 to-transparent p-8 rounded-3xl border border-primary/20 shadow-lg">
-                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Plan de Acción</h4>
+                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Medidas de Protección Integral sugeridas</h4>
                                             <p className="text-slate-800 dark:text-white font-medium leading-relaxed whitespace-pre-wrap text-sm">
                                                 {ingreso.informe_sintesis.plan_accion || 'Sin contenido.'}
                                             </p>
@@ -1136,7 +1129,7 @@ const IngresoDetail = () => {
                                         <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${ingreso.estado === 'cerrado' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                             {ingreso.estado === 'cerrado' ? 'Proceso Finalizado' : 'Proceso en Trámite'}
                                         </span>
-                                        <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tighter">Fecha: {format(new Date(ingreso.fecha_ingreso), "dd/MM/yyyy")}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tighter">Fecha: {format(new Date(ingreso.fecha_ingreso + 'T12:00:00'), "dd/MM/yyyy")}</p>
                                     </div>
                                 </div>
 
@@ -1461,7 +1454,7 @@ const IngresoDetail = () => {
                                             <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-800 rounded-lg">
                                                 <span className="material-symbols-outlined text-sm text-danger">event</span>
                                                 <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                                                    Fecha de Cierre: {ingreso.cese.fecha_cierre ? format(new Date(ingreso.cese.fecha_cierre), "dd/MM/yyyy", { locale: es }) : 'N/A'}
+                                                    Fecha de Cierre: {ingreso.cese.fecha_cierre ? format(new Date(ingreso.cese.fecha_cierre + 'T12:00:00'), "dd/MM/yyyy", { locale: es }) : 'N/A'}
                                                 </span>
                                             </div>
                                         </div>
@@ -1547,7 +1540,7 @@ const IngresoDetail = () => {
                                             <div className="mt-4 text-center">
                                                 <h3 className="text-xl font-bold text-slate-800 dark:text-white">Recepción</h3>
                                                 <p className="text-sm text-slate-500 font-semibold">
-                                                    {format(new Date(ingreso.fecha_ingreso), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                                                    {format(new Date(ingreso.fecha_ingreso + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: es })}
                                                 </p>
                                             </div>
 
@@ -1711,7 +1704,7 @@ const IngresoDetail = () => {
                                                 <div className="mt-4 text-center">
                                                     <h3 className="text-xl font-bold text-slate-800 dark:text-white">Cese</h3>
                                                     <p className="text-sm text-slate-500 font-semibold">
-                                                        {ingreso.cese.fecha_cierre && format(new Date(ingreso.cese.fecha_cierre), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                                                        {ingreso.cese.fecha_cierre && format(new Date(ingreso.cese.fecha_cierre + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: es })}
                                                     </p>
                                                 </div>
 

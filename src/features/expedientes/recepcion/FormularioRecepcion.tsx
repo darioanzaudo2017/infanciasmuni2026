@@ -56,6 +56,7 @@ const INITIAL_FORM_DATA = {
     vulneraciones: [{ derecho_id: '', indicador: '', observaciones: '' }] as any[],
     decision_id: 'asesoramiento' as 'asesoramiento' | 'derivacion' | 'abordaje_integral',
     observaciones_cierre: '',
+    origen_consulta: '',
     derivacion: {
         via_ingreso: '',
         institucion_id: '',
@@ -210,6 +211,7 @@ const FormularioRecepcion: React.FC = () => {
                     expediente_id: exp.id,
                     spd_id: exp.servicio_proteccion_id,
                     zona_id: exp.zona_id,
+                    origen_consulta: ingreso.origen_consulta || '',
                     derivacion: {
                         via_ingreso: derivacion?.via_ingreso || '',
                         institucion_id: derivacion?.institucion_id || '',
@@ -618,7 +620,7 @@ const FormularioRecepcion: React.FC = () => {
                 apellido: formData.apellido,
                 dni: formData.dni ? parseInt(String(formData.dni).replace(/\D/g, '')) : null,
                 fecha_nacimiento: formData.fecha_nacimiento || null,
-                genero: formData.genero,
+                genero: formData.genero || null,
                 domicilio: formData.domicilio,
                 localidad: formData.localidad,
                 barrio: formData.barrio,
@@ -700,7 +702,7 @@ const FormularioRecepcion: React.FC = () => {
                         zona_id: zonaId,
                         profesional_id: userProfile?.id,
                         numero: `EXP-${year}-${randomNum}`,
-                        fecha_apertura: new Date().toISOString().split('T')[0],
+                        fecha_apertura: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
                         activo: true
                     }).select().single();
 
@@ -719,7 +721,8 @@ const FormularioRecepcion: React.FC = () => {
 
             // 3. Create/Update Ingreso
             const isClosing = formData.decision_id === 'asesoramiento';
-            const today = new Date().toISOString().split('T')[0];
+            const d = new Date();
+            const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             let currentIngresoId = ingresoId;
 
             if (currentIngresoId) {
@@ -729,7 +732,8 @@ const FormularioRecepcion: React.FC = () => {
                     estado: isClosing ? 'cerrado' : 'abierto',
                     fecha_cierre: isClosing ? today : null,
                     motivo_cierre: isClosing ? 'Asesoramiento Finalizado' : null,
-                    ultimo_usuario_id: userProfile?.id
+                    ultimo_usuario_id: userProfile?.id,
+                    origen_consulta: formData.origen_consulta || null
                 }).eq('id', currentIngresoId);
                 if (ingErr) throw ingErr;
             } else {
@@ -742,7 +746,8 @@ const FormularioRecepcion: React.FC = () => {
                     etapa: formData.decision_id === 'abordaje_integral' ? 'ampliacion' : 'recepcion',
                     estado: isClosing ? 'cerrado' : 'abierto',
                     fecha_cierre: isClosing ? today : null,
-                    motivo_cierre: isClosing ? 'Asesoramiento Finalizado' : null
+                    motivo_cierre: isClosing ? 'Asesoramiento Finalizado' : null,
+                    origen_consulta: formData.origen_consulta || null
                 }).select().single();
 
                 if (ingErr) throw ingErr;
@@ -927,7 +932,7 @@ const FormularioRecepcion: React.FC = () => {
             {/* Sidebar Navigation */}
             <aside className="w-80 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col overflow-y-auto hidden lg:flex">
                 <div className="p-8">
-                    <h2 className="text-xs font-bold text-[#60708a] mb-6 uppercase tracking-[0.2em]">Recepcion de la demanda</h2>
+                    <h2 className="text-xs font-bold text-[#60708a] mb-6 uppercase tracking-[0.2em]">Recepción de la Demanda</h2>
                     <nav className="flex flex-col gap-2">
                         {steps.map((step) => {
                             const isActive = currentStep === step.id;
@@ -1282,6 +1287,22 @@ const FormularioRecepcion: React.FC = () => {
                                         <h3 className="text-lg font-bold tracking-tight">Origen de la Consulta / Derivación</h3>
                                     </div>
                                     <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="md:col-span-2">
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Origen de la Consulta</label>
+                                            <select
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                                value={formData.origen_consulta}
+                                                onChange={(e) => setFormData({ ...formData, origen_consulta: e.target.value })}
+                                            >
+                                                <option value="">Seleccionar origen...</option>
+                                                <option value="Inst. Educativa">Inst. Educativa</option>
+                                                <option value="Inst. de Salud">Inst. de Salud</option>
+                                                <option value="Familia">Familia</option>
+                                                <option value="Niño, Niña o Adolescente">Niño, Niña o Adolescente</option>
+                                                <option value="Persona de la comunidad">Persona de la comunidad</option>
+                                                <option value="Otro">Otro</option>
+                                            </select>
+                                        </div>
                                         <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Vía de Ingreso</label>
                                             <select
@@ -1705,6 +1726,8 @@ const FormularioRecepcion: React.FC = () => {
                                                                 <option value="">Seleccione una opción</option>
                                                                 <option>Madre</option>
                                                                 <option>Padre</option>
+                                                                <option>Madre afín</option>
+                                                                <option>Padre afín</option>
                                                                 <option>Hermano/a</option>
                                                                 <option>Abuelo/a materno</option>
                                                                 <option>Abuelo/a paterno</option>
@@ -1712,7 +1735,6 @@ const FormularioRecepcion: React.FC = () => {
                                                                 <option>Tío/a paterno</option>
                                                                 <option>Primo/a materno</option>
                                                                 <option>Primo/a paterno</option>
-                                                                <option>Madre afín / Padre afín</option>
                                                                 <option>Otro</option>
                                                             </select>
                                                         </div>

@@ -15,6 +15,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# Archivos de prueba/scratch locales
+scratch/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

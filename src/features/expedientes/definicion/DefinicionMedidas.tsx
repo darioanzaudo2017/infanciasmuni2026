@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
@@ -16,6 +16,7 @@ const DefinicionMedidas = () => {
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const savingRef = useRef(false);
 
     // Form state
     const [newMedida, setNewMedida] = useState<{
@@ -86,7 +87,8 @@ const DefinicionMedidas = () => {
     }, [ingresoId]);
 
     const handleSaveMedida = async () => {
-        if (!ingresoId || !newMedida.medida_propuesta || saving) return;
+        if (!ingresoId || !newMedida.medida_propuesta || savingRef.current) return;
+        savingRef.current = true;
         setSaving(true);
         try {
             // Save Medida
@@ -152,6 +154,7 @@ const DefinicionMedidas = () => {
             alert('Error al guardar la medida');
         } finally {
             setSaving(false);
+            savingRef.current = false;
         }
     };
 

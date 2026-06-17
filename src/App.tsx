@@ -22,6 +22,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import DerechosManagementPage from './features/admin/derechos/DerechosManagementPage';
 import SetPasswordPage from './features/auth/SetPasswordPage';
 import AlcanceSistemaPage from './features/help/AlcanceSistemaPage';
+import SpdManagementPage from './features/admin/spd/SpdManagementPage';
 
 function App() {
   return (
@@ -53,7 +54,7 @@ function App() {
           <Route path="expedientes/:expedienteId/senaf/:ingresoId/resumen" element={<SolicitudSenafSummary />} />
           <Route path="reportes" element={<div>Reportes</div>} />
           <Route path="alcance" element={<AlcanceSistemaPage />} />
-          <Route path="configuracion" element={<div>Configuración</div>} />
+          <Route path="configuracion" element={<SpdManagementPage />} />
         </Route>
 
         {/* Protected Standalone Routes */}

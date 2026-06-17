@@ -68,18 +68,20 @@ const Sidebar = () => {
                 ))}
 
                 <div className="mt-6 pt-6 border-t border-[#f0f2f5] dark:border-[#333] flex flex-col gap-1">
-                    <NavLink
-                        to="/configuracion"
-                        className={({ isActive }) => `
+                    {canManageUsers && (
+                        <NavLink
+                            to="/configuracion"
+                            className={({ isActive }) => `
               flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
               ${isActive
                                 ? 'bg-primary/10 text-primary font-semibold'
                                 : 'text-[#60708a] hover:bg-gray-100 dark:hover:bg-zinc-800'}
             `}
-                    >
-                        <span className="material-symbols-outlined text-[20px]">settings</span>
-                        <span className="text-sm">Configuración</span>
-                    </NavLink>
+                        >
+                            <span className="material-symbols-outlined text-[20px]">settings</span>
+                            <span className="text-sm">Configuración SPD</span>
+                        </NavLink>
+                    )}
                     <button
                         onClick={handleLogout}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors mt-1 w-full text-left"
@@ -113,7 +115,7 @@ const Sidebar = () => {
                 </div>
                 <div className="mt-2 px-2 flex flex-col gap-0.5">
                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Versión 1.0.0</p>
-                    <p className="text-[9px] text-gray-400">Actualizado: 13/06/2026 14:30</p>
+                    <p className="text-[9px] text-gray-400">Actualizado: 17/06/2026 10:00</p>
                 </div>
             </div>
         </aside>

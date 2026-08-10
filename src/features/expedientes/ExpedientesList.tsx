@@ -30,14 +30,23 @@ interface ExpedienteRow {
     nino_dni: number;
     ultimo_profesional: string;
     spd_nombre: string;
+    ultima_seccion: string | null;
+    ultima_seccion_fecha: string | null;
+    creado_por_nombre: string | null;
+    creado_por_fecha: string | null;
 }
+
+const PAGE_SIZE = 20;
 
 const ExpedientesList = () => {
     const [expedientes, setExpedientes] = useState<ExpedienteRow[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('Activos');
     const [userRole, setUserRole] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
 
     // Modal anulación
     const [anulando, setAnulando] = useState<ExpedienteRow | null>(null);
@@ -46,15 +55,53 @@ const ExpedientesList = () => {
 
     const { notifications } = useNotifications();
 
+    // Debounce del texto de búsqueda para no disparar una consulta por cada tecla
     useEffect(() => {
-        const fetchAll = async () => {
-            setLoading(true);
+        const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm.trim()), 350);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Volver a la página 1 cuando cambian los filtros/búsqueda
+    useEffect(() => {
+        setPage(1);
+    }, [statusFilter, debouncedSearchTerm]);
+
+    const fetchExpedientes = async () => {
+        setLoading(true);
+        try {
+            let query = supabase.from('vw_expedientes_list').select('*', { count: 'exact' });
+
+            if (statusFilter === 'Activos') query = query.eq('activo', true).eq('anulado', false);
+            if (statusFilter === 'Cerrados') query = query.eq('activo', false).eq('anulado', false);
+            if (statusFilter === 'Anulados') query = query.eq('anulado', true);
+
+            if (debouncedSearchTerm) {
+                const term = debouncedSearchTerm.replace(/[,()]/g, '');
+                query = query.or(`numero.ilike.*${term}*,nino_nombre.ilike.*${term}*,nino_apellido.ilike.*${term}*,nino_dni_texto.ilike.*${term}*`);
+            }
+
+            const from = (page - 1) * PAGE_SIZE;
+            const to = from + PAGE_SIZE - 1;
+            query = query.order('created_at', { ascending: false }).range(from, to);
+
+            const { data, count, error } = await query;
+            if (error) throw error;
+            setExpedientes((data || []) as any);
+            setTotalCount(count || 0);
+        } catch (error) {
+            console.error('Error fetching expedientes:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Se separa de fetchUserRole: un hipo interno de Supabase en auth.getUser()
+        // (ej. AbortError del lock de sesión entre pestañas) no debe impedir que
+        // se cargue la lista de expedientes.
+        const fetchUserRole = async () => {
             try {
-                const [{ data }, { data: { user } }] = await Promise.all([
-                    supabase.from('vw_expedientes_list').select('*').order('created_at', { ascending: false }),
-                    supabase.auth.getUser()
-                ]);
-                if (data) setExpedientes(data as any);
+                const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     const { data: profile } = await supabase
                         .from('usuarios')
@@ -64,31 +111,20 @@ const ExpedientesList = () => {
                     setUserRole((profile as any)?.usuarios_roles?.[0]?.roles?.nombre || null);
                 }
             } catch (error) {
-                console.error('Error fetching expedientes:', error);
-            } finally {
-                setLoading(false);
+                console.error('Error fetching user role:', error);
             }
         };
-        void fetchAll();
+
+        void fetchUserRole();
     }, []);
 
+    useEffect(() => {
+        void fetchExpedientes();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, statusFilter, debouncedSearchTerm]);
+
     const canAnular = userRole === 'Administrador' || userRole === 'Coordinador';
-
-    const filteredExpedientes = (expedientes || []).filter((row: ExpedienteRow) => {
-        const search = searchTerm.toLowerCase();
-        const matchesSearch = row.numero?.toLowerCase().includes(search) ||
-            row.nino_nombre?.toLowerCase().includes(search) ||
-            row.nino_apellido?.toLowerCase().includes(search) ||
-            row.nino_dni?.toString().includes(search);
-
-        let matchesStatus = true;
-        if (statusFilter === 'Activos') matchesStatus = row.activo === true && !row.anulado;
-        if (statusFilter === 'Cerrados') matchesStatus = row.activo === false && !row.anulado;
-        if (statusFilter === 'Anulados') matchesStatus = row.anulado === true;
-        if (statusFilter === 'Todos') matchesStatus = true;
-
-        return matchesSearch && matchesStatus;
-    });
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     const handleAnular = async () => {
         if (!anulando || !motivoAnulacion.trim()) return;
@@ -105,11 +141,9 @@ const ExpedientesList = () => {
                 })
                 .eq('id', anulando.id);
             if (error) throw error;
-            setExpedientes(prev => prev.map(e =>
-                e.id === anulando.id ? { ...e, anulado: true, motivo_anulacion: motivoAnulacion.trim() } : e
-            ));
             setAnulando(null);
             setMotivoAnulacion('');
+            void fetchExpedientes();
         } catch (err: any) {
             alert('Error al anular: ' + err.message);
         } finally {
@@ -140,7 +174,7 @@ const ExpedientesList = () => {
                         <h1 className="text-2xl font-bold text-slate-900 leading-tight">Bandeja de Expedientes</h1>
                         {!loading && (
                             <span className="bg-primary/10 text-primary text-sm font-bold px-3 py-0.5 rounded-full border border-primary/20 shadow-sm">
-                                {filteredExpedientes.length} {filteredExpedientes.length === 1 ? 'resultado' : 'resultados'}
+                                {totalCount} {totalCount === 1 ? 'resultado' : 'resultados'}
                             </span>
                         )}
                     </div>
@@ -203,7 +237,7 @@ const ExpedientesList = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredExpedientes.map((row: ExpedienteRow) => (
+                                expedientes.map((row: ExpedienteRow) => (
                                     <tr key={row.id} className={`hover:bg-slate-50/50 transition-colors group ${row.anulado ? 'opacity-60 bg-rose-50/30' : ''} ${hasUnreadNotification(row) ? 'bg-amber-50/30' : ''}`}>
                                         <td className="px-6 py-5">
                                             <div className="flex flex-col gap-1 relative">
@@ -242,7 +276,20 @@ const ExpedientesList = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <span className="text-sm font-semibold text-slate-600">{row.ultimo_profesional || 'Sin asignar'}</span>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-semibold text-slate-600">{row.ultimo_profesional || 'Sin asignar'}</span>
+                                                {row.ultima_seccion && (
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                        {row.ultima_seccion}
+                                                        {row.ultima_seccion_fecha ? ` · ${format(new Date(row.ultima_seccion_fecha), 'dd/MM/yyyy')}` : ''}
+                                                    </span>
+                                                )}
+                                                {row.creado_por_nombre && (
+                                                    <span className="text-[9px] text-slate-300" title={row.creado_por_fecha ? format(new Date(row.creado_por_fecha), 'dd/MM/yyyy HH:mm') : ''}>
+                                                        Cargado por: {row.creado_por_nombre}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-1.5 bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 w-fit">
@@ -299,7 +346,7 @@ const ExpedientesList = () => {
                                     </tr>
                                 ))
                             )}
-                            {!loading && filteredExpedientes.length === 0 && (
+                            {!loading && expedientes.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-24 text-center">
                                         <div className="flex flex-col items-center gap-2">
@@ -312,8 +359,33 @@ const ExpedientesList = () => {
                         </tbody>
                     </table>
                 </div>
-                <div className="bg-slate-50/50 px-6 py-4 border-t border-slate-200 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                    <span>Mostrando {filteredExpedientes.length} de {expedientes.length} expedientes</span>
+                <div className="bg-slate-50/50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                    <span>
+                        {totalCount === 0
+                            ? 'Sin resultados'
+                            : `Mostrando ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)} de ${totalCount} expedientes`}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page <= 1 || loading}
+                            className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-white hover:text-primary disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                            title="Página anterior"
+                        >
+                            <span className="material-symbols-outlined text-lg leading-none block">chevron_left</span>
+                        </button>
+                        <span className="normal-case font-semibold text-slate-500 px-1">
+                            Página {page} de {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page >= totalPages || loading}
+                            className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-white hover:text-primary disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                            title="Página siguiente"
+                        >
+                            <span className="material-symbols-outlined text-lg leading-none block">chevron_right</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

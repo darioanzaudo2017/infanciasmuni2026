@@ -74,6 +74,7 @@ export async function registrarCeseIngreso(
             .update({
                 estado: 'cerrado',
                 etapa: 'cerrado',
+                fecha_cierre: payload.fecha_cierre,
                 ultimo_usuario_id: userId,
                 updated_at: new Date().toISOString()
             })

@@ -13,6 +13,7 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     const [usuarios, setUsuarios] = useState<any[]>([]);
+    const [busquedaEquipo, setBusquedaEquipo] = useState('');
 
     const [formData, setFormData] = useState({
         objetivos: '',
@@ -249,8 +250,25 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
                                 <span className="material-symbols-outlined text-primary">group</span>
                                 Equipo Asignado
                             </h2>
+                            <input
+                                type="text"
+                                placeholder="Buscar profesional..."
+                                value={busquedaEquipo}
+                                onChange={e => setBusquedaEquipo(e.target.value)}
+                                className="w-full px-4 py-2 mb-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                            />
                             <div className="flex-1 overflow-y-auto max-h-60 custom-scrollbar space-y-2 pr-2">
-                                {usuarios.map(u => {
+                                {usuarios
+                                    .filter(u =>
+                                        formData.equipo_ids.includes(u.id) ||
+                                        u.nombre_completo.toLowerCase().includes(busquedaEquipo.toLowerCase())
+                                    )
+                                    .sort((a, b) => {
+                                        const aS = formData.equipo_ids.includes(a.id);
+                                        const bS = formData.equipo_ids.includes(b.id);
+                                        return aS === bS ? 0 : aS ? -1 : 1;
+                                    })
+                                    .map(u => {
                                     const isSelected = formData.equipo_ids.includes(u.id);
                                     return (
                                         <div

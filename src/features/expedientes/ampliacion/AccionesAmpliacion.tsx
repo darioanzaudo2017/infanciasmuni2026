@@ -7,9 +7,10 @@ import Breadcrumbs from '../../../components/ui/Breadcrumbs';
 interface AccionesProps {
     ingreso: any;
     planificacion: any;
+    onUpdated: () => void;
 }
 
-const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion }) => {
+const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, onUpdated }) => {
     const [intervenciones, setIntervenciones] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -19,6 +20,20 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
     const [selectedIntervencion, setSelectedIntervencion] = useState<any | null>(null);
     const [editingIntervencion, setEditingIntervencion] = useState<any | null>(null);
     const [busquedaProfesional, setBusquedaProfesional] = useState('');
+    const [busquedaEquipo, setBusquedaEquipo] = useState('');
+    const [isEditingPlan, setIsEditingPlan] = useState(false);
+    const [isSavingPlan, setIsSavingPlan] = useState(false);
+    const [isHistorialOpen, setIsHistorialOpen] = useState(false);
+    const [historialEventos, setHistorialEventos] = useState<any[]>([]);
+    const [loadingHistorial, setLoadingHistorial] = useState(false);
+    const [versionSeleccionada, setVersionSeleccionada] = useState<any | null>(null);
+    const [editPlanData, setEditPlanData] = useState({
+        objetivos: '',
+        estrategias: '',
+        fecha_inicio: '',
+        fecha_fin_estimada: '',
+        equipo_ids: [] as string[]
+    });
 
     type Participante = {
         nombre: string;
@@ -165,6 +180,91 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
         void fetchUsuarios();
         void fetchPersonas();
     }, [ingreso.id]);
+
+    const handleOpenEditPlan = () => {
+        setEditPlanData({
+            objetivos: planificacion.objetivos || '',
+            estrategias: planificacion.estrategias || '',
+            fecha_inicio: planificacion.fecha_inicio || '',
+            fecha_fin_estimada: planificacion.fecha_fin_estimada || '',
+            equipo_ids: (planificacion.form2_equipo || []).map((m: any) => m.usuario_id)
+        });
+        setIsEditingPlan(true);
+    };
+
+    const handleOpenHistorial = async () => {
+        setVersionSeleccionada(null);
+        setIsHistorialOpen(true);
+        setLoadingHistorial(true);
+        try {
+            const { data } = await supabase
+                .from('auditoria')
+                .select('id, accion, usuario_id, datos_nuevos, created_at')
+                .eq('tabla', 'form2_planificacion')
+                .eq('registro_id', planificacion.id)
+                .order('created_at', { ascending: false });
+            setHistorialEventos(data || []);
+        } catch (error) {
+            console.error('Error al cargar historial del plan:', error);
+        } finally {
+            setLoadingHistorial(false);
+        }
+    };
+
+    const handleToggleEquipoEdit = (userId: string) => {
+        setEditPlanData(prev => ({
+            ...prev,
+            equipo_ids: prev.equipo_ids.includes(userId)
+                ? prev.equipo_ids.filter(id => id !== userId)
+                : [...prev.equipo_ids, userId]
+        }));
+    };
+
+    const handleSavePlan = async () => {
+        if (!editPlanData.objetivos || !editPlanData.estrategias) {
+            alert('Por favor complete objetivos y estrategias.');
+            return;
+        }
+
+        setIsSavingPlan(true);
+        try {
+            const { error: planErr } = await supabase.from('form2_planificacion').update({
+                objetivos: editPlanData.objetivos,
+                estrategias: editPlanData.estrategias,
+                fecha_inicio: editPlanData.fecha_inicio,
+                fecha_fin_estimada: editPlanData.fecha_fin_estimada
+            }).eq('id', planificacion.id);
+
+            if (planErr) throw planErr;
+
+            const idsActuales = (planificacion.form2_equipo || []).map((m: any) => m.usuario_id);
+            const idsAgregar = editPlanData.equipo_ids.filter(id => !idsActuales.includes(id));
+            const idsQuitar = idsActuales.filter((id: string) => !editPlanData.equipo_ids.includes(id));
+
+            if (idsAgregar.length > 0) {
+                const { error: addErr } = await supabase.from('form2_equipo').insert(
+                    idsAgregar.map(uid => ({ planificacion_id: planificacion.id, usuario_id: uid }))
+                );
+                if (addErr) throw addErr;
+            }
+
+            if (idsQuitar.length > 0) {
+                const { error: delErr } = await supabase.from('form2_equipo')
+                    .delete()
+                    .eq('planificacion_id', planificacion.id)
+                    .in('usuario_id', idsQuitar);
+                if (delErr) throw delErr;
+            }
+
+            setIsEditingPlan(false);
+            onUpdated();
+        } catch (error: any) {
+            console.error('Error updating plan:', error);
+            alert('Error al guardar: ' + error.message);
+        } finally {
+            setIsSavingPlan(false);
+        }
+    };
 
     const handleSaveIntervencion = async () => {
         if (!newIntervencion.entrevistado_nombre || !newIntervencion.registro) {
@@ -361,14 +461,14 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                             { label: 'Expedientes', path: '/expedientes' },
                             { label: 'Historial de Ingresos', path: `/expedientes/${ingreso.expediente_id}/ingresos` },
                             { label: 'Detalle de Legajo', path: `/expedientes/${ingreso.expediente_id}/ingresos/${ingreso.id}` },
-                            { label: 'Planificación y Ampliación', active: true }
+                            { label: 'Ampliación de Información', active: true }
                         ]}
                     />
 
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
                         <div className="absolute top-0 left-0 w-2 h-full bg-primary/20 group-hover:bg-primary transition-all"></div>
                         <div className="flex flex-col gap-2 relative z-10">
-                            <h1 className="text-[#111418] dark:text-white text-3xl font-black leading-tight tracking-tight">Acciones e Historial de Ampliación</h1>
+                            <h1 className="text-[#111418] dark:text-white text-3xl font-black leading-tight tracking-tight">Ampliación de Información</h1>
                             <p className="text-[#60728a] dark:text-slate-400 text-sm max-w-2xl font-medium italic">"{planificacion.objetivos.substring(0, 100)}..."</p>
                         </div>
                         <div className="flex gap-3 relative z-10">
@@ -400,7 +500,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 setIsModalOpen(true);
                             }} className="px-6 h-14 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
                                 <span className="material-symbols-outlined text-xl">add_box</span>
-                                <span>Nueva Intervención</span>
+                                <span>Nueva Acción</span>
                             </button>
                         </div>
                     </div>
@@ -432,7 +532,16 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
 
                         {/* Planning Info */}
                         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Detalles del Plan</h4>
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Plan de Ampliación</h4>
+                                <button
+                                    onClick={() => { handleOpenEditPlan(); setIsPlanModalOpen(true); }}
+                                    title="Editar plan de ampliación"
+                                    className="size-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-lg">edit</span>
+                                </button>
+                            </div>
                             <div className="space-y-4">
                                 <div className="flex gap-4">
                                     <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-xl h-fit">target</span>
@@ -451,7 +560,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => setIsPlanModalOpen(true)}
+                                    onClick={() => { setIsEditingPlan(false); setIsPlanModalOpen(true); }}
                                     className="w-full mt-2 py-3 bg-slate-50 dark:bg-slate-800 text-primary border border-primary/20 hover:border-primary rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2"
                                 >
                                     <span className="material-symbols-outlined text-lg">visibility</span>
@@ -466,7 +575,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-black tracking-tight text-[#111418] dark:text-white uppercase tracking-[0.05em] flex items-center gap-3">
                                 <span className="material-symbols-outlined text-primary">history</span>
-                                Historial de Intervenciones ({intervenciones.length})
+                                Acciones Registradas ({intervenciones.length})
                             </h2>
                         </div>
 
@@ -578,7 +687,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                         <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div>
                                 <h2 className="text-[#111418] dark:text-white text-2xl font-black leading-tight uppercase tracking-tight">
-                                    {editingIntervencion ? 'Editar Intervención' : 'Ampliación y verificación de información'}
+                                    {editingIntervencion ? 'Editar Acción' : 'Nueva Acción de Ampliación'}
                                 </h2>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Etapa 2 - Ampliación y Verificación de Información</p>
                             </div>
@@ -1114,6 +1223,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                                         <option>Copia de DNI</option>
                                                         <option>Certificado Médico</option>
                                                         <option>Oficio Judicial</option>
+                                                        <option>Ficha de Solicitud de Intervención</option>
                                                         <option>Otro</option>
                                                     </select>
                                                 </div>
@@ -1169,7 +1279,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 disabled={isSaving}
                                 className="bg-primary hover:bg-primary/90 text-white px-10 h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all font-bold disabled:opacity-50"
                             >
-                                {isSaving ? 'Guardando...' : editingIntervencion ? 'Actualizar Intervención' : 'Guardar Intervención'}
+                                {isSaving ? 'Guardando...' : editingIntervencion ? 'Actualizar Acción' : 'Guardar Acción'}
                             </button>
                         </div>
                     </div>
@@ -1186,62 +1296,209 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion })
                                 <h2 className="text-[#111418] dark:text-white text-2xl font-black leading-tight uppercase tracking-tight">Detalles de Planificación</h2>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Estrategias y Objetivos de la Intervención</p>
                             </div>
-                            <button onClick={() => setIsPlanModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                                <span className="material-symbols-outlined text-slate-500">close</span>
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {!isEditingPlan && (
+                                    <button
+                                        onClick={() => isHistorialOpen ? setIsHistorialOpen(false) : handleOpenHistorial()}
+                                        className={`h-10 px-4 flex items-center gap-2 rounded-xl transition-colors text-xs font-black uppercase tracking-widest ${isHistorialOpen ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}
+                                    >
+                                        <span className="material-symbols-outlined text-lg">history</span>
+                                        Ver Historial
+                                    </button>
+                                )}
+                                {!isEditingPlan && !versionSeleccionada && (
+                                    <button onClick={handleOpenEditPlan} className="h-10 px-4 flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-xs font-black uppercase tracking-widest text-primary">
+                                        <span className="material-symbols-outlined text-lg">edit</span>
+                                        Editar
+                                    </button>
+                                )}
+                                <button onClick={() => { setIsPlanModalOpen(false); setIsEditingPlan(false); setIsHistorialOpen(false); setVersionSeleccionada(null); }} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                    <span className="material-symbols-outlined text-slate-500">close</span>
+                                </button>
+                            </div>
                         </div>
+                        <div className="flex-1 flex overflow-hidden">
+                        {isHistorialOpen && (
+                            <div className="w-64 border-r border-slate-200 dark:border-slate-800 overflow-y-auto custom-scrollbar p-4 space-y-2 bg-slate-50/50 dark:bg-slate-800/20">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">Ediciones registradas</p>
+                                <button
+                                    onClick={() => setVersionSeleccionada(null)}
+                                    className={`w-full text-left p-3 rounded-xl border-2 transition-all ${!versionSeleccionada ? 'border-primary bg-primary/5' : 'border-transparent hover:border-slate-200 dark:hover:border-slate-700'}`}
+                                >
+                                    <p className="text-xs font-black text-primary">Versión Actual</p>
+                                </button>
+                                {loadingHistorial ? (
+                                    <p className="text-xs text-slate-400 px-2 py-4">Cargando...</p>
+                                ) : historialEventos.length === 0 ? (
+                                    <p className="text-[10px] text-slate-400 px-2 py-4">Todavía no hay ediciones registradas sobre este plan.</p>
+                                ) : (
+                                    historialEventos.map(evento => {
+                                        const editor = usuarios.find(u => u.id === evento.usuario_id)?.nombre_completo || 'Usuario desconocido';
+                                        const isSel = versionSeleccionada?.id === evento.id;
+                                        return (
+                                            <button
+                                                key={evento.id}
+                                                onClick={() => setVersionSeleccionada(evento)}
+                                                className={`w-full text-left p-3 rounded-xl border-2 transition-all ${isSel ? 'border-primary bg-primary/5' : 'border-transparent hover:border-slate-200 dark:hover:border-slate-700'}`}
+                                            >
+                                                <p className="text-xs font-bold">{format(new Date(evento.created_at), "dd/MM/yyyy HH:mm")}</p>
+                                                <p className="text-[10px] text-slate-400 truncate">{editor}</p>
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
                         <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
-                            <section>
-                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">01. Objetivos Generales</h4>
-                                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800">
-                                    <p className="text-slate-700 dark:text-slate-300 text-lg font-medium leading-relaxed italic">
-                                        "{planificacion.objetivos}"
+                            {versionSeleccionada && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-amber-600">visibility</span>
+                                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                                        Viendo cómo estaba el plan el {format(new Date(versionSeleccionada.created_at), "dd/MM/yyyy 'a las' HH:mm")} — no es la versión actual.
                                     </p>
                                 </div>
+                            )}
+                            <section>
+                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">01. Objetivos Generales</h4>
+                                {isEditingPlan ? (
+                                    <textarea
+                                        className="w-full h-32 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        value={editPlanData.objetivos}
+                                        onChange={e => setEditPlanData({ ...editPlanData, objetivos: e.target.value })}
+                                    />
+                                ) : (
+                                    <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800">
+                                        <p className="text-slate-700 dark:text-slate-300 text-lg font-medium leading-relaxed italic">
+                                            "{versionSeleccionada?.datos_nuevos?.objetivos ?? planificacion.objetivos}"
+                                        </p>
+                                    </div>
+                                )}
                             </section>
 
                             <section>
                                 <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">02. Estrategias y Metodología</h4>
-                                <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                                    {planificacion.estrategias}
-                                </div>
+                                {isEditingPlan ? (
+                                    <textarea
+                                        className="w-full h-32 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                                        value={editPlanData.estrategias}
+                                        onChange={e => setEditPlanData({ ...editPlanData, estrategias: e.target.value })}
+                                    />
+                                ) : (
+                                    <div className="bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                                        {versionSeleccionada?.datos_nuevos?.estrategias ?? planificacion.estrategias}
+                                    </div>
+                                )}
                             </section>
 
                             <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div>
                                     <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">03. Plazos de la Etapa</h4>
-                                    <div className="flex items-center gap-4 bg-white dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-                                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-symbols-outlined text-xl">date_range</span>
+                                    {isEditingPlan ? (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Inicio</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-xs font-bold focus:ring-2 focus:ring-primary"
+                                                    value={editPlanData.fecha_inicio}
+                                                    onChange={e => setEditPlanData({ ...editPlanData, fecha_inicio: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fin Estimado</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full h-11 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-xs font-bold focus:ring-2 focus:ring-primary"
+                                                    value={editPlanData.fecha_fin_estimada}
+                                                    onChange={e => setEditPlanData({ ...editPlanData, fecha_fin_estimada: e.target.value })}
+                                                />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Inicio y Fin Estimado</p>
-                                            <p className="text-xs font-bold">
-                                                {format(new Date(planificacion.fecha_inicio), "dd/MM/yyyy")} — {format(new Date(planificacion.fecha_fin_estimada), "dd/MM/yyyy")}
-                                            </p>
+                                    ) : (
+                                        <div className="flex items-center gap-4 bg-white dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                                            <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                                <span className="material-symbols-outlined text-xl">date_range</span>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Inicio y Fin Estimado</p>
+                                                <p className="text-xs font-bold">
+                                                    {format(new Date(versionSeleccionada?.datos_nuevos?.fecha_inicio ?? planificacion.fecha_inicio), "dd/MM/yyyy")} — {format(new Date(versionSeleccionada?.datos_nuevos?.fecha_fin_estimada ?? planificacion.fecha_fin_estimada), "dd/MM/yyyy")}
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                                 <div>
                                     <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">04. Equipo Técnico</h4>
-                                    <div className="flex -space-x-3 items-center">
-                                        {(planificacion.form2_equipo || []).map((member: any, i: number) => {
-                                            const userName = usuarios.find(u => u.id === member.usuario_id)?.nombre_completo || 'P';
-                                            return (
-                                                <div key={i} title={userName} className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-900 flex items-center justify-center text-xs font-black text-slate-500 hover:z-20 hover:scale-110 transition-all cursor-help uppercase shadow-sm">
-                                                    {userName.substring(0, 2)}
-                                                </div>
-                                            );
-                                        })}
-                                        <span className="ml-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Profesionales</span>
-                                    </div>
+                                    {isEditingPlan ? (
+                                        <div className="space-y-3">
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar profesional..."
+                                                value={busquedaEquipo}
+                                                onChange={e => setBusquedaEquipo(e.target.value)}
+                                                className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                                            />
+                                            <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                                            {usuarios
+                                                .filter(u =>
+                                                    editPlanData.equipo_ids.includes(u.id) ||
+                                                    u.nombre_completo.toLowerCase().includes(busquedaEquipo.toLowerCase())
+                                                )
+                                                .sort((a, b) => {
+                                                    const aS = editPlanData.equipo_ids.includes(a.id);
+                                                    const bS = editPlanData.equipo_ids.includes(b.id);
+                                                    return aS === bS ? 0 : aS ? -1 : 1;
+                                                })
+                                                .map(u => {
+                                                const isSelected = editPlanData.equipo_ids.includes(u.id);
+                                                return (
+                                                    <div
+                                                        key={u.id}
+                                                        onClick={() => handleToggleEquipoEdit(u.id)}
+                                                        className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition-all cursor-pointer text-xs ${isSelected ? 'border-primary bg-primary/5' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
+                                                    >
+                                                        <span className="font-bold">{u.nombre_completo}</span>
+                                                        <span className={`material-symbols-outlined text-lg ${isSelected ? 'text-primary' : 'text-slate-300'}`}>
+                                                            {isSelected ? 'check_circle' : 'add_circle'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex -space-x-3 items-center">
+                                            {(planificacion.form2_equipo || []).map((member: any, i: number) => {
+                                                const userName = usuarios.find(u => u.id === member.usuario_id)?.nombre_completo || 'P';
+                                                return (
+                                                    <div key={i} title={userName} className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-900 flex items-center justify-center text-xs font-black text-slate-500 hover:z-20 hover:scale-110 transition-all cursor-help uppercase shadow-sm">
+                                                        {userName.substring(0, 2)}
+                                                    </div>
+                                                );
+                                            })}
+                                            <span className="ml-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Profesionales</span>
+                                        </div>
+                                    )}
                                 </div>
                             </section>
                         </div>
-                        <div className="p-8 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-                            <button onClick={() => setIsPlanModalOpen(false)} className="px-8 py-3 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-black">
-                                Cerrar Detalles
-                            </button>
+                        </div>
+                        <div className="p-8 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+                            {isEditingPlan ? (
+                                <>
+                                    <button onClick={() => setIsEditingPlan(false)} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-slate-200">
+                                        Cancelar
+                                    </button>
+                                    <button onClick={handleSavePlan} disabled={isSavingPlan} className="px-8 py-3 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-primary/90 disabled:opacity-50">
+                                        {isSavingPlan ? 'Guardando...' : 'Guardar Cambios'}
+                                    </button>
+                                </>
+                            ) : (
+                                <button onClick={() => setIsPlanModalOpen(false)} className="px-8 py-3 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-black">
+                                    Cerrar Detalles
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

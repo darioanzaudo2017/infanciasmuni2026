@@ -56,6 +56,7 @@ interface IngresoDetalle {
     cese?: any;
     senaf?: any;
     senaf_seguimiento?: any[];
+    origenes_adicionales?: any[];
 }
 
 const IngresoDetail = () => {
@@ -73,6 +74,51 @@ const IngresoDetail = () => {
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [pendingFiles, setPendingFiles] = useState<any[]>([]);
     const [isDiscoveringLinks, setIsDiscoveringLinks] = useState(false);
+    const [responsables, setResponsables] = useState<any[]>([]);
+    const [usuariosDisponibles, setUsuariosDisponibles] = useState<any[]>([]);
+    const [isResponsablesModalOpen, setIsResponsablesModalOpen] = useState(false);
+    const [isSavingResponsables, setIsSavingResponsables] = useState(false);
+    const [busquedaResponsable, setBusquedaResponsable] = useState('');
+    const [responsableIdsSeleccionados, setResponsableIdsSeleccionados] = useState<string[]>([]);
+    const [isOrigenModalOpen, setIsOrigenModalOpen] = useState(false);
+    const [isSavingOrigen, setIsSavingOrigen] = useState(false);
+    const [newOrigen, setNewOrigen] = useState({
+        origen_consulta: '',
+        via_ingreso: '',
+        oficio_numero: '',
+        nombre_solicitante: '',
+        cargo_solicitante: '',
+        observaciones: ''
+    });
+
+    const handleSaveOrigen = async () => {
+        if (!ingreso?.id) return;
+        setIsSavingOrigen(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const { data: inserted, error } = await supabase.from('origenes_consulta_adicionales').insert({
+                ingreso_id: ingreso.id,
+                origen_consulta: newOrigen.origen_consulta || null,
+                via_ingreso: newOrigen.via_ingreso || null,
+                oficio_numero: newOrigen.oficio_numero || null,
+                nombre_solicitante: newOrigen.nombre_solicitante || null,
+                cargo_solicitante: newOrigen.cargo_solicitante || null,
+                observaciones: newOrigen.observaciones || null,
+                registrado_por: user?.id
+            }).select().single();
+
+            if (error) throw error;
+
+            setIngreso(prev => prev ? { ...prev, origenes_adicionales: [inserted, ...(prev.origenes_adicionales || [])] } : prev);
+            setNewOrigen({ origen_consulta: '', via_ingreso: '', oficio_numero: '', nombre_solicitante: '', cargo_solicitante: '', observaciones: '' });
+            setIsOrigenModalOpen(false);
+        } catch (error: any) {
+            console.error('Error al guardar origen de consulta adicional:', error);
+            alert('Error al guardar: ' + (error.message || 'Error desconocido'));
+        } finally {
+            setIsSavingOrigen(false);
+        }
+    };
 
     useEffect(() => {
         const fetchDetail = async () => {
@@ -102,7 +148,9 @@ const IngresoDetail = () => {
                     { data: interData },
                     { data: informeData },
                     { data: ceseData },
-                    { data: senafData }
+                    { data: senafData },
+                    { data: origenesAdicionalesData },
+                    { data: responsablesData }
                 ] = await Promise.all([
                     supabase.from('form1_derivacion').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('form1_motivo').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
@@ -116,7 +164,9 @@ const IngresoDetail = () => {
                     supabase.from('form2_intervenciones').select('*').eq('ingreso_id', ingresoId).order('fecha', { ascending: false }).order('hora', { ascending: false }),
                     supabase.from('form3_informe_sintesis').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('form9_cese_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
-                    supabase.from('solicitudes_senaf').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+                    supabase.from('solicitudes_senaf').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
+                    supabase.from('origenes_consulta_adicionales').select('*').eq('ingreso_id', ingresoId).order('created_at', { ascending: false }),
+                    supabase.from('ingreso_responsables').select('*, usuarios!ingreso_responsables_usuario_id_fkey(nombre_completo)').eq('ingreso_id', ingresoId)
                 ]);
 
                 setIngreso({
@@ -147,8 +197,10 @@ const IngresoDetail = () => {
                     informe_sintesis: informeData,
                     cese: ceseData,
                     senaf: senafData,
-                    senaf_seguimiento: []
+                    senaf_seguimiento: [],
+                    origenes_adicionales: origenesAdicionalesData || []
                 });
+                setResponsables(responsablesData || []);
 
                 // Fetch SENAF seguimiento if senafData exists
                 if (senafData?.id) {
@@ -227,6 +279,58 @@ const IngresoDetail = () => {
             fetchMeasures();
         }
     }, [ingresoId, ingreso, activeTab]);
+
+    const handleOpenResponsablesModal = async () => {
+        setResponsableIdsSeleccionados(responsables.map((r: any) => r.usuario_id));
+        setBusquedaResponsable('');
+        setIsResponsablesModalOpen(true);
+        if (usuariosDisponibles.length === 0) {
+            const { data } = await supabase.from('usuarios').select('id, nombre_completo').eq('activo', true).order('nombre_completo');
+            setUsuariosDisponibles(data || []);
+        }
+    };
+
+    const handleToggleResponsable = (userId: string) => {
+        setResponsableIdsSeleccionados(prev =>
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+    };
+
+    const handleSaveResponsables = async () => {
+        if (!ingreso?.id) return;
+        setIsSavingResponsables(true);
+        try {
+            const idsActuales = responsables.map((r: any) => r.usuario_id);
+            const idsAgregar = responsableIdsSeleccionados.filter(id => !idsActuales.includes(id));
+            const idsQuitar = idsActuales.filter((id: string) => !responsableIdsSeleccionados.includes(id));
+
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (idsAgregar.length > 0) {
+                const { error: addErr } = await supabase.from('ingreso_responsables').insert(
+                    idsAgregar.map(uid => ({ ingreso_id: ingreso.id, usuario_id: uid, asignado_por: user?.id }))
+                );
+                if (addErr) throw addErr;
+            }
+
+            if (idsQuitar.length > 0) {
+                const { error: delErr } = await supabase.from('ingreso_responsables')
+                    .delete()
+                    .eq('ingreso_id', ingreso.id)
+                    .in('usuario_id', idsQuitar);
+                if (delErr) throw delErr;
+            }
+
+            const { data: refreshed } = await supabase.from('ingreso_responsables').select('*, usuarios!ingreso_responsables_usuario_id_fkey(nombre_completo)').eq('ingreso_id', ingreso.id);
+            setResponsables(refreshed || []);
+            setIsResponsablesModalOpen(false);
+        } catch (error: any) {
+            console.error('Error al guardar responsables:', error);
+            alert('Error al guardar: ' + (error.message || 'Error desconocido'));
+        } finally {
+            setIsSavingResponsables(false);
+        }
+    };
 
     const handleFinalizeStage = async () => {
         if (!ingreso || !ingreso.id) return;
@@ -762,6 +866,31 @@ const IngresoDetail = () => {
                             )} días
                         </p>
                     </div>
+
+                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center border-l-4 border-l-emerald-500 hover:shadow-lg transition-shadow">
+                        <div className="flex items-center justify-between mb-1">
+                            <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none">Responsables</p>
+                            <button onClick={handleOpenResponsablesModal} title="Asignar responsables" className="text-slate-300 hover:text-primary transition-colors">
+                                <span className="material-symbols-outlined text-base">edit</span>
+                            </button>
+                        </div>
+                        {responsables.length === 0 ? (
+                            <p className="text-xs text-slate-400 italic">Sin asignar</p>
+                        ) : (
+                            <div className="flex -space-x-2 items-center">
+                                {responsables.slice(0, 4).map((r: any) => (
+                                    <div key={r.id} title={r.usuarios?.nombre_completo} className="size-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase">
+                                        {r.usuarios?.nombre_completo?.substring(0, 2) || '??'}
+                                    </div>
+                                ))}
+                                {responsables.length > 4 && (
+                                    <div className="size-7 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-black text-slate-500">
+                                        +{responsables.length - 4}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Main Area: High Preponderance Section */}
@@ -1158,6 +1287,53 @@ const IngresoDetail = () => {
                                         </section>
 
                                         <section>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">01b. Otros Orígenes de Consulta</h4>
+                                                <button
+                                                    onClick={() => setIsOrigenModalOpen(true)}
+                                                    className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-primary hover:underline"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">add_circle</span>
+                                                    Agregar Origen
+                                                </button>
+                                            </div>
+                                            {(ingreso.origenes_adicionales || []).length === 0 ? (
+                                                <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sin otros orígenes registrados sobre este caso</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {(ingreso.origenes_adicionales || []).map((origen: any) => (
+                                                        <div key={origen.id} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-primary/20 shadow-sm">
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Origen / Vía</p>
+                                                                    <p className="font-bold text-sm">{origen.origen_consulta || 'N/A'} {origen.via_ingreso ? `· ${origen.via_ingreso}` : ''}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nro Oficio/Exp.</p>
+                                                                    <p className="font-bold text-sm">{origen.oficio_numero || 'Sin número'}</p>
+                                                                </div>
+                                                                <div className="col-span-2">
+                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Solicitante / Institución</p>
+                                                                    <p className="font-bold text-sm">{origen.nombre_solicitante || 'N/A'}</p>
+                                                                    <p className="text-[10px] text-slate-500 mt-1">{origen.cargo_solicitante || ''}</p>
+                                                                </div>
+                                                                {origen.observaciones && (
+                                                                    <div className="col-span-2">
+                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Observaciones</p>
+                                                                        <p className="text-xs text-slate-600 dark:text-slate-300">{origen.observaciones}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[9px] text-slate-400 mt-3">Registrado: {format(new Date(origen.created_at), "dd/MM/yyyy HH:mm")}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </section>
+
+                                        <section>
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">02. Motivo y Relato</h4>
                                             <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-primary/20 shadow-lg">
                                                 <div className="mb-4 flex items-center gap-2">
@@ -1454,7 +1630,7 @@ const IngresoDetail = () => {
                                             <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-800 rounded-lg">
                                                 <span className="material-symbols-outlined text-sm text-danger">event</span>
                                                 <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                                                    Fecha de Cierre: {ingreso.cese.fecha_cierre ? format(new Date(ingreso.cese.fecha_cierre + 'T12:00:00'), "dd/MM/yyyy", { locale: es }) : 'N/A'}
+                                                    Fecha de Cierre: {ingreso.cese.fecha_cierre ? format(new Date(ingreso.cese.fecha_cierre), "dd/MM/yyyy", { locale: es }) : 'N/A'}
                                                 </span>
                                             </div>
                                         </div>
@@ -1704,7 +1880,7 @@ const IngresoDetail = () => {
                                                 <div className="mt-4 text-center">
                                                     <h3 className="text-xl font-bold text-slate-800 dark:text-white">Cese</h3>
                                                     <p className="text-sm text-slate-500 font-semibold">
-                                                        {ingreso.cese.fecha_cierre && format(new Date(ingreso.cese.fecha_cierre + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                                                        {ingreso.cese.fecha_cierre && format(new Date(ingreso.cese.fecha_cierre), "dd 'de' MMMM 'de' yyyy", { locale: es })}
                                                     </p>
                                                 </div>
 
@@ -1812,6 +1988,173 @@ const IngresoDetail = () => {
                     </div>
                 </div>
             )}
+            {isResponsablesModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isSavingResponsables && setIsResponsablesModalOpen(false)}></div>
+                    <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-lg max-h-[85vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
+                        <div className="px-8 py-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Responsables del Caso</h2>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Profesionales a cargo de este ingreso</p>
+                            </div>
+                            <button onClick={() => !isSavingResponsables && setIsResponsablesModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                <span className="material-symbols-outlined text-slate-500">close</span>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
+                            <input
+                                type="text"
+                                placeholder="Buscar profesional..."
+                                value={busquedaResponsable}
+                                onChange={e => setBusquedaResponsable(e.target.value)}
+                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                            />
+                            <div className="space-y-2">
+                                {usuariosDisponibles
+                                    .filter(u =>
+                                        responsableIdsSeleccionados.includes(u.id) ||
+                                        u.nombre_completo.toLowerCase().includes(busquedaResponsable.toLowerCase())
+                                    )
+                                    .sort((a, b) => {
+                                        const aS = responsableIdsSeleccionados.includes(a.id);
+                                        const bS = responsableIdsSeleccionados.includes(b.id);
+                                        return aS === bS ? 0 : aS ? -1 : 1;
+                                    })
+                                    .map(u => {
+                                        const isSel = responsableIdsSeleccionados.includes(u.id);
+                                        return (
+                                            <div
+                                                key={u.id}
+                                                onClick={() => handleToggleResponsable(u.id)}
+                                                className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer text-sm ${isSel ? 'border-primary bg-primary/5' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
+                                            >
+                                                <span className="font-bold">{u.nombre_completo}</span>
+                                                <span className={`material-symbols-outlined text-lg ${isSel ? 'text-primary' : 'text-slate-300'}`}>
+                                                    {isSel ? 'check_circle' : 'add_circle'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                        <div className="p-8 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+                            <button onClick={() => setIsResponsablesModalOpen(false)} disabled={isSavingResponsables} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800">
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSaveResponsables}
+                                disabled={isSavingResponsables}
+                                className="bg-primary hover:bg-primary/90 text-white px-10 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                            >
+                                {isSavingResponsables ? 'Guardando...' : 'Guardar Responsables'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isOrigenModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isSavingOrigen && setIsOrigenModalOpen(false)}></div>
+                    <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-2xl max-h-[90vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
+                        <div className="px-8 py-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Agregar Origen de Consulta</h2>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Otra institución/persona reclama sobre este mismo caso activo</p>
+                            </div>
+                            <button onClick={() => !isSavingOrigen && setIsOrigenModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                <span className="material-symbols-outlined text-slate-500">close</span>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Origen de la Consulta</label>
+                                    <select
+                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                        value={newOrigen.origen_consulta}
+                                        onChange={(e) => setNewOrigen({ ...newOrigen, origen_consulta: e.target.value })}
+                                    >
+                                        <option value="">Seleccionar origen...</option>
+                                        <option value="Inst. Educativa">Inst. Educativa</option>
+                                        <option value="Inst. de Salud">Inst. de Salud</option>
+                                        <option value="Familia">Familia</option>
+                                        <option value="Niño, Niña o Adolescente">Niño, Niña o Adolescente</option>
+                                        <option value="Persona de la comunidad">Persona de la comunidad</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Vía de Ingreso</label>
+                                    <select
+                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                        value={newOrigen.via_ingreso}
+                                        onChange={(e) => setNewOrigen({ ...newOrigen, via_ingreso: e.target.value })}
+                                    >
+                                        <option value="">Seleccione vía...</option>
+                                        <option value="Oficio Judicial">Oficio Judicial</option>
+                                        <option value="Demanda Espontánea">Demanda Espontánea / Presencial</option>
+                                        <option value="Línea 102">Línea 102 / Telefónica</option>
+                                        <option value="Institución">Derivación Institucional</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
+                                    <input
+                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                        placeholder="Ej: SAC 12345/2024"
+                                        value={newOrigen.oficio_numero}
+                                        onChange={(e) => setNewOrigen({ ...newOrigen, oficio_numero: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Nombre del Solicitante / Institución</label>
+                                    <input
+                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                        placeholder="Nombre y Apellido / Institución"
+                                        value={newOrigen.nombre_solicitante}
+                                        onChange={(e) => setNewOrigen({ ...newOrigen, nombre_solicitante: e.target.value })}
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Cargo / Parentesco</label>
+                                    <input
+                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                        placeholder="Ej: Tía, Director Escuela X, Juez..."
+                                        value={newOrigen.cargo_solicitante}
+                                        onChange={(e) => setNewOrigen({ ...newOrigen, cargo_solicitante: e.target.value })}
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Observaciones</label>
+                                    <textarea
+                                        className="w-full h-24 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 py-3 font-medium"
+                                        placeholder="Contexto adicional de este nuevo reclamo sobre el caso..."
+                                        value={newOrigen.observaciones}
+                                        onChange={(e) => setNewOrigen({ ...newOrigen, observaciones: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-8 py-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-4">
+                            <button onClick={() => setIsOrigenModalOpen(false)} disabled={isSavingOrigen} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800">
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSaveOrigen}
+                                disabled={isSavingOrigen}
+                                className="bg-primary hover:bg-primary/90 text-white px-10 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                            >
+                                {isSavingOrigen ? 'Guardando...' : 'Guardar Origen'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {isUploadModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isUploading && setIsUploadModalOpen(false)}></div>
@@ -1883,6 +2226,7 @@ const IngresoDetail = () => {
                                                     <option>Copia de DNI</option>
                                                     <option>Certificado Médico</option>
                                                     <option>Oficio Judicial</option>
+                                                    <option>Ficha de Solicitud de Intervención</option>
                                                     <option>Otro</option>
                                                 </select>
                                             </div>

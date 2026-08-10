@@ -29,6 +29,9 @@ const INITIAL_FORM_DATA = {
     expediente_id: '',
     spd_id: '',
     zona_id: '',
+    fecha_ingreso: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(),
+    fecha_apertura: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(),
+    fecha_carga: '' as string,
     domicilio: '',
     localidad: '',
     barrio: '',
@@ -112,6 +115,12 @@ const FormularioRecepcion: React.FC = () => {
     const [linkedExpedienteId, setLinkedExpedienteId] = useState<string | null>(null);
     const [linkedIngresoId, setLinkedIngresoId] = useState<string | null>(null);
     const [isConfirmExpedienteModalOpen, setIsConfirmExpedienteModalOpen] = useState(false);
+
+    // Tracking de filas eliminadas (para el guardado como edición real, no "borrar todo y reinsertar")
+    const [eliminatedGrupoFamiliarIds, setEliminatedGrupoFamiliarIds] = useState<number[]>([]);
+    const [eliminatedReferentesIds, setEliminatedReferentesIds] = useState<number[]>([]);
+    const [eliminatedVulneracionesIds, setEliminatedVulneracionesIds] = useState<number[]>([]);
+    const [eliminatedDocumentoIds, setEliminatedDocumentoIds] = useState<number[]>([]);
 
     const [currentReferente, setCurrentReferente] = useState({
         nombre: '',
@@ -211,6 +220,9 @@ const FormularioRecepcion: React.FC = () => {
                     expediente_id: exp.id,
                     spd_id: exp.servicio_proteccion_id,
                     zona_id: exp.zona_id,
+                    fecha_ingreso: ingreso.fecha_ingreso || prev.fecha_ingreso,
+                    fecha_apertura: exp.fecha_apertura || prev.fecha_apertura,
+                    fecha_carga: ingreso.created_at || '',
                     origen_consulta: ingreso.origen_consulta || '',
                     derivacion: {
                         via_ingreso: derivacion?.via_ingreso || '',
@@ -433,7 +445,7 @@ const FormularioRecepcion: React.FC = () => {
     const handleSaveMember = (confirmAlreadyAsked = false) => {
         const ageNum = parseInt(currentMember.edad || calculateAge(currentMember.fecha_nacimiento));
 
-        if (!confirmAlreadyAsked && !linkedExpedienteId && ageNum > 0 && ageNum < 18) {
+        if (!confirmAlreadyAsked && !linkedExpedienteId && ageNum >= 0 && ageNum < 18) {
             setIsConfirmExpedienteModalOpen(true);
             return;
         }
@@ -539,6 +551,8 @@ const FormularioRecepcion: React.FC = () => {
     }, [currentMember.dni, isDrawerOpen, formData.expediente_id]);
 
     const handleRemoveMember = (index: number) => {
+        const removed = formData.grupo_familiar[index];
+        if (removed?.id) setEliminatedGrupoFamiliarIds(prev => [...prev, removed.id]);
         const newGroup = formData.grupo_familiar.filter((_, i) => i !== index);
         setFormData({ ...formData, grupo_familiar: newGroup });
     };
@@ -579,6 +593,8 @@ const FormularioRecepcion: React.FC = () => {
     };
 
     const handleRemoveReferente = (index: number) => {
+        const removed = formData.referentes[index];
+        if (removed?.id) setEliminatedReferentesIds(prev => [...prev, removed.id]);
         const next = formData.referentes.filter((_, i) => i !== index);
         setFormData({ ...formData, referentes: next });
     };
@@ -591,6 +607,8 @@ const FormularioRecepcion: React.FC = () => {
     };
 
     const handleRemoveVulneracion = (index: number) => {
+        const removed: any = formData.vulneraciones[index];
+        if (removed?.id) setEliminatedVulneracionesIds(prev => [...prev, removed.id]);
         const next = formData.vulneraciones.filter((_, i) => i !== index);
         setFormData({ ...formData, vulneraciones: next });
     };
@@ -613,6 +631,13 @@ const FormularioRecepcion: React.FC = () => {
 
         setIsSaving(true);
         try {
+            // 0. Auto-registrar en el catálogo un barrio cargado manualmente ("Otro") que todavía no exista
+            const barrioTrimmed = formData.barrio?.trim();
+            if (barrioTrimmed && barrioTrimmed !== 'OTRO' && !barrios.some(b => b.nombre.toLowerCase() === barrioTrimmed.toLowerCase())) {
+                const { data: newBarrio } = await supabase.from('barrios').insert({ nombre: barrioTrimmed }).select().single();
+                if (newBarrio) setBarrios(prev => [...prev, newBarrio].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+            }
+
             // 1. Ensure Nino exists and is updated
             let ninoId = formData.nino_id;
             const ninoPayload = {
@@ -702,7 +727,7 @@ const FormularioRecepcion: React.FC = () => {
                         zona_id: zonaId,
                         profesional_id: userProfile?.id,
                         numero: `EXP-${year}-${randomNum}`,
-                        fecha_apertura: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
+                        fecha_apertura: formData.fecha_apertura,
                         activo: true
                     }).select().single();
 
@@ -728,6 +753,7 @@ const FormularioRecepcion: React.FC = () => {
             if (currentIngresoId) {
                 // Update existing
                 const { error: ingErr } = await supabase.from('ingresos').update({
+                    fecha_ingreso: formData.fecha_ingreso || today,
                     etapa: formData.decision_id === 'abordaje_integral' ? 'ampliacion' : 'recepcion',
                     estado: isClosing ? 'cerrado' : 'abierto',
                     fecha_cierre: isClosing ? today : null,
@@ -742,7 +768,7 @@ const FormularioRecepcion: React.FC = () => {
                     expediente_id: expedienteId,
                     profesional_asignado_id: userProfile?.id,
                     ultimo_usuario_id: userProfile?.id,
-                    fecha_ingreso: today,
+                    fecha_ingreso: formData.fecha_ingreso || today,
                     etapa: formData.decision_id === 'abordaje_integral' ? 'ampliacion' : 'recepcion',
                     estado: isClosing ? 'cerrado' : 'abierto',
                     fecha_cierre: isClosing ? today : null,
@@ -785,32 +811,9 @@ const FormularioRecepcion: React.FC = () => {
                     decision_id: formData.decision_id,
                     observaciones: formData.observaciones_cierre
                 }, { onConflict: 'ingreso_id' }),
-            ];
 
-            // For collections (vulnerabilidades, familia, referentes)
-            // It's safer to delete and re-insert or use IDs if we had them.
-            // Let's do a clean replace for These related to Ingreso specifically.
-            // For collections (vulnerabilidades, familia, referentes)
-            // It's safer to delete and re-insert or use IDs if we had them.
-            // Let's do a clean replace for These related to Ingreso specifically.
-            await Promise.all([
-                supabase.from('derechos_vulnerados').delete().eq('ingreso_id', currentIngresoId),
-                supabase.from('referentes_comunitarios').delete().eq('ingreso_id', currentIngresoId),
-                supabase.from('grupo_conviviente').delete().eq('ingreso_id', currentIngresoId),
-                supabase.from('documentos').delete().eq('ingreso_id', currentIngresoId),
-                supabase.from('form1_datos_nino').delete().eq('ingreso_id', currentIngresoId)
-            ]);
-
-            // Insert new collections
-            const collectionPromises = [
-                ...validVulneraciones.map(v => supabase.from('derechos_vulnerados').insert({
-                    ingreso_id: currentIngresoId,
-                    derecho_id: v.derecho_id,
-                    grave: formData.gravedad === 'Urgente',
-                    indicador: v.indicador,
-                    observaciones: v.observaciones
-                })),
-                supabase.from('form1_datos_nino').insert({
+                // Datos de salud/educación: fila única por ingreso (ingreso_id es PRIMARY KEY) → upsert directo
+                supabase.from('form1_datos_nino').upsert({
                     ingreso_id: currentIngresoId,
                     domicilio: formData.domicilio,
                     localidad: formData.localidad,
@@ -829,8 +832,46 @@ const FormularioRecepcion: React.FC = () => {
                     tiene_discapacidad: formData.tiene_discapacidad,
                     tipo_discapacidad: formData.tipo_discapacidad,
                     edad: formData.edad
-                }),
-                ...formData.grupo_familiar.map(m => supabase.from('grupo_conviviente').insert({
+                }, { onConflict: 'ingreso_id' }),
+            ];
+
+            // Colecciones (vulneraciones, grupo familiar, referentes): edición real por fila
+            // en vez de "borrar todo y reinsertar" — evita duplicados y preserva id/fecha
+            // de creación de las filas que no se tocaron.
+            const collectionPromises = [
+                // Derechos vulnerados: UPDATE si ya existía, INSERT si es nuevo
+                ...validVulneraciones.filter((v: any) => v.id).map((v: any) => supabase.from('derechos_vulnerados').update({
+                    derecho_id: v.derecho_id,
+                    grave: formData.gravedad === 'Urgente',
+                    indicador: v.indicador,
+                    observaciones: v.observaciones
+                }).eq('id', v.id)),
+                ...validVulneraciones.filter((v: any) => !v.id).map((v: any) => supabase.from('derechos_vulnerados').insert({
+                    ingreso_id: currentIngresoId,
+                    derecho_id: v.derecho_id,
+                    grave: formData.gravedad === 'Urgente',
+                    indicador: v.indicador,
+                    observaciones: v.observaciones
+                })),
+
+                // Grupo familiar
+                ...formData.grupo_familiar.filter((m: any) => m.id).map((m: any) => supabase.from('grupo_conviviente').update({
+                    nombre: m.nombre,
+                    apellido: m.apellido,
+                    dni: m.dni ? parseInt(String(m.dni).replace(/\D/g, '')) : null,
+                    fecha_nacimiento: m.fecha_nacimiento || null,
+                    vinculo: m.vinculo,
+                    convive: m.convive,
+                    telefono: m.telefono,
+                    direccion: m.direccion,
+                    edad: m.edad,
+                    ocupacion: m.ocupacion || null,
+                    nivel_educativo: m.nivel_educativo || null,
+                    observaciones: m.observaciones,
+                    linked_expediente_id: m.linked_expediente_id,
+                    linked_ingreso_id: m.linked_ingreso_id
+                }).eq('id', m.id)),
+                ...formData.grupo_familiar.filter((m: any) => !m.id).map((m: any) => supabase.from('grupo_conviviente').insert({
                     expediente_id: expedienteId,
                     ingreso_id: currentIngresoId,
                     nombre: m.nombre,
@@ -848,7 +889,21 @@ const FormularioRecepcion: React.FC = () => {
                     linked_expediente_id: m.linked_expediente_id,
                     linked_ingreso_id: m.linked_ingreso_id
                 })),
-                ...formData.referentes.map(r => supabase.from('referentes_comunitarios').insert({
+
+                // Referentes / red de apoyo
+                ...formData.referentes.filter((r: any) => r.id).map((r: any) => supabase.from('referentes_comunitarios').update({
+                    nombre: r.nombre,
+                    apellido: r.apellido,
+                    dni: r.dni ? parseInt(String(r.dni).replace(/\D/g, '')) : null,
+                    vinculo: r.vinculo,
+                    telefono: r.telefono,
+                    direccion: r.direccion,
+                    puede_acompanar: r.puede_acompanar,
+                    puede_aportar_info: r.puede_aportar_info,
+                    es_referente_principal: r.es_referente_principal,
+                    observaciones: r.observaciones
+                }).eq('id', r.id)),
+                ...formData.referentes.filter((r: any) => !r.id).map((r: any) => supabase.from('referentes_comunitarios').insert({
                     expediente_id: expedienteId,
                     ingreso_id: currentIngresoId,
                     nombre: r.nombre,
@@ -861,10 +916,22 @@ const FormularioRecepcion: React.FC = () => {
                     puede_aportar_info: r.puede_aportar_info,
                     es_referente_principal: r.es_referente_principal,
                     observaciones: r.observaciones
-                }))
+                })),
+
+                // Filas eliminadas explícitamente por el usuario (ver handleRemove*)
+                ...(eliminatedVulneracionesIds.length > 0 ? [supabase.from('derechos_vulnerados').delete().in('id', eliminatedVulneracionesIds)] : []),
+                ...(eliminatedGrupoFamiliarIds.length > 0 ? [supabase.from('grupo_conviviente').delete().in('id', eliminatedGrupoFamiliarIds)] : []),
+                ...(eliminatedReferentesIds.length > 0 ? [supabase.from('referentes_comunitarios').delete().in('id', eliminatedReferentesIds)] : []),
+                ...(eliminatedDocumentoIds.length > 0 ? [supabase.from('documentos').delete().in('id', eliminatedDocumentoIds)] : [])
             ];
 
             await Promise.all([...promises, ...collectionPromises]);
+
+            // Limpiar el tracking de eliminados una vez guardado
+            setEliminatedGrupoFamiliarIds([]);
+            setEliminatedReferentesIds([]);
+            setEliminatedVulneracionesIds([]);
+            setEliminatedDocumentoIds([]);
 
             // 5. Save Documents with real upload
             if (formData.archivos.length > 0) {
@@ -893,16 +960,13 @@ const FormularioRecepcion: React.FC = () => {
                         } catch (err) {
                             console.error('Error subiendo archivo en recepcion:', doc.nombre, err);
                         }
-                    } else if (doc.url) {
-                        // Documento existente: re-insertar en la BD porque el delete anterior lo eliminó
-                        await supabase.from('documentos').insert({
-                            ingreso_id: currentIngresoId,
+                    } else if (doc.url && doc.id) {
+                        // Documento existente sin cambio de archivo: solo actualizar los metadatos editables
+                        // (antes se volvía a insertar porque el guardado viejo borraba todo primero)
+                        await supabase.from('documentos').update({
                             nombre: doc.nombre,
-                            tipo: doc.tipo,
-                            subcategoria: doc.subcategoria || 'Otro',
-                            url: doc.url,
-                            origen: doc.origen || 'recepcion'
-                        });
+                            subcategoria: doc.subcategoria || 'Otro'
+                        }).eq('id', doc.id);
                     }
                 }
             }
@@ -1279,6 +1343,45 @@ const FormularioRecepcion: React.FC = () => {
                                                 </select>
                                             )}
                                         </div>
+                                    </div>
+                                </section>
+
+                                <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
+                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                        <h3 className="text-lg font-bold tracking-tight">Fechas del Caso</h3>
+                                    </div>
+                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Ingreso</label>
+                                            <input
+                                                type="date"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                value={formData.fecha_ingreso}
+                                                onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
+                                            />
+                                            <p className="mt-2 text-xs text-slate-400">Fecha real en que se tomó conocimiento del caso (puede ser distinta a la fecha en que se carga en el sistema).</p>
+                                        </div>
+                                        {formData.fecha_carga && (
+                                            <div>
+                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Carga (sistema)</label>
+                                                <div className="w-full h-12 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center px-4 border border-[#dbdfe6] dark:border-slate-700 font-bold text-sm text-slate-500">
+                                                    {format(new Date(formData.fecha_carga), "dd/MM/yyyy HH:mm")}
+                                                </div>
+                                                <p className="mt-2 text-xs text-slate-400">Fecha y hora en que se registró este ingreso en el sistema. No editable.</p>
+                                            </div>
+                                        )}
+                                        {!formData.expediente_id && (
+                                            <div>
+                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Apertura del Expediente</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    value={formData.fecha_apertura}
+                                                    onChange={(e) => setFormData({ ...formData, fecha_apertura: e.target.value })}
+                                                />
+                                                <p className="mt-2 text-xs text-slate-400">Solo aplica si se está creando un expediente nuevo para este niño/a.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </section>
 
@@ -2247,7 +2350,11 @@ const FormularioRecepcion: React.FC = () => {
                                                                     </div>
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => setFormData({ ...formData, archivos: formData.archivos.filter((_, i) => i !== idx) })}
+                                                                    onClick={() => {
+                                                                        const removed: any = formData.archivos[idx];
+                                                                        if (removed?.id) setEliminatedDocumentoIds(prev => [...prev, removed.id]);
+                                                                        setFormData({ ...formData, archivos: formData.archivos.filter((_, i) => i !== idx) });
+                                                                    }}
                                                                     className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
                                                                 >
                                                                     <span className="material-symbols-outlined">delete</span>
@@ -2283,6 +2390,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                         <option value="Informe Técnico">Informe Técnico</option>
                                                                         <option value="Certificado Médico">Certificado Médico</option>
                                                                         <option value="Oficio Judicial">Oficio Judicial</option>
+                                                                        <option value="Ficha de Solicitud de Intervención">Ficha de Solicitud de Intervención</option>
                                                                         <option value="Otro">Otro</option>
                                                                     </select>
                                                                 </div>

@@ -61,6 +61,7 @@ const AmpliacionContainer: React.FC = () => {
         <AccionesAmpliacion
             ingreso={ingreso}
             planificacion={planificacion}
+            onUpdated={fetchStatus}
         />
     );
 };

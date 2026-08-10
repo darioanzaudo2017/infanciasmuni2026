@@ -23,6 +23,11 @@ interface IngresoDetalle {
     nino_fecha_nacimiento: string;
     ultimo_profesional_nombre: string | null;
     profesional_asignado_nombre: string | null;
+    ultima_seccion: string | null;
+    ultima_seccion_usuario: string | null;
+    ultima_seccion_fecha: string | null;
+    creado_por_nombre: string | null;
+    creado_por_fecha: string | null;
 }
 
 interface ExpedienteDetalle {
@@ -92,7 +97,27 @@ const IngresosPage: React.FC = () => {
                         .order('numero_ingreso', { ascending: false });
 
                     if (error) throw error;
-                    setIngresos(data as IngresoDetalle[]);
+
+                    const ingresoIds = (data || []).map((i: any) => i.id);
+                    const ultimaModMap: Record<number, any> = {};
+                    if (ingresoIds.length > 0) {
+                        const { data: ultimaModData } = await supabase
+                            .from('vw_ultima_modificacion_ingreso')
+                            .select('*')
+                            .in('ingreso_id', ingresoIds);
+                        (ultimaModData || []).forEach((u: any) => { ultimaModMap[u.ingreso_id] = u; });
+                    }
+
+                    const merged = (data || []).map((i: any) => ({
+                        ...i,
+                        ultima_seccion: ultimaModMap[i.id]?.seccion || null,
+                        ultima_seccion_usuario: ultimaModMap[i.id]?.usuario_nombre || null,
+                        ultima_seccion_fecha: ultimaModMap[i.id]?.created_at || null,
+                        creado_por_nombre: ultimaModMap[i.id]?.creado_por_nombre || null,
+                        creado_por_fecha: ultimaModMap[i.id]?.creado_por_fecha || null
+                    }));
+
+                    setIngresos(merged as IngresoDetalle[]);
                 }
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -333,7 +358,7 @@ const IngresosPage: React.FC = () => {
                     title={hasActiveCase ? "Ya existe un caso activo para este expediente" : "Abrir nuevo ingreso"}
                 >
                     <span className="material-symbols-outlined group-hover:rotate-90 transition-transform">add_circle</span>
-                    <span>{hasActiveCase ? 'Caso Activo' : 'Nuevo Caso'}</span>
+                    <span>{hasActiveCase ? 'Caso Activo' : ingresos.length === 0 ? 'Agregar Ingreso' : 'Nuevo Reingreso'}</span>
                 </button>
             </div>
 
@@ -347,6 +372,7 @@ const IngresosPage: React.FC = () => {
                                 <th className="px-6 py-4 text-xs font-bold text-[#638888] uppercase tracking-wider">Etapa Actual</th>
                                 <th className="px-6 py-4 text-xs font-bold text-[#638888] uppercase tracking-wider">Fecha Apertura</th>
                                 <th className="px-6 py-4 text-xs font-bold text-[#638888] uppercase tracking-wider">Último Cambio por</th>
+                                <th className="px-6 py-4 text-xs font-bold text-[#638888] uppercase tracking-wider">Última Sección Modificada</th>
                                 <th className="px-6 py-4 text-xs font-bold text-[#638888] uppercase tracking-wider text-center">Días Abierto</th>
                                 <th className="px-6 py-4 text-xs font-bold text-[#638888] uppercase tracking-wider text-right">Acciones</th>
                             </tr>
@@ -362,7 +388,7 @@ const IngresosPage: React.FC = () => {
                                 ingresos.map((ingreso) => {
                                     const daysOpen = getPermanencia(ingreso);
                                     const isUrgent = ingreso.es_emergencia;
-                                    const isClosed = ingreso.estado === 'Cerrado';
+                                    const isClosed = ingreso.estado?.toLowerCase() === 'cerrado';
 
                                     return (
                                         <Fragment key={ingreso.id}>
@@ -401,8 +427,26 @@ const IngresosPage: React.FC = () => {
                                                             <span className="text-[10px] font-medium text-slate-400 font-bold uppercase tracking-tighter">
                                                                 {ingreso.ultimo_profesional_nombre ? 'Última modificación' : 'Profesional asignado'}
                                                             </span>
+                                                            {ingreso.creado_por_nombre && (
+                                                                <span className="text-[9px] text-slate-300 mt-0.5" title={ingreso.creado_por_fecha ? format(new Date(ingreso.creado_por_fecha), "dd/MM/yyyy HH:mm") : ''}>
+                                                                    Cargado por: {ingreso.creado_por_nombre}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    {ingreso.ultima_seccion ? (
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-[#111818] dark:text-gray-200">{ingreso.ultima_seccion}</span>
+                                                            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">
+                                                                {ingreso.ultima_seccion_usuario || 'Usuario desconocido'}
+                                                                {ingreso.ultima_seccion_fecha ? ` · ${format(new Date(ingreso.ultima_seccion_fecha), "dd/MM/yyyy")}` : ''}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Sin actividad registrada</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-5 text-center">
                                                     <span className={`text-sm font-bold ${daysOpen > 10 && !isClosed ? 'text-red-500 animate-pulse' : 'text-[#638888]'}`}>

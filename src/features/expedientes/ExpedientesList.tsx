@@ -77,7 +77,7 @@ const ExpedientesList = () => {
 
             if (debouncedSearchTerm) {
                 const term = debouncedSearchTerm.replace(/[,()]/g, '');
-                query = query.or(`numero.ilike.*${term}*,nino_nombre.ilike.*${term}*,nino_apellido.ilike.*${term}*,nino_dni_texto.ilike.*${term}*`);
+                query = query.or(`numero.ilike.*${term}*,nino_nombre.ilike.*${term}*,nino_apellido.ilike.*${term}*,nino_dni_texto.ilike.*${term}*,grupo_familiar_texto.ilike.*${term}*,referentes_texto.ilike.*${term}*`);
             }
 
             const from = (page - 1) * PAGE_SIZE;

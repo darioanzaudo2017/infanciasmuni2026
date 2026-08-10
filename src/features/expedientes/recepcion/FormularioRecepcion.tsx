@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
 import { buscarVinculacionPorDni } from '../../../services/vinculacionService';
 import { crearExpedienteConIngreso } from '../../../services/expedienteService';
@@ -16,6 +17,17 @@ const calculateAge = (birthDate: string) => {
         age--;
     }
     return String(age);
+};
+
+// Evita autoguardar/ofrecer restauración de un borrador vacío (formulario recién abierto sin tocar)
+const isDraftMeaningful = (fd: any) => {
+    return !!(
+        fd.nombre || fd.apellido || fd.dni || fd.relato_situacion || fd.motivo_principal ||
+        (fd.grupo_familiar && fd.grupo_familiar.length > 0) ||
+        (fd.referentes && fd.referentes.length > 0) ||
+        (fd.vulneraciones && fd.vulneraciones.some((v: any) => v.derecho_id)) ||
+        (fd.archivos && fd.archivos.length > 0)
+    );
 };
 
 const INITIAL_FORM_DATA = {
@@ -371,6 +383,83 @@ const FormularioRecepcion: React.FC = () => {
 
         return () => subscription.unsubscribe();
     }, []);
+
+    // --- Borrador local (autoguardado) ---
+    // Protege contra pérdida de datos si se corta la luz/internet mientras se carga el wizard.
+    // Se guarda en localStorage (no depende de la red), y se ofrece restaurar al reabrir el formulario.
+    const draftKey = ingresoId ? `recepcion_draft_edit_${ingresoId}` : 'recepcion_draft_new';
+    const [draftPrompt, setDraftPrompt] = useState<{ formData: any; currentStep: number; savedAt: string; hadPendingFiles?: boolean } | null>(null);
+    const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+    const initialLoadDoneRef = useRef(false);
+    const draftCheckedRef = useRef(false);
+
+    // Marca cuándo terminó la carga inicial (auth + datos existentes, si corresponde), con un pequeño
+    // margen para no confundir el "setFormData" de la carga desde el servidor con una edición del usuario.
+    useEffect(() => {
+        if (!isLoadingData && !loadingAuth) {
+            const t = setTimeout(() => { initialLoadDoneRef.current = true; }, 500);
+            return () => clearTimeout(t);
+        }
+        return undefined;
+    }, [isLoadingData, loadingAuth]);
+
+    // Ofrece restaurar un borrador guardado en una sesión anterior (solo una vez, al quedar listo el formulario)
+    useEffect(() => {
+        if (isLoadingData || draftCheckedRef.current) return;
+        draftCheckedRef.current = true;
+        try {
+            const raw = localStorage.getItem(draftKey);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed?.formData && isDraftMeaningful(parsed.formData)) {
+                    setDraftPrompt(parsed);
+                }
+            }
+        } catch (e) {
+            console.error('Error leyendo borrador local:', e);
+        }
+    }, [isLoadingData, draftKey]);
+
+    // Autoguardado debounced. Los archivos pendientes de subir (File) no se pueden serializar
+    // a localStorage, así que se excluyen del borrador (solo se conservan los ya subidos, con url).
+    useEffect(() => {
+        if (!initialLoadDoneRef.current || draftPrompt) return;
+        if (!isDraftMeaningful(formData)) return;
+
+        const timer = setTimeout(() => {
+            try {
+                const hadPendingFiles = formData.archivos.some((a: any) => a.file);
+                const archivosForDraft = formData.archivos.filter((a: any) => !a.file);
+                localStorage.setItem(draftKey, JSON.stringify({
+                    formData: { ...formData, archivos: archivosForDraft },
+                    currentStep,
+                    savedAt: new Date().toISOString(),
+                    hadPendingFiles
+                }));
+                setLastSavedAt(new Date());
+            } catch (e) {
+                console.error('Error guardando borrador local:', e);
+            }
+        }, 1200);
+
+        return () => clearTimeout(timer);
+    }, [formData, currentStep, draftKey, draftPrompt]);
+
+    const handleRestoreDraft = () => {
+        if (!draftPrompt) return;
+        setFormData(draftPrompt.formData);
+        setCurrentStep(draftPrompt.currentStep || 1);
+        setLastSavedAt(new Date(draftPrompt.savedAt));
+        if (draftPrompt.hadPendingFiles) {
+            alert('Se restauró el borrador. Los archivos que estaban adjuntos pero sin subir no se pudieron recuperar: hay que volver a adjuntarlos.');
+        }
+        setDraftPrompt(null);
+    };
+
+    const handleDiscardDraft = () => {
+        localStorage.removeItem(draftKey);
+        setDraftPrompt(null);
+    };
 
     // Auto-assign SPD for Professionals
     useEffect(() => {
@@ -971,6 +1060,9 @@ const FormularioRecepcion: React.FC = () => {
                 }
             }
 
+            // Guardado real exitoso: el borrador local ya no hace falta
+            localStorage.removeItem(draftKey);
+
             alert('¡Recepción finalizada con éxito! El legajo ha sido creado.');
             navigate(`/expedientes/${expedienteId}/ingresos/${currentIngresoId}`);
 
@@ -1037,22 +1129,29 @@ const FormularioRecepcion: React.FC = () => {
                             { label: 'Formulario de Recepción', active: true }
                         ]}
                     />
-                    {/* DEBUG PANEL */}
-                    <div className="mb-4 p-2 bg-black text-green-400 text-[10px] font-mono rounded flex items-center justify-between">
-                        <div>
-                            User: {userProfile?.email || 'Guest'} |
-                            Roles: {userProfile?.usuarios_roles?.map((ur: any) => ur.roles?.nombre).join(', ') || 'No Roles'} |
-                            Active Role: {currentRole} |
-                            Status: {loadingAuth ? 'Checking...' : 'Ready'}
-                            {isSaving && <span className="ml-4 animate-pulse text-yellow-500">| Persisting Data...</span>}
+
+                    {/* Banner de borrador local recuperable */}
+                    {draftPrompt && (
+                        <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <span className="material-symbols-outlined text-amber-600">history</span>
+                                <div>
+                                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Encontramos un borrador sin guardar</p>
+                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                        Guardado automáticamente {formatDistanceToNow(new Date(draftPrompt.savedAt), { addSuffix: true, locale: es })}. ¿Querés continuar donde lo dejaste?
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                                <button onClick={handleDiscardDraft} className="px-3 py-2 text-xs font-bold rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors">
+                                    Descartar
+                                </button>
+                                <button onClick={handleRestoreDraft} className="px-3 py-2 text-xs font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors">
+                                    Continuar donde lo dejé
+                                </button>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-[8px] border border-zinc-600 uppercase"
-                        >
-                            Refrescar Sesión
-                        </button>
-                    </div>
+                    )}
 
                     {/* Progress Indicator */}
                     <div className="mb-10 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm transition-all">
@@ -1063,6 +1162,12 @@ const FormularioRecepcion: React.FC = () => {
                             </div>
                             <div className="text-right">
                                 <p className="text-xs font-bold text-[#60708a] uppercase tracking-widest">Paso {currentStep} de 8 ({(currentStep / 8 * 100).toFixed(0)}%)</p>
+                                {lastSavedAt && (
+                                    <p className="text-[10px] text-slate-400 flex items-center justify-end gap-1 mt-1">
+                                        <span className="material-symbols-outlined text-xs">cloud_done</span>
+                                        Borrador guardado {formatDistanceToNow(lastSavedAt, { addSuffix: true, locale: es })}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <div className="h-2 w-full bg-[#dbdfe6] dark:bg-slate-800 rounded-full overflow-hidden">

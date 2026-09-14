@@ -195,7 +195,7 @@ const CierreIngreso = () => {
         <div className="min-h-screen bg-[#f6f8f8] dark:bg-[#121e20] text-[#121617] dark:text-white font-['Manrope',sans-serif]">
             {/* Top Navigation Bar from template (simplified for React context if needed, usually MainLayout handles this but this looks like a standalone or specific layout page based on HTML provided. I will assume it renders inside MainLayout or similar, but the user provided full HTML body, so I'll wrap it nicely) */}
 
-            <main className="max-w-[1000px] mx-auto py-10 px-6">
+            <main className="max-w-[1000px] mx-auto py-6 sm:py-10 px-4 sm:px-6">
                 {/* Breadcrumbs */}
                 <Breadcrumbs
                     items={[
@@ -208,15 +208,15 @@ const CierreIngreso = () => {
                 />
 
                 {/* Page Heading */}
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-10">
-                    <div className="flex flex-col gap-2">
-                        <h1 className="text-[#121617] dark:text-white text-4xl font-black leading-tight tracking-tight">Cese de Intervención</h1>
-                        <p className="text-[#658086] text-lg font-medium">Expediente: Cese de Intervención</p>
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-10">
+                    <div className="flex flex-col gap-1 sm:gap-2">
+                        <h1 className="text-[#121617] dark:text-white text-2xl sm:text-4xl font-black leading-tight tracking-tight">Cese de Intervención</h1>
+                        <p className="text-[#658086] text-sm sm:text-lg font-medium">Expediente: Cese de Intervención</p>
                     </div>
                     {solicitudId && (
                         <button
                             onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}/resumen`)}
-                            className="flex items-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1a2b2e] border border-[#e5e7eb] dark:border-[#2d3a3d] text-[#121617] dark:text-white text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm"
+                            className="w-full sm:w-auto justify-center flex items-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1a2b2e] border border-[#e5e7eb] dark:border-[#2d3a3d] text-[#121617] dark:text-white text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm"
                         >
                             <span className="material-symbols-outlined text-lg">history</span>
                             <span>Ver Historial de Solicitud</span>
@@ -224,17 +224,17 @@ const CierreIngreso = () => {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
                     {/* Left Column: Form */}
-                    <div className="lg:col-span-2 space-y-8">
+                    <div className="lg:col-span-2 space-y-6 sm:space-y-8">
                         {/* Main Form Section */}
-                        <section className="bg-white dark:bg-[#1a2b2e] p-8 rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#2d3a3d]">
+                        <section className="bg-white dark:bg-[#1a2b2e] p-4 sm:p-8 rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#2d3a3d]">
                             <div className="space-y-6">
                                 {/* Motivo de Cese */}
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-bold text-[#121617] dark:text-gray-300" htmlFor="motivo">Motivo de Cese</label>
                                     <select
-                                        className="w-full h-12 px-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] focus:border-[#1f96ad] transition-all disabled:opacity-75"
+                                        className="w-full min-h-12 py-2.5 px-3 sm:px-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] focus:border-[#1f96ad] text-sm sm:text-base transition-all disabled:opacity-75"
                                         id="motivo"
                                         disabled={isLockedForRole}
                                         value={formData.motivo_cese}
@@ -252,15 +252,15 @@ const CierreIngreso = () => {
 
                                 {/* Conditional Section: SENAF Summary */}
                                 {formData.motivo_cese === 'solicitud_medida_excepcional' && (
-                                    <div className="bg-[#1f96ad]/5 dark:bg-[#1f96ad]/10 border border-[#1f96ad]/20 rounded-xl p-6 space-y-6">
+                                    <div className="bg-[#1f96ad]/5 dark:bg-[#1f96ad]/10 border border-[#1f96ad]/20 rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-6">
                                         <div className="flex items-center gap-2 text-[#1f96ad]">
                                             <span className="material-symbols-outlined">gavel</span>
-                                            <p className="font-bold text-sm uppercase tracking-wider">Criterios de Medida Excepcional</p>
+                                            <p className="font-bold text-xs sm:text-sm uppercase tracking-wider">Criterios de Medida Excepcional</p>
                                         </div>
 
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between p-4 bg-white dark:bg-[#1a2b2e] rounded-lg border border-[#e5e7eb] dark:border-[#2d3a3d]">
-                                                <p className="text-sm font-medium">¿Se agotaron las medidas de protección posibles?</p>
+                                        <div className="space-y-3 sm:space-y-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white dark:bg-[#1a2b2e] rounded-lg border border-[#e5e7eb] dark:border-[#2d3a3d] gap-3">
+                                                <p className="text-xs sm:text-sm font-medium">¿Se agotaron las medidas de protección posibles?</p>
                                                 <div className="flex gap-4">
                                                     <label className="flex items-center gap-2 cursor-pointer">
                                                         <input type="radio" disabled={isLockedForRole} checked={senafData.agoto_medidas === true} onChange={() => setSenafData({ ...senafData, agoto_medidas: true })} className="text-primary focus:ring-primary" />
@@ -273,8 +273,8 @@ const CierreIngreso = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center justify-between p-4 bg-white dark:bg-[#1a2b2e] rounded-lg border border-[#e5e7eb] dark:border-[#2d3a3d]">
-                                                <p className="text-sm font-medium">¿Existe grave riesgo para la vida o integridad?</p>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white dark:bg-[#1a2b2e] rounded-lg border border-[#e5e7eb] dark:border-[#2d3a3d] gap-3">
+                                                <p className="text-xs sm:text-sm font-medium">¿Existe grave riesgo para la vida o integridad?</p>
                                                 <div className="flex gap-4">
                                                     <label className="flex items-center gap-2 cursor-pointer">
                                                         <input type="radio" disabled={isLockedForRole} checked={senafData.riesgo_vida === true} onChange={() => setSenafData({ ...senafData, riesgo_vida: true })} className="text-primary focus:ring-primary" />
@@ -296,7 +296,7 @@ const CierreIngreso = () => {
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-bold text-[#121617] dark:text-gray-300" htmlFor="logros">Resumen de Logros Alcanzados</label>
                                     <textarea
-                                        className="w-full p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] transition-all disabled:opacity-75"
+                                        className="w-full p-3 sm:p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] text-sm sm:text-base transition-all disabled:opacity-75"
                                         id="logros"
                                         disabled={isLockedForRole}
                                         placeholder="Describa los avances y metas cumplidas durante la intervención..."
@@ -310,7 +310,7 @@ const CierreIngreso = () => {
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-bold text-[#121617] dark:text-gray-300" htmlFor="observaciones">Observaciones Finales</label>
                                     <textarea
-                                        className="w-full p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] transition-all disabled:opacity-75"
+                                        className="w-full p-3 sm:p-4 rounded-lg bg-[#f6f8f8] dark:bg-[#121e20] border-[#dce3e5] dark:border-[#2d3a3d] focus:ring-2 focus:ring-[#1f96ad] text-sm sm:text-base transition-all disabled:opacity-75"
                                         id="observaciones"
                                         disabled={isLockedForRole}
                                         placeholder="Información relevante adicional para el cierre definitivo..."
@@ -323,7 +323,7 @@ const CierreIngreso = () => {
                                 {/* Inline History/Tracking Section */}
                                 {(formData.motivo_cese === 'solicitud_medida_excepcional' || solicitudId) && (
                                     <div className="pt-6 border-t border-gray-100 dark:border-zinc-800">
-                                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                        <h3 className="text-base sm:text-lg font-bold mb-4 flex items-center gap-2">
                                             <span className="material-symbols-outlined text-primary">timeline</span>
                                             Seguimiento de Elevación
                                         </h3>
@@ -368,7 +368,7 @@ const CierreIngreso = () => {
                     {/* Right Column: Summary & Actions */}
                     <div className="space-y-6">
                         {/* Status Card */}
-                        <div className="bg-white dark:bg-[#1a2b2e] p-6 rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#2d3a3d]">
+                        <div className="bg-white dark:bg-[#1a2b2e] p-4 sm:p-6 rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#2d3a3d]">
                             <h3 className="text-base font-bold mb-4 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[#2D8A4E]">verified</span>
                                 Estado de Medidas
@@ -381,12 +381,11 @@ const CierreIngreso = () => {
                                 <div className="w-full bg-[#dce3e5] dark:bg-[#2d3a3d] h-3 rounded-full overflow-hidden">
                                     <div className="bg-[#2D8A4E] h-full" style={{ width: `${progress}%` }}></div>
                                 </div>
-                                {/* In a real app, list dynamic measures here */}
                             </div>
                         </div>
 
                         {/* Intervention Progress Card */}
-                        <div className="bg-[#121617] dark:bg-[#0a1112] p-6 rounded-xl shadow-lg text-white">
+                        <div className="bg-[#121617] dark:bg-[#0a1112] p-4 sm:p-6 rounded-xl shadow-lg text-white">
                             <div className="flex flex-col gap-3">
                                 <div className="flex gap-6 justify-between items-center">
                                     <p className="text-sm font-medium opacity-80">Progreso de Intervención</p>
@@ -404,7 +403,7 @@ const CierreIngreso = () => {
                             <button
                                 onClick={handleSubmit}
                                 disabled={(!formData.motivo_cese || isSaving) && !isLockedForRole}
-                                className={`w-full text-white font-bold py-4 px-6 rounded-lg transition-all shadow-md flex items-center justify-center gap-3 ${((!formData.motivo_cese || isSaving) && !isLockedForRole) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#B3243F] hover:bg-[#B3243F]/90'}`}
+                                className={`w-full text-white font-bold py-3.5 sm:py-4 px-6 rounded-lg transition-all shadow-md flex items-center justify-center gap-3 ${((!formData.motivo_cese || isSaving) && !isLockedForRole) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#B3243F] hover:bg-[#B3243F]/90'}`}
                             >
                                 <span className="material-symbols-outlined">{isSaving ? 'sync' : isLockedForRole ? 'rate_review' : 'assignment_turned_in'}</span>
                                 {isSaving ? 'Guardando...' :

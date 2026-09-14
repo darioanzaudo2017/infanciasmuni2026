@@ -38,6 +38,14 @@ interface ExpedienteRow {
 
 const PAGE_SIZE = 20;
 
+// Saca acentos/diacríticos para que la búsqueda coincida contra las columnas
+// ya normalizadas en vw_expedientes_list (unaccent aplicado en la vista)
+const normalizarTexto = (texto: string) =>
+    texto
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase();
+
 const ExpedientesList = () => {
     const [expedientes, setExpedientes] = useState<ExpedienteRow[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +55,7 @@ const ExpedientesList = () => {
     const [userRole, setUserRole] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     // Modal anulación
     const [anulando, setAnulando] = useState<ExpedienteRow | null>(null);
@@ -68,6 +77,7 @@ const ExpedientesList = () => {
 
     const fetchExpedientes = async () => {
         setLoading(true);
+        setFetchError(null);
         try {
             let query = supabase.from('vw_expedientes_list').select('*', { count: 'exact' });
 
@@ -77,7 +87,8 @@ const ExpedientesList = () => {
 
             if (debouncedSearchTerm) {
                 const term = debouncedSearchTerm.replace(/[,()]/g, '');
-                query = query.or(`numero.ilike.*${term}*,nino_nombre.ilike.*${term}*,nino_apellido.ilike.*${term}*,nino_dni_texto.ilike.*${term}*,grupo_familiar_texto.ilike.*${term}*,referentes_texto.ilike.*${term}*`);
+                const termNormalizado = normalizarTexto(term);
+                query = query.or(`numero.ilike.*${term}*,nino_dni_texto.ilike.*${term}*,nino_nombre_normalizado.ilike.*${termNormalizado}*,nino_apellido_normalizado.ilike.*${termNormalizado}*,grupo_familiar_normalizado.ilike.*${termNormalizado}*,referentes_normalizado.ilike.*${termNormalizado}*`);
             }
 
             const from = (page - 1) * PAGE_SIZE;
@@ -90,6 +101,9 @@ const ExpedientesList = () => {
             setTotalCount(count || 0);
         } catch (error) {
             console.error('Error fetching expedientes:', error);
+            setExpedientes([]);
+            setTotalCount(0);
+            setFetchError('No se pudo cargar la lista de expedientes. Probá de nuevo o avisá a soporte técnico.');
         } finally {
             setLoading(false);
         }
@@ -213,6 +227,13 @@ const ExpedientesList = () => {
                 </div>
             </div>
 
+            {fetchError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-600 text-sm font-medium rounded-xl p-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">error</span>
+                    {fetchError}
+                </div>
+            )}
+
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -317,7 +338,7 @@ const ExpedientesList = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-right">
-                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                 {!row.anulado && (
                                                     <Link
                                                         to={`/expedientes/${row.id}/ingresos`}

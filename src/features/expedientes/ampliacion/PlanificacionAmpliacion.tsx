@@ -81,10 +81,10 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
     };
 
     return (
-        <main className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8 p-6 animate-in fade-in duration-500 font-display">
+        <main className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 sm:gap-8 p-4 sm:p-6 animate-in fade-in duration-500 font-display">
             {/* Sidebar: Case Information */}
             <aside className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
                     <div className="flex flex-col gap-6">
                         <div className="flex items-start gap-4">
                             <div className="size-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -117,7 +117,7 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
                 </div>
 
                 {/* Vertical Stepper */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5">
                     <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg">route</span>
                         Progreso del Caso
@@ -156,19 +156,19 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
                     ]}
                 />
 
-                <div className="bg-white dark:bg-slate-900 rounded-xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-6 md:p-8 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Planificación de la Ampliación</h1>
-                        <p className="text-slate-500 mt-1">Etapa 2: Defina los objetivos y estrategias para el expediente actual.</p>
+                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Planificación de la Ampliación</h1>
+                        <p className="text-slate-500 mt-1 text-xs sm:text-sm">Etapa 2: Defina los objetivos y estrategias para el expediente actual.</p>
                     </div>
-                    <div className="flex gap-3">
-                        <button className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button className="w-full sm:w-auto justify-center px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors">
                             Guardar Borrador
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all shadow-md shadow-primary/20 disabled:opacity-50"
+                            className="w-full sm:w-auto justify-center px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all shadow-md shadow-primary/20 disabled:opacity-50"
                         >
                             {isSaving ? 'Guardando...' : 'Finalizar Planificación'}
                         </button>
@@ -178,14 +178,14 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
                 <div className="space-y-6">
                     {/* Objectives Section */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                        <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                             <h2 className="text-lg font-bold flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">target</span>
                                 Objetivos de la Intervención
                             </h2>
                             <p className="text-sm text-slate-500 mt-1">Describa los propósitos principales que se buscan alcanzar con esta ampliación.</p>
                         </div>
-                        <div className="p-6">
+                        <div className="p-4 sm:p-6">
                             <textarea
                                 className="w-full h-40 p-4 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
                                 placeholder="Ej: Realizar una evaluación interdisciplinaria para determinar la situación familiar actual..."
@@ -197,14 +197,14 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
 
                     {/* Strategies Section */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                        <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                             <h2 className="text-lg font-bold flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">strategy</span>
                                 Estrategias y Metodología
                             </h2>
                             <p className="text-sm text-slate-500 mt-1">Defina los pasos concretos, entrevistas, visitas domiciliarias y articulaciones necesarias.</p>
                         </div>
-                        <div className="p-6">
+                        <div className="p-4 sm:p-6">
                             <textarea
                                 className="w-full h-40 p-4 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
                                 placeholder="1. Entrevista con referentes afectivos..."
@@ -217,7 +217,7 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
                     {/* Timeline & Team */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
                         {/* Timeline */}
-                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6">
                             <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
                                 <span className="material-symbols-outlined text-primary">calendar_today</span>
                                 Plazos Estimados
@@ -245,7 +245,7 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
                         </div>
 
                         {/* Team */}
-                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col">
+                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
                             <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
                                 <span className="material-symbols-outlined text-primary">group</span>
                                 Equipo Asignado

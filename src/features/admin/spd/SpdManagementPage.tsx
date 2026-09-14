@@ -292,7 +292,7 @@ const SpdManagementPage: React.FC = () => {
         <div className="space-y-6">
             {/* Header section */}
             <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-4 text-[#121717] dark:text-white">
                         <span className="material-symbols-outlined text-primary text-3xl">home_work</span>
                         <div>
@@ -303,7 +303,7 @@ const SpdManagementPage: React.FC = () => {
                     <Button
                         onClick={handleNewClick}
                         variant="primary"
-                        className="flex items-center gap-2 text-sm font-bold shadow-sm"
+                        className="flex items-center justify-center gap-2 text-sm font-bold shadow-sm w-full sm:w-auto"
                     >
                         <span className="material-symbols-outlined text-lg">add_circle</span>
                         <span>Nuevo SPD</span>

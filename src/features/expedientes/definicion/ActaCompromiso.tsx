@@ -149,33 +149,33 @@ const ActaCompromiso = () => {
     return (
         <div className="bg-[#f7f6f8] dark:bg-[#17131f] text-[#131217] dark:text-[#f2f1f4] min-h-screen flex flex-col font-['Public_Sans',sans-serif]">
             {/* Top Navigation Bar */}
-            <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e4e9] dark:border-[#2d2838] bg-white dark:bg-[#1f1a29] px-6 py-3 sticky top-0 z-50 print:hidden">
-                <div className="flex items-center gap-6">
+            <header className="flex flex-wrap sm:flex-nowrap items-center justify-between border-b border-solid border-[#e5e4e9] dark:border-[#2d2838] bg-white dark:bg-[#1f1a29] px-4 sm:px-6 py-3 sticky top-0 z-50 print:hidden gap-3">
+                <div className="flex items-center gap-4 sm:gap-6">
                     <div className="flex items-center gap-3 text-primary" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
                         <div className="size-6 text-[#411f89]">
                             <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
                             </svg>
                         </div>
-                        <h2 className="text-[#131217] dark:text-white text-lg font-bold leading-tight tracking-tight">Sistema NNyA</h2>
+                        <h2 className="text-[#131217] dark:text-white text-base sm:text-lg font-bold leading-tight tracking-tight">Sistema NNyA</h2>
                     </div>
-                    <div className="h-6 w-px bg-[#e5e4e9] dark:bg-[#2d2838]"></div>
-                    <nav className="flex items-center gap-6">
+                    <div className="hidden sm:block h-6 w-px bg-[#e5e4e9] dark:bg-[#2d2838]"></div>
+                    <nav className="hidden sm:flex items-center gap-6">
                         <a className="text-[#131217] dark:text-[#f2f1f4] text-sm font-medium hover:text-primary transition-colors cursor-pointer" onClick={() => navigate('/')}>Dashboard</a>
                         <a className="text-[#131217] dark:text-[#f2f1f4] text-sm font-medium border-b-2 border-primary pb-1 cursor-pointer">Expedientes</a>
                         <a className="text-[#131217] dark:text-[#f2f1f4] text-sm font-medium hover:text-primary transition-colors cursor-pointer">Reportes</a>
                     </nav>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex gap-2">
-                        <button className="p-2 rounded hover:bg-[#f2f1f4] dark:hover:bg-[#2d2838] text-[#706685]">
-                            <span className="material-symbols-outlined">notifications</span>
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex gap-1 sm:gap-2">
+                        <button className="p-1.5 sm:p-2 rounded hover:bg-[#f2f1f4] dark:hover:bg-[#2d2838] text-[#706685]">
+                            <span className="material-symbols-outlined text-xl sm:text-2xl">notifications</span>
                         </button>
-                        <button className="p-2 rounded hover:bg-[#f2f1f4] dark:hover:bg-[#2d2838] text-[#706685]">
-                            <span className="material-symbols-outlined">settings</span>
+                        <button className="p-1.5 sm:p-2 rounded hover:bg-[#f2f1f4] dark:hover:bg-[#2d2838] text-[#706685]">
+                            <span className="material-symbols-outlined text-xl sm:text-2xl">settings</span>
                         </button>
                     </div>
-                    <div className="size-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                    <div className="size-8 sm:size-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs sm:text-sm">
                         DA
                     </div>
                 </div>
@@ -183,7 +183,7 @@ const ActaCompromiso = () => {
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Sidebar: Context & Navigation */}
-                <aside className="w-64 border-r border-[#e5e4e9] dark:border-[#2d2838] bg-white dark:bg-[#1f1a29] flex flex-col shrink-0 print:hidden">
+                <aside className="hidden lg:flex w-64 border-r border-[#e5e4e9] dark:border-[#2d2838] bg-white dark:bg-[#1f1a29] flex-col shrink-0 print:hidden">
                     <div className="p-4 flex flex-col gap-6">
                         <div className="flex gap-3 items-center">
                             <div className="bg-[#411f89]/10 text-[#411f89] p-2 rounded-lg">
@@ -225,7 +225,7 @@ const ActaCompromiso = () => {
                 </aside>
 
                 {/* Main Content: Document Workspace */}
-                <main className="flex-1 overflow-y-auto bg-[#f0f1f5] dark:bg-[#121017] p-8">
+                <main className="flex-1 overflow-y-auto bg-[#f0f1f5] dark:bg-[#121017] p-4 sm:p-6 md:p-8">
                     <div className="max-w-5xl mx-auto flex flex-col gap-6">
                         {/* Breadcrumbs & Heading */}
                         <div className="flex flex-col gap-2 print:hidden">
@@ -238,13 +238,13 @@ const ActaCompromiso = () => {
                                     { label: 'Generación de Acta', active: true }
                                 ]}
                             />
-                            <div className="flex justify-between items-end">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                                 <div>
-                                    <h2 className="text-3xl font-black text-[#131217] dark:text-white tracking-tight">Acta de Compromiso</h2>
-                                    <p className="text-[#706685] text-base">Formalización y firma de acuerdos institucionales y familiares.</p>
+                                    <h2 className="text-2xl sm:text-3xl font-black text-[#131217] dark:text-white tracking-tight">Acta de Compromiso</h2>
+                                    <p className="text-[#706685] text-sm sm:text-base">Formalización y firma de acuerdos institucionales y familiares.</p>
                                 </div>
-                                <div className="flex gap-3">
-                                    <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1f1a29] border border-[#e5e4e9] dark:border-[#2d2838] rounded font-bold text-sm hover:shadow-md transition-all">
+                                <div className="flex gap-3 w-full sm:w-auto">
+                                    <button onClick={handlePrint} className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#1f1a29] border border-[#e5e4e9] dark:border-[#2d2838] rounded font-bold text-sm hover:shadow-md transition-all">
                                         <span className="material-symbols-outlined">visibility</span>
                                         Vista Previa / Imprimir
                                     </button>
@@ -253,29 +253,29 @@ const ActaCompromiso = () => {
                         </div>
 
                         {/* Document Layout */}
-                        <div className="flex flex-col lg:flex-row gap-8 items-start">
+                        <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 items-start">
                             {/* Paper Component */}
                             <div className="flex-1 w-full">
-                                <div className="bg-white dark:bg-[#1f1a29] p-16 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] min-h-[1122px] w-full max-w-[800px] mx-auto relative print:shadow-none print:w-full print:max-w-none">
+                                <div className="bg-white dark:bg-[#1f1a29] p-4 sm:p-8 md:p-16 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] min-h-[1122px] w-full max-w-[800px] mx-auto relative print:shadow-none print:w-full print:max-w-none print:p-0">
                                     {/* Paper Header */}
-                                    <div className="border-b-2 border-double border-[#131217] dark:border-white pb-8 mb-8">
-                                        <div className="flex justify-between items-start">
+                                    <div className="border-b-2 border-double border-[#131217] dark:border-white pb-6 sm:pb-8 mb-6 sm:mb-8">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                             <div className="flex flex-col gap-1">
                                                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#706685]">Municipalidad de Córdoba</p>
-                                                <h3 className="text-xl font-bold uppercase">Secretaría de Familia e Infancias</h3>
+                                                <h3 className="text-lg sm:text-xl font-bold uppercase">Secretaría de Familia e Infancias</h3>
                                                 <p className="text-xs text-[#706685]">Dirección General de Niñez y Adolescencia</p>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="bg-[#411f89] text-white px-3 py-1 text-sm font-bold mb-1 print:bg-black/80">EXP #{ingreso.expediente_numero}</div>
+                                            <div className="text-left sm:text-right">
+                                                <div className="bg-[#411f89] text-white px-3 py-1 text-sm font-bold mb-1 print:bg-black/80 inline-block sm:block">EXP #{ingreso.expediente_numero}</div>
                                                 <p className="text-xs text-[#706685]">Fecha: {format(new Date(), "dd 'de' MMMM, yyyy", { locale: es })}</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Document Body - Updated Template */}
-                                    <div className="space-y-6 text-[#131217] dark:text-white leading-relaxed text-justify">
+                                    <div className="space-y-6 text-[#131217] dark:text-white leading-relaxed text-justify text-sm sm:text-base">
 
-                                        <h4 className="text-center font-bold text-lg underline decoration-1 underline-offset-4 uppercase mb-8">ACTA ACUERDO</h4>
+                                        <h4 className="text-center font-bold text-base sm:text-lg underline decoration-1 underline-offset-4 uppercase mb-6 sm:mb-8">ACTA ACUERDO</h4>
 
                                         <p>
                                             <strong>ACTA ACUERDO</strong> entre el Niño/Niña/Adolescente <strong>{childData?.nino_nombre} {childData?.nino_apellido}</strong>, DNI: <strong>{childData?.nino_dni}</strong>, su familia y el Servicio Municipal de Protección integral de Derechos de Niños Niñas y Adolescentes.
@@ -337,10 +337,10 @@ const ActaCompromiso = () => {
                                             <div>
                                                 <p className="font-bold underline mb-2 text-[#411f89] dark:text-[#a78bfa]">El Servicio:</p>
                                                 <div
-                                                    className={`print:hidden p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
+                                                    className={`print:hidden p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
                                                         ${institutionCompromise === '[... completar aquí ...]' 
                                                             ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
-                                                            : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
+                                                             : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
                                                     contentEditable={true}
                                                     onFocus={(e) => { if (institutionCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setInstitutionCompromise(''); } }}
                                                     onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setInstitutionCompromise('[... completar aquí ...]'); } }}
@@ -357,10 +357,10 @@ const ActaCompromiso = () => {
                                             <div>
                                                 <p className="font-bold underline mb-2 text-[#411f89] dark:text-[#a78bfa]">La Familia:</p>
                                                 <div
-                                                    className={`print:hidden p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
+                                                    className={`print:hidden p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
                                                         ${familyCompromise === '[... completar aquí ...]' 
                                                             ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
-                                                            : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
+                                                             : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
                                                     contentEditable={true}
                                                     onFocus={(e) => { if (familyCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setFamilyCompromise(''); } }}
                                                     onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setFamilyCompromise('[... completar aquí ...]'); } }}
@@ -378,10 +378,10 @@ const ActaCompromiso = () => {
                                         <div>
                                             <p className="font-bold mb-2">Se deja constancia que por su parte la institución/organismo:</p>
                                             <div
-                                                className={`print:hidden p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
+                                                className={`print:hidden p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
                                                     ${otherCompromise === '[... completar aquí ...]' 
                                                         ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
-                                                        : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
+                                                         : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
                                                 contentEditable={true}
                                                 onFocus={(e) => { if (otherCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setOtherCompromise(''); } }}
                                                 onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setOtherCompromise('[... completar aquí ...]'); } }}
@@ -396,7 +396,7 @@ const ActaCompromiso = () => {
                                         </div>
 
                                         {/* Signatures */}
-                                        <div className="grid grid-cols-2 gap-x-12 pt-16 gap-y-12">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-12 pt-10 sm:pt-16 gap-y-8 sm:gap-y-12">
                                             {participants.filter(p => p.selected).map(p => (
                                                 <div key={p.id} className="text-center">
                                                     <div className="border-t border-black w-3/4 mx-auto pt-2">
@@ -411,7 +411,7 @@ const ActaCompromiso = () => {
                             </div>
 
                             {/* Right Sidebar: Participants & Actions */}
-                            <div className="w-80 flex flex-col gap-6 sticky top-24 print:hidden">
+                            <div className="w-full lg:w-80 flex flex-col gap-6 static lg:sticky lg:top-24 print:hidden">
                                 {/* Participants Card */}
                                 <div className="bg-white dark:bg-[#1f1a29] border border-[#e5e4e9] dark:border-[#2d2838] rounded-xl overflow-hidden">
                                     <div className="bg-[#f2f1f4] dark:bg-[#2d2838] px-4 py-3 flex justify-between items-center">
@@ -468,8 +468,7 @@ const ActaCompromiso = () => {
             </div>
 
             {/* Sticky Bottom Status Bar */}
-            {/* Sticky Bottom Status Bar */}
-            <footer className="h-10 bg-[#131217] text-white flex items-center px-6 justify-between text-xs font-medium print:hidden">
+            <footer className="hidden sm:flex h-10 bg-[#131217] text-white items-center px-6 justify-between text-xs font-medium print:hidden">
                 <div className="flex items-center gap-4">
                     <span className="flex items-center gap-2"><div className="size-2 rounded-full bg-green-500 animate-pulse"></div> Sistema Conectado</span>
                     <span className="text-[#706685]">|</span>
@@ -524,7 +523,7 @@ const ActaCompromiso = () => {
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 };
 

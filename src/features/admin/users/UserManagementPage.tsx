@@ -182,7 +182,7 @@ const UserManagementPage: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-4 text-[#121717] dark:text-white">
                         <span className="material-symbols-outlined text-primary text-3xl">badge</span>
                         <h2 className="text-xl font-bold leading-tight tracking-tight">Gestión de Usuarios y Accesos</h2>
@@ -190,7 +190,7 @@ const UserManagementPage: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={handleNew}
-                            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm"
+                            className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm w-full sm:w-auto"
                         >
                             <span className="material-symbols-outlined text-xl">person_add</span>
                             <span>Nuevo Usuario</span>

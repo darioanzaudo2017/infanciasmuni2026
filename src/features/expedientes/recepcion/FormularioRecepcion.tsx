@@ -1084,7 +1084,7 @@ const FormularioRecepcion: React.FC = () => {
     }
 
     return (
-        <div className="flex h-[calc(100vh-140px)] -m-8 overflow-hidden font-display text-[#111418] dark:text-white bg-[#f5f7f8] dark:bg-[#101722]">
+        <div className="flex h-[calc(100vh-140px)] -m-4 sm:-m-6 md:-m-8 overflow-hidden font-display text-[#111418] dark:text-white bg-[#f5f7f8] dark:bg-[#101722]">
             {/* Sidebar Navigation */}
             <aside className="w-80 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col overflow-y-auto hidden lg:flex">
                 <div className="p-8">
@@ -1119,8 +1119,36 @@ const FormularioRecepcion: React.FC = () => {
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto bg-[#f5f7f8] dark:bg-[#101722] relative pb-24 px-8 pt-8">
+            <main className="flex-1 overflow-y-auto bg-[#f5f7f8] dark:bg-[#101722] relative pb-24 px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8">
                 <div className="max-w-4xl mx-auto">
+                    {/* Compact Mobile/Tablet Step Selector */}
+                    <div className="lg:hidden mb-4 overflow-x-auto custom-scrollbar flex items-center gap-2 pb-2">
+                        {steps.map((step) => {
+                            const isActive = currentStep === step.id;
+                            const isCompleted = currentStep > step.id;
+
+                            return (
+                                <button
+                                    key={step.id}
+                                    type="button"
+                                    onClick={() => setCurrentStep(step.id)}
+                                    className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                                        isActive
+                                            ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                            : isCompleted
+                                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                                                : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-sm">
+                                        {isCompleted ? 'check_circle' : step.icon}
+                                    </span>
+                                    <span>{step.id}. {step.name}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
                     <Breadcrumbs
                         items={[
                             { label: 'Expedientes', path: '/expedientes' },
@@ -1224,10 +1252,10 @@ const FormularioRecepcion: React.FC = () => {
                                 {/* Datos Filiales del Niño (Only if NEW or EDITING) */}
                                 {(!ninoData && !formData.nino_id || isEditingNino) && (
                                     <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                        <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                             <h3 className="text-lg font-bold tracking-tight">Datos Filiales del Niño/a</h3>
                                         </div>
-                                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
                                                 <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nombres</label>
                                                 <input
@@ -1307,10 +1335,10 @@ const FormularioRecepcion: React.FC = () => {
 
                                 {/* Domicilio y Localización */}
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                    <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                         <h3 className="text-lg font-bold tracking-tight">Domicilio y Localización</h3>
                                     </div>
-                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div className="col-span-1 md:col-span-2">
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Calle y Número</label>
                                             <input
@@ -1452,10 +1480,10 @@ const FormularioRecepcion: React.FC = () => {
                                 </section>
 
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                    <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                         <h3 className="text-lg font-bold tracking-tight">Fechas del Caso</h3>
                                     </div>
-                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Ingreso</label>
                                             <input
@@ -1491,10 +1519,10 @@ const FormularioRecepcion: React.FC = () => {
                                 </section>
 
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                    <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                         <h3 className="text-lg font-bold tracking-tight">Origen de la Consulta / Derivación</h3>
                                     </div>
-                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div className="md:col-span-2">
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Origen de la Consulta</label>
                                             <select
@@ -1563,10 +1591,10 @@ const FormularioRecepcion: React.FC = () => {
 
                                 {/* Trayectoria Educativa */}
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                    <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                         <h3 className="text-lg font-bold tracking-tight">Trayectoria Educativa</h3>
                                     </div>
-                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nivel Educativo Actual</label>
                                             <select
@@ -1627,10 +1655,10 @@ const FormularioRecepcion: React.FC = () => {
 
                                 {/* Salud */}
                                 <section className="bg-white dark:bg-slate-900 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                                    <div className="px-4 sm:px-8 py-4 sm:py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                                         <h3 className="text-lg font-bold tracking-tight">Información de Salud</h3>
                                     </div>
-                                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div>
                                             <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Centro de Salud de Referencia</label>
                                             <input
@@ -1658,7 +1686,7 @@ const FormularioRecepcion: React.FC = () => {
                                                 onChange={(e) => setFormData({ ...formData, cobertura_medica: e.target.value })}
                                             />
                                         </div>
-                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                                        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pt-2">
                                             <div className="flex items-center gap-4">
                                                 <div
                                                     className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_cud ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}
@@ -1778,7 +1806,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                 </span>
                                                             </td>
                                                             <td className="px-8 py-4 text-right">
-                                                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <div className="flex justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                                     <button
                                                                         onClick={() => handleEditMember(index)}
                                                                         className="p-2 text-[#60708a] hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
@@ -1888,7 +1916,7 @@ const FormularioRecepcion: React.FC = () => {
                                                             </div>
                                                         </div>
 
-                                                        <div className="grid grid-cols-2 gap-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Fecha de Nacimiento</label>
                                                                 <input
@@ -2158,7 +2186,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                 </span>
                                                             </td>
                                                             <td className="px-8 py-4 text-right">
-                                                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <div className="flex justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                                     <button onClick={() => handleEditReferente(index)} className="p-2 text-[#60708a] hover:text-primary hover:bg-primary/10 rounded-lg"><span className="material-symbols-outlined text-xl">edit</span></button>
                                                                     <button onClick={() => handleRemoveReferente(index)} className="p-2 text-[#60708a] hover:text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-xl">delete</span></button>
                                                                 </div>
@@ -2186,7 +2214,7 @@ const FormularioRecepcion: React.FC = () => {
                                                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Información de Contacto y Apoyo</p>
                                                     </div>
                                                     <div className="flex-1 px-8 py-10 overflow-y-auto space-y-6">
-                                                        <div className="grid grid-cols-2 gap-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                             <div className="space-y-1">
                                                                 <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nombre</label>
                                                                 <input className="w-full h-12 px-4 rounded-xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 font-bold outline-none" value={currentReferente.nombre} onChange={e => setCurrentReferente({ ...currentReferente, nombre: e.target.value })} />
@@ -2466,7 +2494,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                 </button>
                                                             </div>
 
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-50 dark:border-slate-800/50 mt-2">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-50 dark:border-slate-800/50 mt-2">
                                                                 <div className="space-y-1.5">
                                                                     <label className="text-[9px] font-black text-[#60708a] uppercase tracking-widest">Nombre Descriptivo</label>
                                                                     <input
@@ -2523,7 +2551,7 @@ const FormularioRecepcion: React.FC = () => {
 
                                     <section className="space-y-4">
                                         <h3 className="text-[10px] font-black uppercase tracking-widest text-[#60708a] dark:text-slate-400">Seleccione la acción a seguir</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                             {[
                                                 { id: 'asesoramiento', label: 'Asesoramiento', icon: 'info', desc: 'Orientación legal o técnica sin apertura de intervención directa.', color: 'blue' },
                                                 { id: 'abordaje_integral', label: 'Abordaje Integral', icon: 'assignment_turned_in', desc: 'Apertura formal de legajo para intervención sostenida.', color: 'emerald' }
@@ -2601,7 +2629,7 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
                                                         <button
                                                             onClick={() => setCurrentStep(check.step)}
-                                                            className="text-[10px] font-black text-primary opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest"
+                                                            className="text-[10px] font-black text-primary opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity uppercase tracking-widest"
                                                         >
                                                             Revisar
                                                         </button>
@@ -2618,16 +2646,16 @@ const FormularioRecepcion: React.FC = () => {
             </main>
 
             {/* Sticky Action Footer */}
-            <footer className="h-20 bg-white dark:bg-slate-900 border-t border-[#dbdfe6] dark:border-slate-800 fixed bottom-0 left-0 right-0 z-50 flex items-center px-12 shadow-[0_-5px_20px_-15px_rgba(0,0,0,0.1)]">
-                <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-[#60708a] text-[10px] font-bold uppercase tracking-widest">
+            <footer className="h-20 bg-white dark:bg-slate-900 border-t border-[#dbdfe6] dark:border-slate-800 fixed bottom-0 left-0 right-0 z-50 flex items-center px-4 sm:px-8 md:px-12 shadow-[0_-5px_20px_-15px_rgba(0,0,0,0.1)]">
+                <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-2">
+                    <div className="hidden sm:flex items-center gap-3 text-[#60708a] text-[10px] font-bold uppercase tracking-widest">
                         <span className="material-symbols-outlined text-green-500 text-lg fill-current">cloud_done</span>
                         Auto-guardado activo
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
                         <button
                             onClick={() => currentStep > 1 ? setCurrentStep(currentStep - 1) : navigate('/expedientes/nuevo')}
-                            className="px-6 h-11 flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[#111418] dark:text-white font-bold text-xs transition-all uppercase tracking-wider"
+                            className="flex-1 sm:flex-none px-4 sm:px-6 h-11 flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-[#111418] dark:text-white font-bold text-xs transition-all uppercase tracking-wider"
                         >
                             <span className="material-symbols-outlined text-lg">arrow_back</span>
                             {currentStep === 1 ? 'Cancelar' : 'Anterior'}
@@ -2641,7 +2669,7 @@ const FormularioRecepcion: React.FC = () => {
                                 }
                             }}
                             disabled={isSaving}
-                            className="px-8 h-11 flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
+                            className="flex-1 sm:flex-none px-5 sm:px-8 h-11 flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
                         >
                             {currentStep === 8 ? (isSaving ? 'Guardando...' : 'Finalizar Recepción') : 'Siguiente'}
                             <span className="material-symbols-outlined text-lg">arrow_forward</span>

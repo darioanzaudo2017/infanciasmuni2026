@@ -375,7 +375,7 @@ const InformeSintesis = () => {
                 {/* Main Content Area */}
                 <section className="flex-1 flex flex-col overflow-y-auto custom-scrollbar scroll-smooth">
                     {/* Page Heading */}
-                    <div className="p-6 md:p-10 max-w-4xl mx-auto w-full">
+                    <div className="p-4 sm:p-6 md:p-10 max-w-4xl mx-auto w-full">
                         <Breadcrumbs
                             items={[
                                 { label: 'Inicio', path: '/' },
@@ -385,14 +385,14 @@ const InformeSintesis = () => {
                                 { label: 'Informe Síntesis', active: true }
                             ]}
                         />
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10 border-b border-gray-100 dark:border-gray-800 pb-8">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 sm:gap-6 mb-8 sm:mb-10 border-b border-gray-100 dark:border-gray-800 pb-6 sm:pb-8">
                             <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
+                                <div className="flex items-center gap-2 text-primary font-bold text-xs sm:text-sm uppercase tracking-widest">
                                     <span className="material-symbols-outlined text-[18px]">edit_note</span>
                                     Etapa 3 - Evaluación Técnica
                                 </div>
-                                <h1 className="text-4xl font-extrabold tracking-tight dark:text-white">Elaboración de Informe Síntesis</h1>
-                                <p className="text-gray-500 dark:text-gray-400 text-lg">Caso #{ingreso?.expediente_numero || 'S/D'} | Sujeto: {ingreso?.nino_nombre} {ingreso?.nino_apellido} ({ingreso?.nino_edad || 'S/D'} años)</p>
+                                <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight dark:text-white">Elaboración de Informe Síntesis</h1>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-lg">Caso #{ingreso?.expediente_numero || 'S/D'} | Sujeto: {ingreso?.nino_nombre} {ingreso?.nino_apellido} ({ingreso?.nino_edad || 'S/D'} años)</p>
                             </div>
                         </div>
 
@@ -558,9 +558,9 @@ const InformeSintesis = () => {
 
                                 {/* Add Selector UI */}
                                 {showRightSelector && (
-                                    <div className="p-6 bg-gray-50 dark:bg-zinc-800 rounded-2xl border border-dashed border-primary animate-in fade-in zoom-in-95 mt-4 space-y-4">
+                                    <div className="p-4 sm:p-6 bg-gray-50 dark:bg-zinc-800 rounded-2xl border border-dashed border-primary animate-in fade-in zoom-in-95 mt-4 space-y-4">
                                         <h4 className="text-sm font-black text-primary uppercase tracking-widest">Agregar Nuevo Derecho</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="space-y-1">
                                                 <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest">1. Categoría de Derecho</label>
                                                 <select
@@ -734,13 +734,13 @@ const InformeSintesis = () => {
             </main>
 
             {/* Sticky Footer Actions */}
-            <footer className="sticky bottom-0 z-50 bg-white/90 dark:bg-[#1a1e23]/90 backdrop-blur-md border-t border-[#e5e7eb] dark:border-gray-800 px-6 md:px-10 py-4">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <footer className="sticky bottom-0 z-50 bg-white/90 dark:bg-[#1a1e23]/90 backdrop-blur-md border-t border-[#e5e7eb] dark:border-gray-800 px-4 sm:px-6 md:px-10 py-3 sm:py-4">
+                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
                     <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">
                         <span className="material-symbols-outlined text-[16px]">cloud_done</span>
                         {saving ? 'Guardando...' : 'Cambios guardados localmente'}
                     </div>
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full sm:w-auto">
                         <PDFDownloadLink
                             document={
                                 <InformeSintesisPDF
@@ -753,20 +753,20 @@ const InformeSintesis = () => {
                                 />
                             }
                             fileName={`Informe_Sintesis_${ingreso?.expediente_numero}.pdf`}
-                            className="flex-1 sm:flex-none"
+                            className="w-full sm:w-auto flex-1 sm:flex-none"
                         >
                             {({ loading: pdfLoading }) => (
-                                <button disabled={pdfLoading} className="w-full flex items-center justify-center gap-2 min-w-[140px] px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-sans text-gray-700 dark:text-gray-300">
+                                <button disabled={pdfLoading} className="w-full flex items-center justify-center gap-2 sm:min-w-[140px] px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-sans text-gray-700 dark:text-gray-300">
                                     <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
                                     {pdfLoading ? 'Generando...' : 'PDF'}
                                 </button>
                             )}
                         </PDFDownloadLink>
 
-                        <button onClick={() => handleSave(false)} disabled={saving} className="flex-1 sm:flex-none min-w-[140px] px-6 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-sans">
+                        <button onClick={() => handleSave(false)} disabled={saving} className="w-full sm:w-auto flex-1 sm:flex-none sm:min-w-[140px] px-6 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-sans">
                             Guardar Borrador
                         </button>
-                        <button onClick={() => handleSave(true)} disabled={saving} className="flex-1 sm:flex-none min-w-[160px] px-6 py-2.5 rounded-lg bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all font-sans">
+                        <button onClick={() => handleSave(true)} disabled={saving} className="w-full sm:w-auto flex-1 sm:flex-none sm:min-w-[160px] px-6 py-2.5 rounded-lg bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all font-sans">
                             Finalizar Informe
                         </button>
                     </div>

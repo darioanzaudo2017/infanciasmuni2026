@@ -64,7 +64,7 @@ const NotificationsMenu = () => {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-[#e5e7eb] dark:border-[#333] overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] md:w-96 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-[#e5e7eb] dark:border-[#333] overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-4 border-b border-[#f0f2f5] dark:border-[#333] flex justify-between items-center">
                         <h3 className="font-bold text-sm dark:text-white">Notificaciones</h3>
                         {unreadCount > 0 && (

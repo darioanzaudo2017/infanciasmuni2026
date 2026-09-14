@@ -416,7 +416,7 @@ const SolicitudSenafForm = () => {
 
     return (
         <div className="min-h-screen bg-[#f6f8f8] dark:bg-[#121e20] text-[#121617] dark:text-white font-sans">
-            <main className="max-w-[1200px] mx-auto py-10 px-6">
+            <main className="max-w-[1200px] mx-auto py-6 sm:py-10 px-4 sm:px-6">
                 <Breadcrumbs
                     items={[
                         { label: 'Inicio', path: '/' },
@@ -426,39 +426,39 @@ const SolicitudSenafForm = () => {
                     ]}
                 />
 
-                <div className="mb-10 text-center">
-                    <h1 className="text-4xl font-black text-primary mb-2">Cese de la Intervención</h1>
-                    <p className="text-gray-500 font-medium italic">Solicitud de medida excepcional a SENAF</p>
+                <div className="mb-6 sm:mb-10 text-center">
+                    <h1 className="text-2xl sm:text-4xl font-black text-primary mb-2">Cese de la Intervención</h1>
+                    <p className="text-gray-500 font-medium italic text-sm sm:text-base">Solicitud de medida excepcional a SENAF</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
                     {/* Main Form */}
-                    <div className="lg:col-span-8 bg-white dark:bg-[#1a2b2e] rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-zinc-800 space-y-8">
+                    <div className="lg:col-span-8 bg-white dark:bg-[#1a2b2e] rounded-2xl shadow-xl p-4 sm:p-8 border border-gray-100 dark:border-zinc-800 space-y-6 sm:space-y-8">
 
-                        <div className="flex justify-between items-center py-4 border-y border-gray-50 dark:border-zinc-800">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 border-y border-gray-50 dark:border-zinc-800">
                             <div className="flex flex-col gap-1">
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-400">Estado de la Solicitud</span>
+                                <span className="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-400">Estado de la Solicitud</span>
                                 <div className="flex items-center gap-2">
                                     <span className={`size-3 rounded-full ${status === 'Aprobado' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : status.includes('Observado') ? 'bg-red-500' : 'bg-amber-500 animate-pulse'}`}></span>
-                                    <span className="text-sm font-black uppercase tracking-widest">{status}</span>
+                                    <span className="text-xs sm:text-sm font-black uppercase tracking-widest">{status}</span>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mb-1">Fecha de Inicio</p>
-                                <div className="bg-primary/10 text-primary px-4 py-2 rounded-lg font-black text-sm">
+                            <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 text-left sm:text-right">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter sm:mb-1">Fecha de Inicio</p>
+                                <div className="bg-primary/10 text-primary px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-black text-xs sm:text-sm">
                                     {formData.fecha_solicitud}
                                 </div>
                             </div>
                         </div>
 
                         <div className="space-y-6">
-                            <h2 className="text-xl font-bold text-primary border-l-4 border-primary pl-4">
+                            <h2 className="text-base sm:text-xl font-bold text-primary border-l-4 border-primary pl-3 sm:pl-4">
                                 Se resuelve el CESE DE LAS MEDIDAS DE PROTECCIÓN DE DERECHOS y la SOLICITUD DE LA MEDIDA EXCEPCIONAL A SENAF en razón de
                             </h2>
 
-                            <div className="space-y-6 bg-gray-50 dark:bg-zinc-800/50 p-6 rounded-xl">
-                                <div className="flex items-start justify-between gap-6">
-                                    <p className="text-sm leading-relaxed">
+                            <div className="space-y-4 sm:space-y-6 bg-gray-50 dark:bg-zinc-800/50 p-4 sm:p-6 rounded-xl">
+                                <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-6">
+                                    <p className="text-xs sm:text-sm leading-relaxed">
                                         a) Haber agotado las Medidas de protección posibles para la restitución de los derechos vulnerados sin que los mismos hayan podido ser restituidos. (art 42, 45, 48 y 51 de la ley 9944)
                                     </p>
                                     <div className="flex gap-4 shrink-0">
@@ -473,8 +473,8 @@ const SolicitudSenafForm = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-start justify-between gap-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
-                                    <p className="text-sm leading-relaxed">
+                                <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-6 pt-4 sm:pt-6 border-t border-gray-200 dark:border-zinc-700">
+                                    <p className="text-xs sm:text-sm leading-relaxed">
                                         b) Existir un grave riesgo para la vida e integridad psicofísica de la niña, niño o adolescente, Sin haberse adoptado medidas de protección, se requiere urgente intervención del tercer nivel (art 42 e 51 de la ley 9944)
                                     </p>
                                     <div className="flex gap-4 shrink-0">
@@ -494,8 +494,8 @@ const SolicitudSenafForm = () => {
                                 <div>
                                     <label className="block text-xs font-bold uppercase text-gray-400 mb-2">Valoración Integral</label>
                                     <textarea
-                                        className="w-full bg-gray-50 dark:bg-zinc-800 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary/20"
-                                        rows={10}
+                                        className="w-full bg-gray-50 dark:bg-zinc-800 border-none rounded-xl p-3 sm:p-4 text-sm focus:ring-2 focus:ring-primary/20"
+                                        rows={8}
                                         disabled={isViewOnly}
                                         value={formData.valoracion_integral}
                                         onChange={e => setFormData({ ...formData, valoracion_integral: e.target.value })}
@@ -505,44 +505,44 @@ const SolicitudSenafForm = () => {
                             </div>
                         </div>
 
-                        <div className="pt-8 border-t border-gray-100 dark:border-zinc-800 flex flex-wrap gap-4 justify-between">
-                            <div className="flex gap-3">
+                        <div className="pt-6 sm:pt-8 border-t border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row flex-wrap gap-4 justify-between">
+                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
                                 <button
                                     onClick={handleDownloadWord}
-                                    className="px-6 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl font-bold text-sm hover:bg-gray-50 flex items-center gap-2"
+                                    className="w-full sm:w-auto justify-center px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-200 dark:border-zinc-700 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 flex items-center gap-2"
                                 >
-                                    <span className="material-symbols-outlined">download</span>
-                                    Descargar Word Editable
+                                    <span className="material-symbols-outlined text-lg">download</span>
+                                    Descargar Word
                                 </button>
-                                <label className="px-6 py-3 border border-gray-200 dark:border-zinc-700 rounded-xl font-bold text-sm hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
-                                    <span className="material-symbols-outlined">{formData.documento_url ? 'task_alt' : 'upload'}</span>
+                                <label className="w-full sm:w-auto justify-center px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-200 dark:border-zinc-700 rounded-xl font-bold text-xs sm:text-sm hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-center">
+                                    <span className="material-symbols-outlined text-lg">{formData.documento_url ? 'task_alt' : 'upload'}</span>
                                     {formData.documento_url ? 'Archivo Subido' : 'Subir Firmado'}
                                     <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.doc,.docx,image/*" />
                                 </label>
                                 {formData.documento_url && (
-                                    <a href={formData.documento_url} target="_blank" rel="noreferrer" className="p-3 text-primary hover:bg-primary/5 rounded-xl">
-                                        <span className="material-symbols-outlined">visibility</span>
+                                    <a href={formData.documento_url} target="_blank" rel="noreferrer" className="p-2.5 sm:p-3 text-primary hover:bg-primary/5 rounded-xl flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-lg">visibility</span>
                                     </a>
                                 )}
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
                                 {!isViewOnly && userRole !== 'Administrador' && (
                                     <>
                                         <button
                                             onClick={() => handleAction('save')}
                                             disabled={saving}
-                                            className="px-6 py-3 text-gray-500 font-bold hover:text-gray-700"
+                                            className="w-full sm:w-auto justify-center px-4 sm:px-6 py-2.5 sm:py-3 text-gray-500 font-bold text-xs sm:text-sm hover:text-gray-700 text-center"
                                         >
                                             Guardar Borrador
                                         </button>
                                         <button
                                             onClick={() => handleAction('elevate')}
                                             disabled={saving || (userRole === 'Profesional' && !formData.documento_url)}
-                                            className={`px-10 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:brightness-110 transition-all flex items-center gap-2 ${(userRole === 'Profesional' && !formData.documento_url) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            className={`w-full sm:w-auto justify-center px-6 sm:px-10 py-2.5 sm:py-3 bg-primary text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-primary/20 hover:brightness-110 transition-all flex items-center gap-2 ${(userRole === 'Profesional' && !formData.documento_url) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             title={userRole === 'Profesional' && !formData.documento_url ? 'Debe subir el archivo firmado para elevar' : ''}
                                         >
-                                            <span className="material-symbols-outlined">send</span>
+                                            <span className="material-symbols-outlined text-lg">send</span>
                                             {userRole === 'Profesional' ? 'Elevar a Coordinación' : 'Elevar a Administración'}
                                         </button>
                                     </>
@@ -553,7 +553,7 @@ const SolicitudSenafForm = () => {
                                         <button
                                             onClick={() => setObservationModal(true)}
                                             disabled={saving}
-                                            className="px-6 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-all"
+                                            className="w-full sm:w-auto justify-center px-4 sm:px-6 py-2.5 sm:py-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs sm:text-sm hover:bg-red-100 transition-all"
                                         >
                                             Observar
                                         </button>
@@ -561,9 +561,9 @@ const SolicitudSenafForm = () => {
                                             <button
                                                 onClick={() => handleAction('approve')}
                                                 disabled={saving}
-                                                className="px-10 py-3 bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-600/20 hover:bg-green-700 transition-all flex items-center gap-2"
+                                                className="w-full sm:w-auto justify-center px-6 sm:px-10 py-2.5 sm:py-3 bg-green-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-green-600/20 hover:bg-green-700 transition-all flex items-center gap-2"
                                             >
-                                                <span className="material-symbols-outlined">send</span>
+                                                <span className="material-symbols-outlined text-lg">send</span>
                                                 Aprobar y Enviar
                                             </button>
                                         )}
@@ -573,7 +573,7 @@ const SolicitudSenafForm = () => {
                                 {status === 'Aprobado' && (
                                     <button
                                         onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}/resumen`)}
-                                        className="px-10 py-3 bg-zinc-800 text-white rounded-xl font-bold shadow-lg hover:bg-zinc-900 transition-all"
+                                        className="w-full sm:w-auto justify-center px-6 sm:px-10 py-2.5 sm:py-3 bg-zinc-800 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg hover:bg-zinc-900 transition-all"
                                     >
                                         Ver Resumen de Cierre
                                     </button>
@@ -583,19 +583,19 @@ const SolicitudSenafForm = () => {
                     </div>
 
                     {/* Timeline Sidebar */}
-                    <div className="lg:col-span-4 bg-white dark:bg-[#1a2b2e] rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-zinc-800">
-                        <h3 className="text-lg font-black text-[#121617] dark:text-white flex items-center gap-2 mb-8">
+                    <div className="lg:col-span-4 bg-white dark:bg-[#1a2b2e] rounded-2xl shadow-xl p-4 sm:p-8 border border-gray-100 dark:border-zinc-800 w-full">
+                        <h3 className="text-base sm:text-lg font-black text-[#121617] dark:text-white flex items-center gap-2 mb-6 sm:mb-8">
                             <span className="material-symbols-outlined text-primary">analytics</span>
                             Historial de la Solicitud
                         </h3>
 
                         {history.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                            <div className="flex flex-col items-center justify-center py-8 sm:py-10 text-gray-400">
                                 <span className="material-symbols-outlined text-4xl mb-2">pending_actions</span>
                                 <p className="text-xs font-bold uppercase tracking-widest text-center">Buscando registros...</p>
                             </div>
                         ) : (
-                            <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+                            <div className="relative space-y-6 sm:space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
                                 {history.map((item, idx) => (
                                     <div key={item.id} className={`relative flex items-center group ${idx === 0 ? 'animate-in fade-in slide-in-from-top-4' : ''}`}>
                                         {/* Dot */}
@@ -605,8 +605,8 @@ const SolicitudSenafForm = () => {
                                             </span>
                                         </div>
                                         {/* Content */}
-                                        <div className="ml-6 flex-1 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/30 shadow-sm transition-all hover:shadow-md">
-                                            <div className="flex items-center justify-between space-x-2 mb-1">
+                                        <div className="ml-4 sm:ml-6 flex-1 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/30 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
                                                 <div className="font-black text-primary text-[10px] uppercase tracking-wider">{item.estado}</div>
                                                 <time className="font-bold text-[10px] text-slate-500 whitespace-nowrap">{format(new Date(item.fecha), "dd/MM HH:mm", { locale: es })}</time>
                                             </div>
@@ -629,7 +629,7 @@ const SolicitudSenafForm = () => {
                             </div>
                         )}
 
-                        <div className="mt-10 p-4 rounded-xl bg-primary/5 border border-primary/10">
+                        <div className="mt-6 sm:mt-10 p-3 sm:p-4 rounded-xl bg-primary/5 border border-primary/10">
                             <p className="text-[10px] leading-tight text-primary/70 font-bold uppercase tracking-widest text-center">
                                 El proceso requiere la aprobación final de Administración para el cierre del legajo.
                             </p>
@@ -639,27 +639,27 @@ const SolicitudSenafForm = () => {
 
                 {/* Observation Modal */}
                 {observationModal && (
-                    <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
                         <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-                            <div className="p-6 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center">
-                                <h3 className="font-black text-xl">Realizar Observación</h3>
+                            <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center">
+                                <h3 className="font-black text-lg sm:text-xl">Realizar Observación</h3>
                                 <button onClick={() => setObservationModal(false)}><span className="material-symbols-outlined">close</span></button>
                             </div>
-                            <div className="p-6">
+                            <div className="p-4 sm:p-6">
                                 <textarea
-                                    className="w-full bg-gray-50 dark:bg-zinc-800 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-red-500/20"
+                                    className="w-full bg-gray-50 dark:bg-zinc-800 border-none rounded-xl p-3 sm:p-4 text-sm focus:ring-2 focus:ring-red-500/20"
                                     rows={4}
                                     placeholder="Detalle los motivos de la observación..."
                                     value={observationText}
                                     onChange={e => setObservationText(e.target.value)}
                                 />
                             </div>
-                            <div className="p-6 bg-gray-50 dark:bg-zinc-800 flex justify-end gap-3">
-                                <button onClick={() => setObservationModal(false)} className="px-4 py-2 font-bold text-gray-500">Cancelar</button>
+                            <div className="p-4 sm:p-6 bg-gray-50 dark:bg-zinc-800 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+                                <button onClick={() => setObservationModal(false)} className="w-full sm:w-auto px-4 py-2 font-bold text-sm text-gray-500 text-center">Cancelar</button>
                                 <button
                                     onClick={() => handleAction('observe')}
                                     disabled={!observationText}
-                                    className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold disabled:opacity-50"
+                                    className="w-full sm:w-auto px-6 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50 text-center"
                                 >
                                     Confirmar Observación
                                 </button>

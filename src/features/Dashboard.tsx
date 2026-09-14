@@ -187,14 +187,14 @@ const Dashboard = () => {
     return (
         <div>
             {/* Título */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight dark:text-white">Panel de Control</h2>
                     <p className="text-[#60708a] mt-1">Estado general del sistema según tu perfil de acceso.</p>
                 </div>
                 <Link
                     to="/expedientes/nuevo"
-                    className="flex items-center gap-2 px-6 h-12 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                    className="flex items-center justify-center gap-2 px-6 h-12 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto"
                 >
                     <span className="material-symbols-outlined text-xl">add_box</span>
                     Nuevo Expediente
@@ -304,7 +304,7 @@ const Dashboard = () => {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
                 {[
                     { label: 'Expedientes', value: stats.expedientesUnicos, icon: 'folder', color: 'primary', badge: 'Total' },
                     { label: 'Ingresos Abiertos', value: stats.ingresosAbiertos, icon: 'door_open', color: 'success', badge: 'Activos' },
@@ -313,15 +313,15 @@ const Dashboard = () => {
                     { label: 'Ingresos Cerrados (Total)', value: stats.cerradosTotal, icon: 'check_circle', color: 'gray-600', badge: 'Total' },
                     { label: 'Cerrados por Solicitud SENAF', value: stats.cerradosSENAF, icon: 'account_balance', color: 'orange-600', badge: 'SENAF' },
                 ].map(({ label, value, icon, color, badge }) => (
-                    <div key={label} className="bg-white dark:bg-zinc-900 p-5 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className={`p-2 bg-${color}/10 text-${color} rounded-lg`}>
-                                <span className="material-symbols-outlined">{icon}</span>
+                    <div key={label} className="bg-white dark:bg-zinc-900 p-3 sm:p-5 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm">
+                        <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                            <div className={`p-1.5 sm:p-2 bg-${color}/10 text-${color} rounded-lg`}>
+                                <span className="material-symbols-outlined text-lg sm:text-2xl">{icon}</span>
                             </div>
-                            <span className={`text-${color} text-xs font-bold bg-${color}/10 px-2 py-1 rounded-full`}>{badge}</span>
+                            <span className={`text-${color} text-[9px] sm:text-xs font-bold bg-${color}/10 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full`}>{badge}</span>
                         </div>
-                        <p className="text-[#60708a] text-sm font-medium">{label}</p>
-                        <p className="text-2xl font-bold mt-1 dark:text-white">{value.toLocaleString()}</p>
+                        <p className="text-[#60708a] text-[11px] sm:text-sm font-medium leading-tight">{label}</p>
+                        <p className="text-lg sm:text-2xl font-bold mt-0.5 sm:mt-1 dark:text-white">{value.toLocaleString()}</p>
                     </div>
                 ))}
             </div>

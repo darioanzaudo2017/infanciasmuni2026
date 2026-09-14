@@ -57,40 +57,40 @@ const SolicitudSenafSummary = () => {
 
     return (
         <div className="bg-[#f9fafb] dark:bg-[#1c1f22] text-[#141514] dark:text-slate-200 font-sans min-h-screen pb-20">
-            <header className="bg-white dark:bg-zinc-900 border-b border-[#f2f3f2] dark:border-zinc-800 sticky top-0 z-50 no-print px-6 h-16 flex items-center justify-between">
+            <header className="bg-white dark:bg-zinc-900 border-b border-[#f2f3f2] dark:border-zinc-800 sticky top-0 z-50 no-print px-4 sm:px-6 h-16 flex items-center justify-between">
                 <div className="max-w-[1200px] mx-auto w-full flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="size-8 bg-primary text-white flex items-center justify-center rounded-lg">
                             <span className="material-symbols-outlined text-xl">shield_with_heart</span>
                         </div>
-                        <h1 className="text-lg font-bold tracking-tight">Protección NNyA</h1>
+                        <h1 className="text-base sm:text-lg font-bold tracking-tight">Protección NNyA</h1>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="size-10 flex items-center justify-center rounded-lg bg-[#f2f3f2] dark:bg-zinc-800">
-                            <span className="material-symbols-outlined">notifications</span>
+                        <button className="size-9 sm:size-10 flex items-center justify-center rounded-lg bg-[#f2f3f2] dark:bg-zinc-800">
+                            <span className="material-symbols-outlined text-xl">notifications</span>
                         </button>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-[1000px] mx-auto px-6 py-8">
-                <nav className="flex items-center gap-2 mb-6 no-print">
-                    <a className="text-[#717a75] text-sm font-medium hover:text-primary" onClick={() => navigate('/')}>Inicio</a>
+            <main className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+                <nav className="flex items-center gap-2 mb-4 sm:mb-6 no-print text-xs sm:text-sm">
+                    <a className="text-[#717a75] font-medium hover:text-primary cursor-pointer" onClick={() => navigate('/')}>Inicio</a>
                     <span className="material-symbols-outlined text-sm text-[#717a75]">chevron_right</span>
-                    <span className="text-[#141514] dark:text-white text-sm font-semibold">Resumen Histórico de Cierre</span>
+                    <span className="text-[#141514] dark:text-white font-semibold truncate">Resumen Histórico de Cierre</span>
                 </nav>
 
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
                     <div className="space-y-2">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-full text-xs font-bold uppercase tracking-wider">
                             <span className="size-2 bg-zinc-500 rounded-full"></span>
                             Estado: {ingreso.estado === 'cerrado' ? 'Archivado' : 'En Trámite'}
                         </div>
-                        <h2 className="text-4xl font-extrabold tracking-tight text-[#141514] dark:text-white">Resumen Histórico de Cierre</h2>
-                        <p className="text-[#717a75] dark:text-zinc-400 text-lg">Legajo #{ingreso.expediente_numero} • Carátula: {ingreso.nino_nombre}</p>
+                        <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#141514] dark:text-white">Resumen Histórico de Cierre</h2>
+                        <p className="text-[#717a75] dark:text-zinc-400 text-sm sm:text-lg">Legajo #{ingreso.expediente_numero} • Carátula: {ingreso.nino_nombre}</p>
                     </div>
-                    <div className="flex gap-3 no-print">
-                        <button onClick={() => navigate(-1)} className="flex items-center gap-2 h-11 px-5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-bold hover:bg-zinc-50 transition-colors">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto no-print">
+                        <button onClick={() => navigate(-1)} className="w-full sm:w-auto justify-center flex items-center gap-2 h-11 px-5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-bold hover:bg-zinc-50 transition-colors">
                             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                             Volver
                         </button>
@@ -100,35 +100,35 @@ const SolicitudSenafSummary = () => {
                             !['Aprobado', 'En elaboración'].includes(data.solicitud.estado) && (
                                 <button
                                     onClick={() => navigate(`/expedientes/${expedienteId}/senaf/${ingresoId}`)}
-                                    className="flex items-center gap-2 h-11 px-5 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition-colors"
+                                    className="w-full sm:w-auto justify-center flex items-center gap-2 h-11 px-5 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 transition-colors"
                                 >
                                     <span className="material-symbols-outlined text-[20px]">rate_review</span>
                                     Revisar y Aprobar
                                 </button>
                             )}
-                        <button className="flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-opacity" onClick={() => window.print()}>
+                        <button className="w-full sm:w-auto justify-center flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-opacity" onClick={() => window.print()}>
                             <span className="material-symbols-outlined text-[20px]">print</span>
                             Imprimir Registro
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-                    <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 p-6 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 sm:mb-10">
+                    <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 p-4 sm:p-6 rounded-xl">
                         <p className="text-[#717a75] dark:text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1">Cerrado por</p>
                         <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary">person_check</span>
-                            <p className="text-xl font-bold dark:text-white">{ingreso.ultimo_usuario_nombre || 'S/D'}</p>
+                            <p className="text-lg sm:text-xl font-bold dark:text-white truncate">{ingreso.ultimo_usuario_nombre || 'S/D'}</p>
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 p-6 rounded-xl">
+                    <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 p-4 sm:p-6 rounded-xl">
                         <p className="text-[#717a75] dark:text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1">Fecha de Cierre</p>
                         <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary">calendar_today</span>
-                            <p className="text-xl font-bold dark:text-white">{cese?.fecha_cierre ? new Date(cese.fecha_cierre).toLocaleDateString() : '-'}</p>
+                            <p className="text-lg sm:text-xl font-bold dark:text-white">{cese?.fecha_cierre ? new Date(cese.fecha_cierre).toLocaleDateString() : '-'}</p>
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 p-6 rounded-xl">
+                    <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 p-4 sm:p-6 rounded-xl">
                         <p className="text-[#717a75] dark:text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1">Tipo de Cierre</p>
                         <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary">folder_open</span>
@@ -137,9 +137,9 @@ const SolicitudSenafSummary = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 rounded-xl p-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+                    <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+                        <div className="bg-white dark:bg-zinc-900 border border-[#dfe2e0] dark:border-zinc-800 rounded-xl p-4 sm:p-8">
                             <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">history</span>
                                 Línea de Tiempo del Proceso

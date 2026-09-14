@@ -454,7 +454,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
             {/* Main Content */}
             <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full pb-12">
                 {/* Breadcrumbs & Header */}
-                <div className="px-6 pt-10 space-y-4">
+                <div className="px-4 sm:px-6 pt-6 sm:pt-10 space-y-4">
                     <Breadcrumbs
                         items={[
                             { label: 'Inicio', path: '/' },
@@ -465,13 +465,13 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                         ]}
                     />
 
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 bg-white dark:bg-slate-900 p-4 sm:p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
                         <div className="absolute top-0 left-0 w-2 h-full bg-primary/20 group-hover:bg-primary transition-all"></div>
                         <div className="flex flex-col gap-2 relative z-10">
-                            <h1 className="text-[#111418] dark:text-white text-3xl font-black leading-tight tracking-tight">Ampliación de Información</h1>
-                            <p className="text-[#60728a] dark:text-slate-400 text-sm max-w-2xl font-medium italic">"{planificacion.objetivos.substring(0, 100)}..."</p>
+                            <h1 className="text-[#111418] dark:text-white text-2xl sm:text-3xl font-black leading-tight tracking-tight">Ampliación de Información</h1>
+                            <p className="text-[#60728a] dark:text-slate-400 text-xs sm:text-sm max-w-2xl font-medium italic">"{planificacion.objetivos.substring(0, 100)}..."</p>
                         </div>
-                        <div className="flex gap-3 relative z-10">
+                        <div className="flex gap-3 relative z-10 w-full sm:w-auto">
                             <button onClick={() => {
                                 setEditingIntervencion(null);
                                 setNewIntervencion({
@@ -498,7 +498,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                                 });
                                 setBusquedaProfesional('');
                                 setIsModalOpen(true);
-                            }} className="px-6 h-14 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
+                            }} className="w-full sm:w-auto justify-center px-6 h-12 sm:h-14 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
                                 <span className="material-symbols-outlined text-xl">add_box</span>
                                 <span>Nueva Acción</span>
                             </button>
@@ -506,7 +506,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 px-6 mt-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 px-4 sm:px-6 mt-6 sm:mt-8">
                     {/* Left Column: Summary & Quick Actions */}
                     <div className="lg:col-span-4 space-y-6">
                         {/* Profile Card */}
@@ -588,47 +588,47 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                                 <p className="text-slate-400 max-w-xs text-sm">Comience registrando una entrevista o solicitud oficial utilizando el botón de arriba.</p>
                             </div>
                         ) : (
-                            <div className="relative space-y-6 before:absolute before:left-8 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100 dark:before:bg-slate-800">
+                            <div className="relative space-y-4 sm:space-y-6 before:absolute before:left-6 sm:before:left-8 before:top-2 before:bottom-2 before:w-1 before:bg-slate-100 dark:before:bg-slate-800">
                                 {intervenciones.map((item, idx) => (
-                                    <div key={idx} className="relative flex gap-12 group">
+                                    <div key={idx} className="relative flex gap-3 sm:gap-12 group">
                                         {/* Status Icon */}
-                                        <div className={`z-10 size-16 rounded-3xl flex items-center justify-center shadow-xl transition-all group-hover:scale-110 ${item.asistencia === 'Asistió' ? 'bg-emerald-500 text-white shadow-emerald-500/20' :
+                                        <div className={`z-10 size-12 sm:size-16 shrink-0 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-xl transition-all group-hover:scale-110 ${item.asistencia === 'Asistió' ? 'bg-emerald-500 text-white shadow-emerald-500/20' :
                                             item.asistencia === 'No asistió' ? 'bg-rose-500 text-white shadow-rose-500/20' :
                                                 'bg-amber-500 text-white shadow-amber-500/20'
                                             }`}>
-                                            <span className="material-symbols-outlined text-2xl">
+                                            <span className="material-symbols-outlined text-base sm:text-2xl">
                                                 {item.asistencia === 'Asistió' ? 'done_all' :
                                                     item.asistencia === 'No asistió' ? 'close' : 'schedule'}
                                             </span>
                                         </div>
 
                                         {/* Card Content */}
-                                        <div className="flex-1 bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-4">
-                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">#{intervenciones.length - idx}</span>
+                                        <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 p-4 sm:p-8 rounded-2xl sm:rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-2 sm:p-4">
+                                                <span className="text-[9px] sm:text-[10px] font-black text-slate-300 uppercase tracking-widest">#{intervenciones.length - idx}</span>
                                             </div>
-                                            <div className="flex flex-wrap justify-between items-start mb-4">
+                                            <div className="flex flex-wrap justify-between items-start gap-2 mb-3 sm:mb-4 pr-6">
                                                 <div>
-                                                    <h3 className="text-xl font-black text-[#111418] dark:text-white leading-tight uppercase tracking-tight">{item.entrevistado_nombre}</h3>
-                                                    <p className="text-[10px] font-black text-primary uppercase mt-1 tracking-widest">
+                                                    <h3 className="text-sm sm:text-xl font-black text-[#111418] dark:text-white leading-tight uppercase tracking-tight break-words">{item.entrevistado_nombre}</h3>
+                                                    <p className="text-[9px] sm:text-[10px] font-black text-primary uppercase mt-1 tracking-widest">
                                                         {format(new Date(item.fecha), "dd MMM yyyy", { locale: es })} • {item.hora}
                                                     </p>
                                                 </div>
-                                                <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${item.asistencia === 'Asistió' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                <span className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border ${item.asistencia === 'Asistió' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                                                     item.asistencia === 'No asistió' ? 'bg-rose-50 text-rose-600 border-rose-100' :
                                                         'bg-amber-50 text-amber-600 border-amber-100'
                                                     }`}>
                                                     {item.asistencia}
                                                 </span>
                                             </div>
-                                            <div className="flex justify-between items-start gap-6">
-                                                <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6 italic flex-1">
+                                            <div className="flex justify-between items-start gap-3 sm:gap-6">
+                                                <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm leading-relaxed mb-4 sm:mb-6 italic flex-1">
                                                     "{item.registro.length > 200 ? `${item.registro.substring(0, 200)}...` : item.registro}"
                                                 </p>
                                                 {item.registro.length > 200 && (
                                                     <button
                                                         onClick={() => setSelectedIntervencion(item)}
-                                                        className="shrink-0 px-4 py-2 bg-slate-50 dark:bg-slate-800 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                                                        className="shrink-0 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-slate-50 dark:bg-slate-800 text-primary rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
                                                     >
                                                         Leer más
                                                     </button>
@@ -636,33 +636,33 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                                                 {item.registro.length <= 200 && (
                                                     <button
                                                         onClick={() => setSelectedIntervencion(item)}
-                                                        className="shrink-0 p-2 text-slate-300 hover:text-primary transition-all"
+                                                        className="shrink-0 p-1.5 sm:p-2 text-slate-300 hover:text-primary transition-all"
                                                         title="Ver detalle"
                                                     >
-                                                        <span className="material-symbols-outlined">visibility</span>
+                                                        <span className="material-symbols-outlined text-lg sm:text-xl">visibility</span>
                                                     </button>
                                                 )}
                                                 <button
                                                     onClick={() => handleEditClick(item)}
-                                                    className="shrink-0 p-2 text-slate-300 hover:text-amber-500 transition-all"
+                                                    className="shrink-0 p-1.5 sm:p-2 text-slate-300 hover:text-amber-500 transition-all"
                                                     title="Editar registro"
                                                 >
-                                                    <span className="material-symbols-outlined">edit</span>
+                                                    <span className="material-symbols-outlined text-lg sm:text-xl">edit</span>
                                                 </button>
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-50 dark:border-slate-800">
+                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-4 sm:pt-6 border-t border-slate-50 dark:border-slate-800">
                                                 <div className="flex -space-x-3">
                                                     {(item.form2_intervencion_profesionales || []).map((_: any, i: number) => (
-                                                        <div key={i} title="Profesional" className="size-8 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
+                                                        <div key={i} title="Profesional" className="size-6 sm:size-8 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[9px] sm:text-[10px] font-black text-slate-500 uppercase">
                                                             P
                                                         </div>
                                                     ))}
                                                 </div>
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                                <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
                                                     {item.vinculo} • {item.tipo_entrevistado}
                                                 </span>
                                                 {(item.participantes || []).length > 0 && (
-                                                    <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                    <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-primary/10 text-primary rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
                                                         <span className="material-symbols-outlined text-xs">group</span>
                                                         +{item.participantes.length} participante{item.participantes.length > 1 ? 's' : ''}
                                                     </span>
@@ -684,9 +684,9 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
 
                     <div className="bg-[#f5f7f8] dark:bg-[#101722] w-full max-w-4xl max-h-[90vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-slate-200 dark:border-slate-800">
                         {/* Header */}
-                        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                        <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div>
-                                <h2 className="text-[#111418] dark:text-white text-2xl font-black leading-tight uppercase tracking-tight">
+                                <h2 className="text-[#111418] dark:text-white text-xl sm:text-2xl font-black leading-tight uppercase tracking-tight">
                                     {editingIntervencion ? 'Editar Acción' : 'Nueva Acción de Ampliación'}
                                 </h2>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Etapa 2 - Ampliación y Verificación de Información</p>
@@ -700,8 +700,8 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
-                            <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
+                            <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                                 <div className="space-y-4">
                                     <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Tipo de Entrevistado</label>
                                     <div className="flex h-14 items-center justify-center rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 p-1.5">
@@ -716,7 +716,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                                         ))}
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-4">
                                         <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Fecha</label>
                                         <input
@@ -1267,17 +1267,17 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                         </div>
 
                         {/* Footer */}
-                        <div className="px-8 py-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 flex items-center justify-end gap-4">
+                        <div className="px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 sm:gap-4">
                             <button onClick={() => {
                                 setIsModalOpen(false);
                                 setEditingIntervencion(null);
-                            }} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50">
+                            }} className="w-full sm:w-auto px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50">
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleSaveIntervencion}
                                 disabled={isSaving}
-                                className="bg-primary hover:bg-primary/90 text-white px-10 h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all font-bold disabled:opacity-50"
+                                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white px-8 sm:px-10 h-12 sm:h-14 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all font-bold disabled:opacity-50"
                             >
                                 {isSaving ? 'Guardando...' : editingIntervencion ? 'Actualizar Acción' : 'Guardar Acción'}
                             </button>
@@ -1291,12 +1291,12 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsPlanModalOpen(false)}></div>
                     <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-slate-800 gap-3">
                             <div>
-                                <h2 className="text-[#111418] dark:text-white text-2xl font-black leading-tight uppercase tracking-tight">Detalles de Planificación</h2>
+                                <h2 className="text-[#111418] dark:text-white text-xl sm:text-2xl font-black leading-tight uppercase tracking-tight">Detalles de Planificación</h2>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Estrategias y Objetivos de la Intervención</p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 self-end sm:self-auto">
                                 {!isEditingPlan && (
                                     <button
                                         onClick={() => isHistorialOpen ? setIsHistorialOpen(false) : handleOpenHistorial()}

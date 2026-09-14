@@ -897,7 +897,7 @@ const IngresoDetail = () => {
                 <div className="bg-white dark:bg-zinc-900 border border-[#f0f2f5] dark:border-[#333] rounded-2xl overflow-hidden shadow-md flex flex-col min-h-[500px]">
                     {/* Stepper Integrated as a Header of the Work Section */}
                     <div className="p-6 bg-slate-50/50 dark:bg-black/10 border-b border-[#f0f2f5] dark:border-[#333]">
-                        <div className="flex items-center w-full max-w-4xl mx-auto">
+                        <div className="flex items-center w-full max-w-4xl mx-auto overflow-x-auto pb-1">
                             {stages.map((stage, idx) => {
                                 const isLast = idx === stages.length - 1;
                                 const isReception = stage.name === 'Recepción';
@@ -916,20 +916,20 @@ const IngresoDetail = () => {
                                 }
 
                                 const stepContent = (
-                                    <div className="flex flex-col items-center flex-1 relative group">
+                                    <div className="flex flex-col items-center flex-1 min-w-[72px] relative group">
                                         <div className={`size-8 rounded-full flex items-center justify-center z-10 transition-all duration-300 ${circleClass} ${isReception ? 'group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20' : ''}`}>
                                             <span className="material-symbols-outlined text-lg font-bold">{stage.icon}</span>
                                         </div>
                                         {!isLast && (
                                             <div className={`absolute top-4 left-1/2 w-full h-[1.5px] ${stage.status === 'completed' ? 'bg-primary' : 'bg-gray-200 dark:bg-[#333]'}`}></div>
                                         )}
-                                        <p className={`mt-2 text-[9px] font-bold uppercase tracking-wider ${textClass}`}>{stage.name}</p>
+                                        <p className={`mt-2 text-[9px] font-bold uppercase tracking-wider text-center whitespace-nowrap ${textClass}`}>{stage.name}</p>
                                     </div>
                                 );
 
                                 if (isReception) {
                                     return (
-                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/recepcion/${ingresoId}`} className="flex-1 block">
+                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/recepcion/${ingresoId}`} className="flex-1 min-w-[72px] block">
                                             {stepContent}
                                         </Link>
                                     );
@@ -937,7 +937,7 @@ const IngresoDetail = () => {
 
                                 if (stage.name === 'Ampliación' && (stage.status === 'active' || stage.status === 'completed')) {
                                     return (
-                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/ampliacion/${ingresoId}`} className="flex-1 block">
+                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/ampliacion/${ingresoId}`} className="flex-1 min-w-[72px] block">
                                             {stepContent}
                                         </Link>
                                     );
@@ -945,7 +945,7 @@ const IngresoDetail = () => {
 
                                 if (stage.name === 'Definición' && (stage.status === 'active' || stage.status === 'completed')) {
                                     return (
-                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`} className="flex-1 block">
+                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`} className="flex-1 min-w-[72px] block">
                                             {stepContent}
                                         </Link>
                                     );
@@ -953,14 +953,14 @@ const IngresoDetail = () => {
 
                                 if (stage.name === 'Informe Síntesis' && (stage.status === 'active' || stage.status === 'completed')) {
                                     return (
-                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/sintesis/${ingresoId}`} className="flex-1 block">
+                                        <Link key={idx} to={`/expedientes/${ingreso.expediente_id}/sintesis/${ingresoId}`} className="flex-1 min-w-[72px] block">
                                             {stepContent}
                                         </Link>
                                     );
                                 }
 
                                 return (
-                                    <div key={idx} className="flex-1">
+                                    <div key={idx} className="flex-1 min-w-[72px]">
                                         {stepContent}
                                     </div>
                                 );
@@ -969,7 +969,7 @@ const IngresoDetail = () => {
                     </div>
 
                     {/* Operation Tabs */}
-                    <div className="flex border-b border-[#f0f2f5] dark:border-[#333] px-2">
+                    <div className="flex overflow-x-auto border-b border-[#f0f2f5] dark:border-[#333] px-2">
                         {[
                             { id: 'recepcion', label: ' Recepción de demanda', icon: 'assignment' },
                             ...(activeStageIndex >= 1 ? [{ id: 'ampliacion', label: 'Ampliación y verificación de información', icon: 'insights' }] : []),
@@ -983,7 +983,7 @@ const IngresoDetail = () => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`px-6 py-4 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all relative
+                                className={`shrink-0 whitespace-nowrap px-6 py-4 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all relative
                                 ${activeTab === tab.id
                                         ? 'text-primary'
                                         : 'text-[#60708a] hover:text-primary hover:bg-gray-50'}`}
@@ -998,7 +998,7 @@ const IngresoDetail = () => {
                     <div className="p-8">
                         {activeTab === 'ampliacion' && (
                             <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
                                     <div>
                                         <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Resumen de Ampliación de Información</h3>
                                         <p className="text-slate-500 font-medium text-sm italic">Desarrollo de objetivos y estrategias del plan de acción.</p>
@@ -1090,7 +1090,7 @@ const IngresoDetail = () => {
                         )}
                         {activeTab === 'sintesis' && (
                             <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
                                     <div>
                                         <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Informe Síntesis</h3>
                                         <p className="text-slate-500 font-medium text-sm italic">Evaluación técnica y cierre de la etapa investigativa.</p>
@@ -1177,7 +1177,7 @@ const IngresoDetail = () => {
                         )}
                         {activeTab === 'definicion' && (
                             <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
                                     <div>
                                         <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Definición de Medidas</h3>
                                         <p className="text-slate-500 font-medium text-sm italic">Estrategias de protección y restitución de derechos.</p>
@@ -1231,7 +1231,7 @@ const IngresoDetail = () => {
                         {activeTab === 'recepcion' && (
                             <div className="space-y-10 animate-in fade-in duration-500">
                                 {/* Summary Header */}
-                                <div className="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
                                     <div>
                                         <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Informe de Recepción y Demanda</h3>
                                         <div className="flex items-center gap-4">
@@ -1268,7 +1268,7 @@ const IngresoDetail = () => {
                                         <section>
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">01. Origen de la Demanda</h4>
                                             <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-primary/20 shadow-lg">
-                                                <div className="grid grid-cols-2 gap-6">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                     <div>
                                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vía de Ingreso</p>
                                                         <p className="font-bold text-sm">{ingreso.derivacion?.via_ingreso || 'N/A'}</p>
@@ -1277,7 +1277,7 @@ const IngresoDetail = () => {
                                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nro Oficio/Exp.</p>
                                                         <p className="font-bold text-sm">{ingreso.derivacion?.oficio_numero || 'Sin número'}</p>
                                                     </div>
-                                                    <div className="col-span-2">
+                                                    <div className="sm:col-span-2">
                                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Solicitante / Institución</p>
                                                         <p className="font-bold text-sm">{ingreso.derivacion?.nombre_solicitante || 'Persona Particular'}</p>
                                                         <p className="text-[10px] text-slate-500 mt-1 capitalize">{ingreso.derivacion?.cargo_solicitante || ''}</p>
@@ -1305,7 +1305,7 @@ const IngresoDetail = () => {
                                                 <div className="space-y-3">
                                                     {(ingreso.origenes_adicionales || []).map((origen: any) => (
                                                         <div key={origen.id} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-primary/20 shadow-sm">
-                                                            <div className="grid grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                                 <div>
                                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Origen / Vía</p>
                                                                     <p className="font-bold text-sm">{origen.origen_consulta || 'N/A'} {origen.via_ingreso ? `· ${origen.via_ingreso}` : ''}</p>
@@ -1314,13 +1314,13 @@ const IngresoDetail = () => {
                                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nro Oficio/Exp.</p>
                                                                     <p className="font-bold text-sm">{origen.oficio_numero || 'Sin número'}</p>
                                                                 </div>
-                                                                <div className="col-span-2">
+                                                                <div className="sm:col-span-2">
                                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Solicitante / Institución</p>
                                                                     <p className="font-bold text-sm">{origen.nombre_solicitante || 'N/A'}</p>
                                                                     <p className="text-[10px] text-slate-500 mt-1">{origen.cargo_solicitante || ''}</p>
                                                                 </div>
                                                                 {origen.observaciones && (
-                                                                    <div className="col-span-2">
+                                                                    <div className="sm:col-span-2">
                                                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Observaciones</p>
                                                                         <p className="text-xs text-slate-600 dark:text-slate-300">{origen.observaciones}</p>
                                                                     </div>
@@ -1348,7 +1348,7 @@ const IngresoDetail = () => {
 
                                         <section>
                                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">02b. Salud y Educación</h4>
-                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-primary/20 shadow-lg grid grid-cols-2 gap-4">
+                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-primary/20 shadow-lg grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Escolaridad</p>
                                                     <p className="font-bold text-xs">{ingreso.nino_nivel_educativo || 'No informada'} {ingreso.nino_curso ? `(${ingreso.nino_curso})` : ''}</p>
@@ -1357,7 +1357,7 @@ const IngresoDetail = () => {
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">CUD</p>
                                                     <p className="font-bold text-xs">{ingreso.nino_tiene_cud ? 'Posee CUD' : 'No posee / No informa'}</p>
                                                 </div>
-                                                <div className="col-span-2">
+                                                <div className="sm:col-span-2">
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Centro de Salud / Hospital</p>
                                                     <p className="font-bold text-xs">{ingreso.nino_centro_salud || 'No informado'}</p>
                                                 </div>
@@ -1563,7 +1563,7 @@ const IngresoDetail = () => {
                         )}
                         {activeTab === 'cese' && (
                             <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
                                     <div>
                                         <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Cese de Intervención</h3>
                                         <p className="text-slate-500 font-medium text-sm italic">Cierre formal del expediente y conclusión del proceso.</p>

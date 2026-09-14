@@ -227,11 +227,11 @@ const DefinicionMedidas = () => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-                    <div className="bg-white dark:bg-zinc-900 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-3xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-black tracking-tight dark:text-white">Nueva Medida de Protección</h2>
+                                <h2 className="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Nueva Medida de Protección</h2>
                                 <p className="text-xs text-gray-500 uppercase font-bold tracking-widest mt-1">Configuración detallada</p>
                             </div>
                             <button onClick={() => setShowModal(false)} className="size-10 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-all">
@@ -239,7 +239,7 @@ const DefinicionMedidas = () => {
                             </button>
                         </div>
 
-                        <div className="p-8 overflow-y-auto space-y-8 flex-1">
+                        <div className="p-4 sm:p-8 overflow-y-auto space-y-6 sm:space-y-8 flex-1 custom-scrollbar">
                             <div>
                                 <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Tipo de Medida</label>
                                 <select
@@ -267,7 +267,7 @@ const DefinicionMedidas = () => {
 
                             <div>
                                 <label className="block text-sm font-bold mb-4 text-gray-700 dark:text-gray-300">Derechos Vinculados</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-40 overflow-y-auto custom-scrollbar">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto custom-scrollbar">
                                     {vulneraciones.map((vul) => (
                                         <label key={vul.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-zinc-700 cursor-pointer hover:bg-primary/5 dark:hover:bg-zinc-800 transition-colors">
                                             <input
@@ -288,7 +288,7 @@ const DefinicionMedidas = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                 <div>
                                     <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Responsable Principal</label>
                                     <input
@@ -311,12 +311,12 @@ const DefinicionMedidas = () => {
                             </div>
                         </div>
 
-                        <div className="px-8 py-6 bg-gray-50 dark:bg-zinc-800/50 flex justify-end gap-4 border-t border-gray-100 dark:border-gray-800">
-                            <button onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancelar</button>
+                        <div className="px-4 sm:px-8 py-4 sm:py-6 bg-gray-50 dark:bg-zinc-800/50 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 border-t border-gray-100 dark:border-gray-800">
+                            <button onClick={() => setShowModal(false)} className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-center">Cancelar</button>
                             <button 
                                 onClick={handleSaveMedida} 
                                 disabled={saving}
-                                className="px-8 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {saving ? (
                                     <>
@@ -330,7 +330,7 @@ const DefinicionMedidas = () => {
                 </div>
             )}
 
-            <main className="flex-1 flex flex-col p-6 lg:p-10 pb-32 max-w-[1400px] mx-auto w-full">
+            <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-10 pb-32 max-w-[1400px] mx-auto w-full">
                 <Breadcrumbs
                     items={[
                         { label: 'Inicio', path: '/' },
@@ -342,16 +342,16 @@ const DefinicionMedidas = () => {
                 />
 
                 {/* Page Heading */}
-                <div className="mb-8">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div className="mb-6 sm:mb-8">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-black tracking-tight text-[#121617] dark:text-white">Definición de Medidas</h1>
-                            <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-2xl">Configure las acciones legales y sociales requeridas para la restitución de derechos del niño, niña o adolescente.</p>
+                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#121617] dark:text-white">Definición de Medidas</h1>
+                            <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm sm:text-base max-w-2xl">Configure las acciones legales y sociales requeridas para la restitución de derechos del niño, niña o adolescente.</p>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 w-full sm:w-auto">
                             <button
                                 onClick={() => setShowModal(true)}
-                                className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all shrink-0"
+                                className="w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all shrink-0"
                             >
                                 <span className="material-symbols-outlined">add_circle</span>
                                 Nueva Medida
@@ -361,10 +361,10 @@ const DefinicionMedidas = () => {
                 </div>
 
                 {/* Rights Summary */}
-                <section className="mb-10 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 shadow-sm">
+                <section className="mb-8 sm:mb-10 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-4 sm:p-6 shadow-sm">
                     <div className="flex items-center gap-2 mb-4">
                         <span className="material-symbols-outlined text-primary text-xl">warning</span>
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Derechos Vulnerados Identificados</h2>
+                        <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-gray-400">Derechos Vulnerados Identificados</h2>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {vulneraciones.map((v, i) => (
@@ -378,14 +378,14 @@ const DefinicionMedidas = () => {
                 </section>
 
                 {/* Measures Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     {medidas.map((m) => (
                         <div
                             key={m.id}
-                            className="measure-card bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm p-6 flex flex-col hover:shadow-md transition-all duration-200 group relative"
+                            className="measure-card bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm p-4 sm:p-6 flex flex-col hover:shadow-md transition-all duration-200 group relative"
                         >
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex gap-2">
+                            <div className="flex justify-between items-start gap-2 mb-4">
+                                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                                     {['pendiente', 'en proceso', 'completa'].map((status) => (
                                         <button
                                             key={status}
@@ -393,7 +393,7 @@ const DefinicionMedidas = () => {
                                                 e.stopPropagation();
                                                 updateMeasureStatus(m.id, status);
                                             }}
-                                            className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${m.estado === status
+                                            className={`px-2.5 sm:px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${m.estado === status
                                                 ? status === 'completa' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' :
                                                     status === 'en proceso' ? 'bg-primary text-white shadow-lg shadow-primary/20' :
                                                         'bg-slate-500 text-white shadow-lg shadow-slate-500/20'
@@ -404,7 +404,7 @@ const DefinicionMedidas = () => {
                                         </button>
                                     ))}
                                 </div>
-                                <div className="flex gap-1">
+                                <div className="flex gap-1 shrink-0">
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -432,7 +432,7 @@ const DefinicionMedidas = () => {
 
                                 {/* Action Progress Summary */}
                                 {m.medidas_acciones && m.medidas_acciones.length > 0 && (
-                                    <div className="mb-6 bg-gray-50/50 dark:bg-zinc-800/30 p-4 rounded-xl border border-gray-100 dark:border-zinc-800/50">
+                                    <div className="mb-6 bg-gray-50/50 dark:bg-zinc-800/30 p-3 sm:p-4 rounded-xl border border-gray-100 dark:border-zinc-800/50">
                                         <div className="flex justify-between items-center mb-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-primary text-sm">checklist_rtl</span>
@@ -462,7 +462,7 @@ const DefinicionMedidas = () => {
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-gray-400 flex items-center gap-1 font-bold uppercase tracking-wider"><span className="material-symbols-outlined text-sm">event</span> Plazo:</span>
                                     <span className="font-bold text-amber-600">
-                                        {m.fecha_plazo ? format(new Date(m.fecha_plazo), "dd MMM yyyy", { locale: es }) : 'Indefinido'}
+                                        {m.fecha_plazo ? format(new Date(m.fecha_plazo.includes('T') ? m.fecha_plazo : `${m.fecha_plazo}T12:00:00`), "dd MMM yyyy", { locale: es }) : 'Indefinido'}
                                     </span>
                                 </div>
                             </div>
@@ -470,12 +470,12 @@ const DefinicionMedidas = () => {
                     ))}
 
                     {/* Empty State / Add Placeholder */}
-                    <div onClick={() => setShowModal(true)} className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center p-10 group cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all min-h-[300px]">
-                        <div className="size-14 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-gray-400 group-hover:bg-primary/20 group-hover:text-primary transition-all mb-4">
-                            <span className="material-symbols-outlined text-3xl">add</span>
+                    <div onClick={() => setShowModal(true)} className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center p-6 sm:p-10 group cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all min-h-[220px] sm:min-h-[300px]">
+                        <div className="size-12 sm:size-14 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-gray-400 group-hover:bg-primary/20 group-hover:text-primary transition-all mb-3 sm:mb-4">
+                            <span className="material-symbols-outlined text-2xl sm:text-3xl">add</span>
                         </div>
-                        <p className="font-bold text-gray-500 group-hover:text-primary">Definir Nueva Medida</p>
-                        <p className="text-xs text-gray-400 mt-1">Haga clic para iniciar el formulario</p>
+                        <p className="font-bold text-sm sm:text-base text-gray-500 group-hover:text-primary">Definir Nueva Medida</p>
+                        <p className="text-xs text-gray-400 mt-1 text-center">Haga clic para iniciar el formulario</p>
                     </div>
                 </div>
             </main>

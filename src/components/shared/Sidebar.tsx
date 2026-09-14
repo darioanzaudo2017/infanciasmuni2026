@@ -2,7 +2,12 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useEffect, useState } from 'react';
 
-const Sidebar = () => {
+interface SidebarProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     const navigate = useNavigate();
     const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -22,6 +27,7 @@ const Sidebar = () => {
     }, []);
 
     const handleLogout = async () => {
+        onClose();
         await supabase.auth.signOut();
         navigate('/login');
     };
@@ -41,13 +47,20 @@ const Sidebar = () => {
     ];
 
     return (
-        <aside className="w-64 border-r border-[#e5e7eb] dark:border-[#333] flex flex-col bg-white dark:bg-[#1a1a1a] shrink-0 h-screen sticky top-0">
-            <div className="p-6 border-b border-[#f0f2f5] dark:border-[#333] flex justify-center">
+        <aside className={`${isOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 md:sticky md:top-0 md:z-auto md:translate-x-0 w-64 h-screen border-r border-[#e5e7eb] dark:border-[#333] flex flex-col bg-white dark:bg-[#1a1a1a] shrink-0 transition-transform duration-200 ease-in-out`}>
+            <div className="p-6 border-b border-[#f0f2f5] dark:border-[#333] flex items-center justify-between md:justify-center">
                 <img
                     src="/logo_cordoba.png"
                     alt="Córdoba Capital"
                     className="h-auto w-auto max-w-full max-h-16 object-contain"
                 />
+                <button
+                    onClick={onClose}
+                    className="md:hidden p-2 -mr-2 text-[#60708a] hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                    aria-label="Cerrar menú"
+                >
+                    <span className="material-symbols-outlined">close</span>
+                </button>
             </div>
 
             <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
@@ -55,6 +68,7 @@ const Sidebar = () => {
                     <NavLink
                         key={item.path}
                         to={item.path}
+                        onClick={onClose}
                         className={({ isActive }) => `
               flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
               ${isActive
@@ -71,6 +85,7 @@ const Sidebar = () => {
                     {canManageUsers && (
                         <NavLink
                             to="/configuracion"
+                            onClick={onClose}
                             className={({ isActive }) => `
               flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
               ${isActive

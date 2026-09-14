@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useEffect, useState } from 'react';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -10,6 +11,7 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     const navigate = useNavigate();
     const [userProfile, setUserProfile] = useState<any>(null);
+    const { canInstall, promptInstall } = usePwaInstall();
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -96,6 +98,15 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                             <span className="material-symbols-outlined text-[20px]">settings</span>
                             <span className="text-sm">Configuración SPD</span>
                         </NavLink>
+                    )}
+                    {canInstall && (
+                        <button
+                            onClick={promptInstall}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-primary bg-primary/5 hover:bg-primary/10 transition-colors w-full text-left"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">install_mobile</span>
+                            <span className="text-sm font-semibold">Instalar Aplicación</span>
+                        </button>
                     )}
                     <button
                         onClick={handleLogout}

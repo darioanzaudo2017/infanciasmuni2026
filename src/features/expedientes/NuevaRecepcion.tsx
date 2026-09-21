@@ -11,6 +11,7 @@ interface ChildResult {
     fecha_nacimiento: string;
     genero: string;
     has_active_expediente?: boolean;
+    expediente_activo?: boolean;
     has_open_ingreso?: boolean;
     expediente_id?: number;
     expediente_numero?: string;
@@ -44,19 +45,17 @@ const NuevaRecepcion: React.FC = () => {
     }, []);
 
     const processChild = async (child: any): Promise<ChildResult> => {
-        const { data: exp } = await supabase
-            .from('expedientes')
-            .select('id, numero, servicio_proteccion_id, zona_id, servicios_proteccion(nombre)')
-            .eq('nino_id', child.id)
-            .eq('activo', true)
-            .maybeSingle();
+        // RPC en vez de leer `expedientes` directo: la RLS oculta los expedientes de otros SPD/zonas,
+        // y justamente hay que avisar que ese niño ya tiene legajo aunque no sea del usuario
+        const { data: estado } = await supabase.rpc('estado_legajo_nino', { p_nino_id: child.id });
+        const exp = Array.isArray(estado) ? estado[0] : null;
 
         let hasOpenIngreso = false;
         if (exp) {
             const { data: openIngreso } = await supabase
                 .from('ingresos')
                 .select('id')
-                .eq('expediente_id', exp.id)
+                .eq('expediente_id', exp.expediente_id)
                 .is('fecha_cierre', null)
                 .limit(1)
                 .maybeSingle();
@@ -66,12 +65,13 @@ const NuevaRecepcion: React.FC = () => {
         return {
             ...child,
             has_active_expediente: !!exp,
+            expediente_activo: exp?.activo,
             has_open_ingreso: hasOpenIngreso,
-            expediente_id: exp?.id,
+            expediente_id: exp?.expediente_id,
             expediente_numero: exp?.numero,
             expediente_spd_id: exp?.servicio_proteccion_id,
             expediente_zona_id: exp?.zona_id,
-            expediente_spd_nombre: (exp?.servicios_proteccion as any)?.nombre
+            expediente_spd_nombre: exp?.spd_nombre
         };
     };
 
@@ -133,9 +133,9 @@ const NuevaRecepcion: React.FC = () => {
     };
 
     const userRole = userProfile?.usuarios_roles?.[0]?.roles?.nombre;
-    const isRestricted = result?.has_active_expediente && (
-        (userRole === 'Profesional' && result.expediente_spd_id !== userProfile.servicio_proteccion_id) ||
-        (userRole === 'Coordinador' && result.expediente_zona_id !== userProfile.zona_id)
+    const isRestricted = !!result?.has_active_expediente && !!userProfile && (
+        (userRole === 'Profesional' && String(result.expediente_spd_id) !== String(userProfile.servicio_proteccion_id)) ||
+        (userRole === 'Coordinador' && String(result.expediente_zona_id) !== String(userProfile.zona_id))
     );
 
     return (
@@ -246,7 +246,7 @@ const NuevaRecepcion: React.FC = () => {
                                     <div className="flex items-center gap-2 mb-1">
                                         <h4 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">{result.apellido}, {result.nombre}</h4>
                                         <span className={`px-2 py-0.5 text-xs font-bold rounded-full uppercase ${result.has_active_expediente ? (isRestricted ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700') : 'bg-gray-100 text-gray-500'}`}>
-                                            {result.has_active_expediente ? (isRestricted ? 'Acceso Limitado' : 'Legajo Activo') : 'Sin Legajo'}
+                                            {result.has_active_expediente ? (isRestricted ? 'Legajo en otro SPD' : result.expediente_activo === false ? 'Legajo Cerrado' : 'Legajo Activo') : 'Sin Legajo'}
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap gap-y-1 gap-x-4 text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -263,12 +263,18 @@ const NuevaRecepcion: React.FC = () => {
                             </div>
 
                             {isRestricted ? (
-                                <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-800 flex items-center gap-3">
+                                <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-800 flex items-start gap-3 md:max-w-sm">
                                     <span className="material-symbols-outlined text-amber-500">lock</span>
-                                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase leading-none">Caso asignado a otro SPD.<br /><span className="lowercase font-medium">Contacte a la unidad responsable.</span></p>
+                                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300 leading-snug">
+                                        <span className="font-bold uppercase">No podés crear un expediente nuevo.</span><br />
+                                        {userRole === 'Coordinador'
+                                            ? <>Este niño/a ya tiene un legajo en otra zona{result.expediente_spd_nombre ? <> ({result.expediente_spd_nombre})</> : null}. Comunicate con el SPD correspondiente.</>
+                                            : <>Este niño/a ya tiene un legajo{result.expediente_spd_nombre ? <> en <span className="font-bold">{result.expediente_spd_nombre}</span></> : ' en otro SPD'}. Comunicate con ese SPD para coordinar la intervención.</>}
+                                    </p>
                                 </div>
                             ) : (
                                 <button
+                                    disabled={!userProfile}
                                     onClick={() => {
                                         if (result.has_open_ingreso) {
                                             navigate(`/expedientes/${result.expediente_id}/ingresos`);
@@ -279,7 +285,7 @@ const NuevaRecepcion: React.FC = () => {
                                             : `/expedientes/recepcion/nuevo?nino_id=${result.id}`;
                                         navigate(path);
                                     }}
-                                    className={`px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${result.has_open_ingreso ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-primary hover:bg-blue-600 shadow-primary/20'} text-white`}
+                                    className={`px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${result.has_open_ingreso ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-primary hover:bg-blue-600 shadow-primary/20'} text-white`}
                                 >
                                     <span className="material-symbols-outlined">{result.has_open_ingreso ? 'visibility' : 'add_circle'}</span>
                                     {result.has_open_ingreso ? 'Ver Ingreso Abierto' : result.has_active_expediente ? 'Crear Nuevo Ingreso' : 'Abrir Expediente'}

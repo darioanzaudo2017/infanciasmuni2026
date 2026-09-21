@@ -1068,7 +1068,11 @@ const FormularioRecepcion: React.FC = () => {
 
         } catch (error: any) {
             console.error('Error saving reception:', error);
-            alert(`Error al guardar: ${error.message || 'Error desconocido'}`);
+            if (error?.code === '23505' && String(error?.message).includes('expedientes_nino_id_key')) {
+                alert('Este niño/a ya tiene un legajo abierto en otro Servicio de Protección de Derechos, por eso no se puede crear un expediente nuevo. Comunicate con el SPD correspondiente. Tu borrador quedó guardado en este navegador.');
+            } else {
+                alert(`Error al guardar: ${error.message || 'Error desconocido'}`);
+            }
         } finally {
             setIsSaving(false);
         }

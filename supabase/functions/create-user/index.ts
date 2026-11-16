@@ -29,6 +29,69 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // --- Autorización: esta función usa service_role y por lo tanto IGNORA toda RLS.
+    // Verificación de JWT de Supabase (verify_jwt) solo exige que el token sea válido
+    // (la anon key pública también lo es), no que el caller tenga permisos. Por eso acá
+    // se valida explícitamente: (a) que haya una sesión de usuario real detrás del token
+    // (no la anon key), y (b) que ese usuario sea Administrador o Coordinador, y
+    // (c) que un Coordinador (no-Admin) no pueda asignar el rol Administrador.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const callerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+    if (!callerToken) {
+      return new Response(
+        JSON.stringify({ error: "No autenticado." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: callerAuth, error: callerAuthError } = await supabaseAdmin.auth.getUser(callerToken);
+    const callerId = callerAuth?.user?.id;
+
+    if (callerAuthError || !callerId) {
+      return new Response(
+        JSON.stringify({ error: "No autenticado." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: callerRoles, error: callerRolesError } = await supabaseAdmin
+      .from("usuarios_roles")
+      .select("roles(nombre)")
+      .eq("usuario_id", callerId);
+
+    if (callerRolesError) {
+      console.error("Caller roles error:", callerRolesError);
+      return new Response(
+        JSON.stringify({ error: "No se pudo verificar el permiso del solicitante." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const callerRoleNames = new Set((callerRoles ?? []).map((r: any) => r.roles?.nombre));
+    const callerIsAdmin = callerRoleNames.has("Administrador");
+    const callerIsCoordinador = callerRoleNames.has("Coordinador");
+
+    if (!callerIsAdmin && !callerIsCoordinador) {
+      return new Response(
+        JSON.stringify({ error: "No tenés permiso para crear usuarios." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: rolSolicitado } = await supabaseAdmin
+      .from("roles")
+      .select("nombre")
+      .eq("id", rol_id)
+      .single();
+
+    if (!callerIsAdmin && rolSolicitado?.nombre === "Administrador") {
+      return new Response(
+        JSON.stringify({ error: "Solo un Administrador puede asignar el rol Administrador." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // 1. Create the auth user with a temporary password (just for initialization)
     const tempPassword = crypto.randomUUID().slice(0, 12) + "Aa1!";
     

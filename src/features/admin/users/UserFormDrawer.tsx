@@ -27,6 +27,11 @@ interface UserFormDrawerProps {
 
 const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUserCreated, user }) => {
     const [roles, setRoles] = useState<Role[]>([]);
+    // Solo un Administrador puede asignar el rol Administrador (ver migración
+    // 20261116000004_fix_escalada_privilegios_usuarios.sql). Un Coordinador que intente
+    // elegirlo ahora recibe un error de la base — se oculta la opción para que no llegue
+    // a intentarlo.
+    const [viewerIsAdmin, setViewerIsAdmin] = useState(false);
     const [zonas, setZonas] = useState<Zona[]>([]);
     const [spds, setSpds] = useState<SPD[]>([]);
     const [loading, setLoading] = useState(false);
@@ -64,6 +69,25 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const fetchViewerRole = async () => {
+            try {
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (!authUser) return;
+                const { data } = await supabase
+                    .from('usuarios')
+                    .select('usuarios_roles(roles(nombre))')
+                    .eq('id', authUser.id)
+                    .single();
+                const nombres = (data as any)?.usuarios_roles?.map((ur: any) => ur.roles?.nombre) || [];
+                setViewerIsAdmin(nombres.includes('Administrador'));
+            } catch (error) {
+                console.error('Error fetching viewer role:', error);
+            }
+        };
+        void fetchViewerRole();
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
@@ -248,7 +272,9 @@ const UserFormDrawer: React.FC<UserFormDrawerProps> = ({ isOpen, onClose, onUser
                             <div className="px-6 flex flex-col gap-3">
                                 <p className="text-[#111818] dark:text-white text-sm font-medium leading-normal">Perfil de Usuario</p>
                                 <div className="grid grid-cols-1 gap-2">
-                                    {roles.map((role) => (
+                                    {roles
+                                        .filter(role => viewerIsAdmin || role.nombre !== 'Administrador')
+                                        .map((role) => (
                                         <label key={role.id} className="relative flex items-center p-3 cursor-pointer rounded-lg border border-[#dce5e5] dark:border-[#2a3a3a] bg-white dark:bg-[#1a2d2d] hover:bg-slate-50 dark:hover:bg-[#1d3535] transition-colors">
                                             <input
                                                 className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"

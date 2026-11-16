@@ -38,6 +38,15 @@ interface ExpedienteRow {
 
 const PAGE_SIZE = 20;
 
+// Solo las columnas que la pantalla muestra (las de ExpedienteRow). Pedir '*' trae también
+// grupo_familiar_texto / referentes_texto / *_normalizado, que sirven únicamente para buscar y
+// obligan a recalcular los familiares de TODOS los expedientes visibles antes de paginar
+// (~2x más lento para el Administrador). La búsqueda filtra por esas columnas sin necesidad de seleccionarlas.
+const COLUMNAS_LISTA =
+    'id,numero,fecha_apertura,activo,anulado,motivo_anulacion,anulado_at,' +
+    'nino_nombre,nino_apellido,nino_dni,ultimo_profesional,spd_nombre,' +
+    'ultima_seccion,ultima_seccion_fecha,creado_por_nombre,creado_por_fecha';
+
 // Saca acentos/diacríticos para que la búsqueda coincida contra las columnas
 // ya normalizadas en vw_expedientes_list (unaccent aplicado en la vista)
 const normalizarTexto = (texto: string) =>
@@ -75,11 +84,17 @@ const ExpedientesList = () => {
         setPage(1);
     }, [statusFilter, debouncedSearchTerm]);
 
-    const fetchExpedientes = async () => {
+    const fetchExpedientes = async (forzarConteo = false) => {
         setLoading(true);
         setFetchError(null);
         try {
-            let query = supabase.from('vw_expedientes_list').select('*', { count: 'exact' });
+            // El conteo exacto repite el trabajo de toda la vista: se pide solo al entrar a la página 1
+            // (que es donde se aterriza al cambiar filtro/búsqueda) o cuando cambia el total (anular).
+            // Al paginar (página 2 en adelante) se reutiliza el total ya conocido.
+            const pedirConteo = forzarConteo || page === 1;
+            let query = supabase
+                .from('vw_expedientes_list')
+                .select(COLUMNAS_LISTA, pedirConteo ? { count: 'exact' } : undefined);
 
             if (statusFilter === 'Activos') query = query.eq('activo', true).eq('anulado', false);
             if (statusFilter === 'Cerrados') query = query.eq('activo', false).eq('anulado', false);
@@ -98,7 +113,7 @@ const ExpedientesList = () => {
             const { data, count, error } = await query;
             if (error) throw error;
             setExpedientes((data || []) as any);
-            setTotalCount(count || 0);
+            if (pedirConteo) setTotalCount(count ?? 0);
         } catch (error) {
             console.error('Error fetching expedientes:', error);
             setExpedientes([]);
@@ -157,7 +172,7 @@ const ExpedientesList = () => {
             if (error) throw error;
             setAnulando(null);
             setMotivoAnulacion('');
-            void fetchExpedientes();
+            void fetchExpedientes(true); // el total cambió: se vuelve a contar
         } catch (err: any) {
             alert('Error al anular: ' + err.message);
         } finally {

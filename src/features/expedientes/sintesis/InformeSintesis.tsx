@@ -378,7 +378,6 @@ const InformeSintesis = () => {
                     <div className="p-4 sm:p-6 md:p-10 max-w-4xl mx-auto w-full">
                         <Breadcrumbs
                             items={[
-                                { label: 'Inicio', path: '/' },
                                 { label: 'Expedientes', path: '/expedientes' },
                                 { label: 'Historial de Ingresos', path: `/expedientes/${expedienteId}/ingresos` },
                                 { label: 'Detalle de Legajo', path: `/expedientes/${expedienteId}/ingresos/${ingresoId}` },

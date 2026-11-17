@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import Button from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B9D', '#C23B22', '#2ECC71'];
 
@@ -10,10 +11,30 @@ const TIPO_FECHA_OPTIONS = [
     { value: 'fecha_apertura', label: 'Fecha de apertura' },
 ];
 
+// Códigos reales de ingresos.etapa (ver distribución real en producción antes de tocar esto)
+const ETAPA_LABELS: Record<string, string> = {
+    recepcion: 'Recepción',
+    ampliacion: 'Ampliación',
+    informe_sintesis: 'Informe Síntesis',
+    definicion: 'Definición de Medidas',
+    cese: 'Cese',
+};
+const ETAPA_ORDEN = ['recepcion', 'ampliacion', 'informe_sintesis', 'definicion', 'cese'];
+
+const MEDIDA_ESTADO_LABELS: Record<string, string> = {
+    pendiente: 'Pendiente',
+    activa: 'En Proceso',
+    'en proceso': 'En Proceso',
+    completa: 'Completa',
+};
+
+const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [rawKpis, setRawKpis] = useState<any[]>([]);
     const [rawDerechos, setRawDerechos] = useState<any[]>([]);
+    const [rawMedidas, setRawMedidas] = useState<any[]>([]);
     const [spds, setSpds] = useState<any[]>([]);
     const [categorias, setCategorias] = useState<string[]>([]);
 
@@ -24,6 +45,8 @@ const Dashboard = () => {
     const [fechaHasta, setFechaHasta] = useState('');
     const [selectedCategoria, setSelectedCategoria] = useState('all');
     const [selectedSubcategoria, setSelectedSubcategoria] = useState('all');
+    const [selectedEtapa, setSelectedEtapa] = useState('all');
+    const [selectedProfesional, setSelectedProfesional] = useState('all');
     const [selectedDerecho, setSelectedDerecho] = useState<string | null>(null); // drill-down pie
 
     useEffect(() => {
@@ -36,17 +59,20 @@ const Dashboard = () => {
             const [
                 { data: kpisData },
                 { data: derechosData },
+                { data: medidasData },
                 { data: spdsData },
                 { data: catData }
             ] = await Promise.all([
                 supabase.from('vw_dashboard_kpis').select('*'),
                 supabase.from('vw_dashboard_derechos').select('*'),
+                supabase.from('vw_dashboard_medidas').select('*'),
                 supabase.from('vw_spds_por_rol').select('*'),
                 supabase.from('catalogo_derechos').select('categoria').order('categoria')
             ]);
 
             setRawKpis(kpisData || []);
             setRawDerechos(derechosData || []);
+            setRawMedidas(medidasData || []);
             setSpds(spdsData || []);
 
             const cats = [...new Set((catData || []).map((c: any) => c.categoria))].filter(Boolean);
@@ -72,6 +98,8 @@ const Dashboard = () => {
     const filteredKpis = useMemo(() => {
         return rawKpis.filter(row => {
             if (selectedSPD !== 'all' && String(row.servicio_proteccion_id) !== String(selectedSPD)) return false;
+            if (selectedEtapa !== 'all' && row.etapa !== selectedEtapa) return false;
+            if (selectedProfesional !== 'all' && String(row.profesional_asignado_id) !== String(selectedProfesional)) return false;
 
             const fechaRef = tipoFecha === 'fecha_ingreso' ? row.fecha_ingreso : row.fecha_apertura;
             if (fechaDesde && fechaRef && fechaRef < fechaDesde) return false;
@@ -79,7 +107,28 @@ const Dashboard = () => {
 
             return true;
         });
-    }, [rawKpis, selectedSPD, tipoFecha, fechaDesde, fechaHasta]);
+    }, [rawKpis, selectedSPD, selectedEtapa, selectedProfesional, tipoFecha, fechaDesde, fechaHasta]);
+
+    // Lista de profesionales con casos asignados, para el filtro (no se recalcula con los filtros)
+    const profesionales = useMemo(() => {
+        const map = new Map<string, string>();
+        rawKpis.forEach(r => {
+            if (r.profesional_asignado_id && r.profesional_asignado_nombre) {
+                map.set(String(r.profesional_asignado_id), r.profesional_asignado_nombre);
+            }
+        });
+        return [...map.entries()].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    }, [rawKpis]);
+
+    // Filtra medidas de protección según SPD y fecha (la vista no tiene categoría/subcategoría de derecho ni profesional)
+    const filteredMedidas = useMemo(() => {
+        return rawMedidas.filter(row => {
+            if (selectedSPD !== 'all' && String(row.servicio_proteccion_id) !== String(selectedSPD)) return false;
+            if (fechaDesde && row.fecha_ingreso && row.fecha_ingreso < fechaDesde) return false;
+            if (fechaHasta && row.fecha_ingreso && row.fecha_ingreso > fechaHasta + 'T23:59:59') return false;
+            return true;
+        });
+    }, [rawMedidas, selectedSPD, fechaDesde, fechaHasta]);
 
     // Filtra derechos vulnerados según todos los filtros activos
     const filteredDerechos = useMemo(() => {
@@ -108,8 +157,11 @@ const Dashboard = () => {
 
         const expedientesUnicos = new Set(kpisBase.map(r => r.expediente_id)).size;
         const ingresosAbiertos = kpisBase.filter(r => r.estado === 'abierto').length;
+        // OJO: los códigos reales de ingresos.etapa son recepcion/ampliacion/informe_sintesis/definicion/cese
+        // (antes este filtro buscaba 'sintesis' y 'seguimiento', que nunca existieron en la base, así que
+        // "Abordaje Integral" venía subcontando todos los casos en Informe Síntesis y en Cese)
         const abordajeIntegral = kpisBase.filter(r =>
-            r.estado === 'abierto' && ['ampliacion', 'sintesis', 'definicion', 'seguimiento'].includes(r.etapa)
+            r.estado === 'abierto' && ['ampliacion', 'informe_sintesis', 'definicion', 'cese'].includes(r.etapa)
         ).length;
         const cerradosTotal = kpisBase.filter(r => r.estado === 'cerrado').length;
         const cerradosAsesoramiento = kpisBase.filter(r =>
@@ -118,8 +170,19 @@ const Dashboard = () => {
         const cerradosSENAF = kpisBase.filter(r =>
             r.estado === 'cerrado' && r.decision_id === 'derivacion'
         ).length;
+        const sinResponsable = kpisBase.filter(r => r.estado === 'abierto' && !r.tiene_responsable).length;
 
-        return { expedientesUnicos, ingresosAbiertos, abordajeIntegral, cerradosTotal, cerradosAsesoramiento, cerradosSENAF };
+        const cerradosConFechas = kpisBase.filter(r => r.estado === 'cerrado' && r.fecha_cierre && r.fecha_ingreso);
+        const diasPromedioCierre = cerradosConFechas.length > 0
+            ? Math.round(
+                cerradosConFechas.reduce((sum, r) => {
+                    const dias = (new Date(r.fecha_cierre).getTime() - new Date(r.fecha_ingreso).getTime()) / 86400000;
+                    return sum + Math.max(dias, 0);
+                }, 0) / cerradosConFechas.length
+            )
+            : 0;
+
+        return { expedientesUnicos, ingresosAbiertos, abordajeIntegral, cerradosTotal, cerradosAsesoramiento, cerradosSENAF, sinResponsable, diasPromedioCierre };
     }, [filteredKpis, filteredDerechos, selectedCategoria, selectedSubcategoria]);
 
     // Datos para el pie chart de derechos
@@ -142,24 +205,80 @@ const Dashboard = () => {
         return Object.entries(catCounts).map(([nombre, cantidad]) => ({ nombre, cantidad })).sort((a, b) => b.cantidad - a.cantidad);
     }, [filteredDerechos, selectedDerecho]);
 
-    // Datos para gráficos de barras por zona y SPD (respetan filtros)
+    // Datos para gráficos de barras por zona y SPD: ingresos abiertos vs cerrados
+    // (cuenta ingresos, no expedientes — un expediente sin ningún ingreso todavía no suma a ninguna de las dos barras)
     const zonaStats = useMemo(() => {
-        const counts: Record<string, number> = {};
+        const counts: Record<string, { abiertos: number; cerrados: number }> = {};
         filteredKpis.forEach(r => {
+            if (!r.ingreso_id) return;
             const nombre = r.zona_nombre || 'Sin zona';
-            counts[nombre] = (counts[nombre] || 0) + 1;
+            if (!counts[nombre]) counts[nombre] = { abiertos: 0, cerrados: 0 };
+            if (r.estado === 'abierto') counts[nombre].abiertos++;
+            else if (r.estado === 'cerrado') counts[nombre].cerrados++;
         });
-        return Object.entries(counts).map(([nombre, cantidad]) => ({ nombre, cantidad })).sort((a, b) => b.cantidad - a.cantidad);
+        return Object.entries(counts)
+            .map(([nombre, v]) => ({ nombre, ...v }))
+            .sort((a, b) => (b.abiertos + b.cerrados) - (a.abiertos + a.cerrados));
     }, [filteredKpis]);
 
     const spdStats = useMemo(() => {
+        const counts: Record<string, { abiertos: number; cerrados: number }> = {};
+        filteredKpis.forEach(r => {
+            if (!r.ingreso_id) return;
+            const nombre = r.spd_nombre || 'Sin SPD';
+            if (!counts[nombre]) counts[nombre] = { abiertos: 0, cerrados: 0 };
+            if (r.estado === 'abierto') counts[nombre].abiertos++;
+            else if (r.estado === 'cerrado') counts[nombre].cerrados++;
+        });
+        return Object.entries(counts)
+            .map(([nombre, v]) => ({ nombre, ...v }))
+            .sort((a, b) => (b.abiertos + b.cerrados) - (a.abiertos + a.cerrados));
+    }, [filteredKpis]);
+
+    // Distribución de casos activos por etapa del proceso (funnel)
+    const etapaStats = useMemo(() => {
         const counts: Record<string, number> = {};
         filteredKpis.forEach(r => {
-            const nombre = r.spd_nombre || 'Sin SPD';
-            counts[nombre] = (counts[nombre] || 0) + 1;
+            if (r.estado !== 'abierto' || !r.etapa) return;
+            counts[r.etapa] = (counts[r.etapa] || 0) + 1;
         });
-        return Object.entries(counts).map(([nombre, cantidad]) => ({ nombre, cantidad })).sort((a, b) => b.cantidad - a.cantidad);
+        return ETAPA_ORDEN
+            .filter(key => counts[key])
+            .map(key => ({ nombre: ETAPA_LABELS[key], cantidad: counts[key] }));
     }, [filteredKpis]);
+
+    // Altas de ingresos por mes (últimos 12 meses con datos, según filtros activos)
+    const evolucionMensual = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredKpis.forEach(r => {
+            if (!r.ingreso_id || !r.fecha_ingreso) return;
+            const d = new Date(r.fecha_ingreso + 'T12:00:00');
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .slice(-12)
+            .map(([key, cantidad]) => {
+                const mes = parseInt(key.split('-')[1], 10);
+                return { nombre: MESES_CORTOS[mes - 1], cantidad };
+            });
+    }, [filteredKpis]);
+
+    // Medidas de Protección por estado (pendiente/en proceso/completa)
+    const medidasPorEstado = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredMedidas.forEach(m => {
+            const key = m.estado || 'sin_estado';
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([key, cantidad]) => ({
+                nombre: MEDIDA_ESTADO_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1)),
+                cantidad
+            }))
+            .sort((a, b) => b.cantidad - a.cantidad);
+    }, [filteredMedidas]);
 
     const handleClearFilters = () => {
         setSelectedSPD('all');
@@ -168,17 +287,19 @@ const Dashboard = () => {
         setFechaHasta('');
         setSelectedCategoria('all');
         setSelectedSubcategoria('all');
+        setSelectedEtapa('all');
+        setSelectedProfesional('all');
         setSelectedDerecho(null);
     };
 
-    const hayFiltrosActivos = selectedSPD !== 'all' || fechaDesde || fechaHasta || selectedCategoria !== 'all' || selectedSubcategoria !== 'all';
+    const hayFiltrosActivos = Boolean(selectedSPD !== 'all' || fechaDesde || fechaHasta || selectedCategoria !== 'all' || selectedSubcategoria !== 'all' || selectedEtapa !== 'all' || selectedProfesional !== 'all');
 
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-[#60708a]">Cargando datos del panel...</p>
+                    <p className="text-on-surface-variant">Cargando datos del panel...</p>
                 </div>
             </div>
         );
@@ -190,40 +311,91 @@ const Dashboard = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight dark:text-white">Panel de Control</h2>
-                    <p className="text-[#60708a] mt-1">Estado general del sistema según tu perfil de acceso.</p>
+                    <p className="text-on-surface-variant mt-1">Estado general del sistema según tu perfil de acceso.</p>
                 </div>
-                <Link
-                    to="/expedientes/nuevo"
-                    className="flex items-center justify-center gap-2 px-6 h-12 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto"
-                >
-                    <span className="material-symbols-outlined text-xl">add_box</span>
-                    Nuevo Expediente
+                <Link to="/expedientes/nuevo" className="w-full sm:w-auto">
+                    <Button
+                        variant="primary"
+                        size="md"
+                        className="flex items-center justify-center gap-2 w-full sm:w-auto uppercase tracking-wider"
+                    >
+                        <span className="material-symbols-outlined text-xl">add_box</span>
+                        Nuevo Expediente
+                    </Button>
                 </Link>
             </div>
 
-            {/* Filtros */}
-            <div className="bg-white dark:bg-zinc-900 border border-[#e5e7eb] dark:border-[#333] rounded-xl p-5 mb-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#60708a]">Filtros</h3>
-                    {hayFiltrosActivos && (
-                        <button
-                            onClick={handleClearFilters}
-                            className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
+            {/* KPI Cards (arriba) */}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                {[
+                    { label: 'Expedientes', key: 'expedientesUnicos', icon: 'folder', textClass: 'text-secondary', bgClass: 'bg-secondary/10', borderClass: 'border-secondary/20', badge: 'Total', link: '/expedientes?estado=Todos' },
+                    { label: 'Ingresos Abiertos', key: 'ingresosAbiertos', icon: 'door_open', textClass: 'text-emerald-700', bgClass: 'bg-emerald-50', borderClass: 'border-emerald-200', badge: 'Activos', link: '/expedientes?estado=Activos' },
+                    { label: 'Abordaje Integral', key: 'abordajeIntegral', icon: 'psychology', textClass: 'text-blue-700', bgClass: 'bg-blue-50', borderClass: 'border-blue-200', badge: 'Integral', link: '/expedientes?estado=Activos' },
+                    { label: 'Cerrados por Asesoramiento', key: 'cerradosAsesoramiento', icon: 'support_agent', textClass: 'text-purple-700', bgClass: 'bg-purple-50', borderClass: 'border-purple-200', badge: 'Cerrado', link: '/expedientes?estado=Cerrados' },
+                    { label: 'Ingresos Cerrados (Total)', key: 'cerradosTotal', icon: 'check_circle', textClass: 'text-slate-700', bgClass: 'bg-slate-100', borderClass: 'border-slate-200', badge: 'Total', link: '/expedientes?estado=Cerrados' },
+                    { label: 'Cerrados por Solicitud SENAF', key: 'cerradosSENAF', icon: 'account_balance', textClass: 'text-amber-800', bgClass: 'bg-amber-50', borderClass: 'border-amber-200', badge: 'SENAF', link: '/expedientes?estado=Cerrados' },
+                    { label: 'Casos Activos sin Responsable', key: 'sinResponsable', icon: 'person_off', textClass: 'text-rose-700', bgClass: 'bg-rose-50', borderClass: 'border-rose-200', badge: 'Alerta', link: '/expedientes?estado=Activos' },
+                    { label: 'Días Promedio hasta el Cierre', key: 'diasPromedioCierre', icon: 'schedule', textClass: 'text-cyan-700', bgClass: 'bg-cyan-50', borderClass: 'border-cyan-200', badge: 'Promedio', suffix: ' días', link: '/expedientes?estado=Cerrados' },
+                ].map(({ label, key, icon, textClass, bgClass, borderClass, badge, link, suffix }) => {
+                    const value = (stats as any)[key] ?? 0;
+                    return (
+                        <Link
+                            key={label}
+                            to={link}
+                            className="bg-white dark:bg-zinc-900 p-3 sm:p-5 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm hover:shadow-md hover:border-secondary/40 transition-all cursor-pointer block group"
+                            title={`Ver expedientes: ${label}`}
                         >
-                            <span className="material-symbols-outlined text-sm">filter_alt_off</span>
-                            Limpiar filtros
-                        </button>
-                    )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+                            <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                                <div className={`p-1.5 sm:p-2 ${bgClass} ${textClass} rounded-lg`}>
+                                    <span className="material-symbols-outlined text-lg sm:text-2xl">{icon}</span>
+                                </div>
+                                <span className={`${textClass} ${bgClass} border ${borderClass} text-[11px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full`}>{badge}</span>
+                            </div>
+                            <p className="text-on-surface-variant text-xs sm:text-sm font-medium leading-tight">{label}</p>
+                            <p className="text-lg sm:text-2xl font-bold mt-0.5 sm:mt-1 dark:text-white group-hover:text-secondary transition-colors">{value.toLocaleString()}{suffix || ''}</p>
+                        </Link>
+                    );
+                })}
+            </div>
+
+            {/* Filtros (después de los KPIs en acordeón colapsable) */}
+            <details className="group bg-white dark:bg-zinc-900 border border-[#e5e7eb] dark:border-[#333] rounded-xl p-5 mb-6 shadow-sm" open={hayFiltrosActivos}>
+                <summary className="flex items-center justify-between cursor-pointer list-none select-none">
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-secondary text-xl">tune</span>
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Filtros de Búsqueda</h3>
+                        {hayFiltrosActivos && (
+                            <span className="size-2 rounded-full bg-secondary animate-pulse" title="Filtros aplicados"></span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {hayFiltrosActivos && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleClearFilters();
+                                }}
+                                className="text-xs text-secondary font-bold hover:underline flex items-center gap-1"
+                            >
+                                <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+                                Limpiar filtros
+                            </button>
+                        )}
+                        <span className="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform">
+                            expand_more
+                        </span>
+                    </div>
+                </summary>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-4 mt-4 border-t border-slate-100 dark:border-zinc-800">
                     {/* SPD */}
                     {spds.length > 1 && (
                         <div className="xl:col-span-2">
-                            <label className="block text-xs font-medium text-[#60708a] mb-1">Servicio de Protección</label>
+                            <label className="block text-xs font-medium text-on-surface-variant mb-1">Servicio de Protección</label>
                             <select
                                 value={selectedSPD}
                                 onChange={e => setSelectedSPD(e.target.value)}
-                                className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                                className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
                             >
                                 <option value="all">Todos los SPD</option>
                                 {spds.map(spd => (
@@ -235,11 +407,11 @@ const Dashboard = () => {
 
                     {/* Tipo de fecha */}
                     <div>
-                        <label className="block text-xs font-medium text-[#60708a] mb-1">Tipo de fecha</label>
+                        <label className="block text-xs font-medium text-on-surface-variant mb-1">Tipo de fecha</label>
                         <select
                             value={tipoFecha}
                             onChange={e => setTipoFecha(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
                         >
                             {TIPO_FECHA_OPTIONS.map(o => (
                                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -249,33 +421,33 @@ const Dashboard = () => {
 
                     {/* Desde */}
                     <div>
-                        <label className="block text-xs font-medium text-[#60708a] mb-1">Desde</label>
+                        <label className="block text-xs font-medium text-on-surface-variant mb-1">Desde</label>
                         <input
                             type="date"
                             value={fechaDesde}
                             onChange={e => setFechaDesde(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
                         />
                     </div>
 
                     {/* Hasta */}
                     <div>
-                        <label className="block text-xs font-medium text-[#60708a] mb-1">Hasta</label>
+                        <label className="block text-xs font-medium text-on-surface-variant mb-1">Hasta</label>
                         <input
                             type="date"
                             value={fechaHasta}
                             onChange={e => setFechaHasta(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
                         />
                     </div>
 
                     {/* Categoría de derecho */}
                     <div>
-                        <label className="block text-xs font-medium text-[#60708a] mb-1">Derecho (categoría)</label>
+                        <label className="block text-xs font-medium text-on-surface-variant mb-1">Derecho (categoría)</label>
                         <select
                             value={selectedCategoria}
                             onChange={e => { setSelectedCategoria(e.target.value); setSelectedSubcategoria('all'); setSelectedDerecho(null); }}
-                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
                         >
                             <option value="all">Todos los derechos</option>
                             {categorias.map(c => (
@@ -287,11 +459,11 @@ const Dashboard = () => {
                     {/* Subcategoría */}
                     {selectedCategoria !== 'all' && subcategorias.length > 0 && (
                         <div>
-                            <label className="block text-xs font-medium text-[#60708a] mb-1">Subcategoría</label>
+                            <label className="block text-xs font-medium text-on-surface-variant mb-1">Subcategoría</label>
                             <select
                                 value={selectedSubcategoria}
                                 onChange={e => setSelectedSubcategoria(e.target.value)}
-                                className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                                className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
                             >
                                 <option value="all">Todas las subcategorías</option>
                                 {subcategorias.map(s => (
@@ -300,31 +472,40 @@ const Dashboard = () => {
                             </select>
                         </div>
                     )}
-                </div>
-            </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-                {[
-                    { label: 'Expedientes', value: stats.expedientesUnicos, icon: 'folder', color: 'primary', badge: 'Total' },
-                    { label: 'Ingresos Abiertos', value: stats.ingresosAbiertos, icon: 'door_open', color: 'success', badge: 'Activos' },
-                    { label: 'Abordaje Integral', value: stats.abordajeIntegral, icon: 'psychology', color: 'blue-600', badge: 'Integral' },
-                    { label: 'Cerrados por Asesoramiento', value: stats.cerradosAsesoramiento, icon: 'support_agent', color: 'purple-600', badge: 'Cerrado' },
-                    { label: 'Ingresos Cerrados (Total)', value: stats.cerradosTotal, icon: 'check_circle', color: 'gray-600', badge: 'Total' },
-                    { label: 'Cerrados por Solicitud SENAF', value: stats.cerradosSENAF, icon: 'account_balance', color: 'orange-600', badge: 'SENAF' },
-                ].map(({ label, value, icon, color, badge }) => (
-                    <div key={label} className="bg-white dark:bg-zinc-900 p-3 sm:p-5 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm">
-                        <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-                            <div className={`p-1.5 sm:p-2 bg-${color}/10 text-${color} rounded-lg`}>
-                                <span className="material-symbols-outlined text-lg sm:text-2xl">{icon}</span>
-                            </div>
-                            <span className={`text-${color} text-[9px] sm:text-xs font-bold bg-${color}/10 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full`}>{badge}</span>
-                        </div>
-                        <p className="text-[#60708a] text-[11px] sm:text-sm font-medium leading-tight">{label}</p>
-                        <p className="text-lg sm:text-2xl font-bold mt-0.5 sm:mt-1 dark:text-white">{value.toLocaleString()}</p>
+                    {/* Etapa del proceso */}
+                    <div>
+                        <label className="block text-xs font-medium text-on-surface-variant mb-1">Etapa del proceso</label>
+                        <select
+                            value={selectedEtapa}
+                            onChange={e => setSelectedEtapa(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
+                        >
+                            <option value="all">Todas las etapas</option>
+                            {ETAPA_ORDEN.map(key => (
+                                <option key={key} value={key}>{ETAPA_LABELS[key]}</option>
+                            ))}
+                        </select>
                     </div>
-                ))}
-            </div>
+
+                    {/* Profesional responsable */}
+                    {profesionales.length > 1 && (
+                        <div>
+                            <label className="block text-xs font-medium text-on-surface-variant mb-1">Profesional asignado</label>
+                            <select
+                                value={selectedProfesional}
+                                onChange={e => setSelectedProfesional(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-[#e5e7eb] dark:border-[#333] rounded-lg bg-white dark:bg-zinc-800 dark:text-white focus:ring-2 focus:ring-secondary focus:border-transparent"
+                            >
+                                <option value="all">Todos los profesionales</option>
+                                {profesionales.map(p => (
+                                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+            </details>
 
             {/* Gráfico de Derechos Vulnerados */}
             <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm mb-6">
@@ -336,14 +517,14 @@ const Dashboard = () => {
                                     onClick={() => setSelectedDerecho(null)}
                                     className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
                                 >
-                                    <span className="material-symbols-outlined text-primary">arrow_back</span>
+                                    <span className="material-symbols-outlined text-secondary">arrow_back</span>
                                 </button>
                                 {selectedDerecho}
                             </>
                         ) : 'Derechos Vulnerados'}
                     </h3>
                     {selectedDerecho && (
-                        <span className="text-xs font-bold text-[#60708a] uppercase tracking-wider bg-gray-100 dark:bg-zinc-800 px-3 py-1 rounded-full">
+                        <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider bg-gray-100 dark:bg-zinc-800 px-3 py-1 rounded-full">
                             Desglose por subcategoría
                         </span>
                     )}
@@ -380,7 +561,7 @@ const Dashboard = () => {
                                     </PieChart>
                                 </ResponsiveContainer>
                                 {!selectedDerecho && (
-                                    <p className="text-center text-xs text-[#60708a] mt-2 italic">
+                                    <p className="text-center text-xs text-on-surface-variant mt-2 italic">
                                         Clic en una porción para ver subcategorías
                                     </p>
                                 )}
@@ -403,14 +584,15 @@ const Dashboard = () => {
                         </div>
                     );
                 })() : (
-                    <p className="text-center text-[#60708a] py-12">No hay datos de derechos para los filtros seleccionados</p>
+                    <p className="text-center text-on-surface-variant py-12">No hay datos de derechos para los filtros seleccionados</p>
                 )}
             </div>
 
             {/* Gráficos de barras Zona y SPD */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm">
-                    <h3 className="font-bold text-lg mb-5 dark:text-white">Expedientes por Zona</h3>
+                    <h3 className="font-bold text-lg mb-1 dark:text-white">Ingresos por Zona</h3>
+                    <p className="text-xs text-on-surface-variant mb-5">Abiertos vs. cerrados, según los filtros elegidos arriba.</p>
                     {zonaStats.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
                             <BarChart data={zonaStats}>
@@ -418,16 +600,19 @@ const Dashboard = () => {
                                 <XAxis dataKey="nombre" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" height={70} />
                                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                                 <Tooltip />
-                                <Bar dataKey="cantidad" fill="#0088FE" radius={[6, 6, 0, 0]} />
+                                <Legend wrapperStyle={{ fontSize: 12 }} />
+                                <Bar dataKey="abiertos" name="Abiertos" fill="#10B981" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="cerrados" name="Cerrados" fill="#64748b" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <p className="text-center text-[#60708a] py-12">Sin datos</p>
+                        <p className="text-center text-on-surface-variant py-12">Sin datos</p>
                     )}
                 </div>
 
                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm">
-                    <h3 className="font-bold text-lg mb-5 dark:text-white">Expedientes por Servicio de Protección</h3>
+                    <h3 className="font-bold text-lg mb-1 dark:text-white">Ingresos por Servicio de Protección</h3>
+                    <p className="text-xs text-on-surface-variant mb-5">Abiertos vs. cerrados, según los filtros elegidos arriba.</p>
                     {spdStats.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
                             <BarChart data={spdStats}>
@@ -435,11 +620,71 @@ const Dashboard = () => {
                                 <XAxis dataKey="nombre" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" height={70} />
                                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                                 <Tooltip />
-                                <Bar dataKey="cantidad" fill="#00C49F" radius={[6, 6, 0, 0]} />
+                                <Legend wrapperStyle={{ fontSize: 12 }} />
+                                <Bar dataKey="abiertos" name="Abiertos" fill="#10B981" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="cerrados" name="Cerrados" fill="#64748b" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <p className="text-center text-[#60708a] py-12">Sin datos</p>
+                        <p className="text-center text-on-surface-variant py-12">Sin datos</p>
+                    )}
+                </div>
+            </div>
+
+            {/* Distribución de casos activos por etapa del proceso */}
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm mt-6">
+                <h3 className="font-bold text-lg mb-1 dark:text-white">Casos Activos por Etapa del Proceso</h3>
+                <p className="text-xs text-on-surface-variant mb-5">Dónde están, hoy, los ingresos abiertos dentro del flujo de trabajo.</p>
+                {etapaStats.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={etapaStats} layout="vertical" margin={{ left: 24 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                            <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                            <YAxis type="category" dataKey="nombre" tick={{ fontSize: 12 }} width={150} />
+                            <Tooltip />
+                            <Bar dataKey="cantidad" fill="#0d50d5" radius={[0, 6, 6, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <p className="text-center text-on-surface-variant py-12">Sin casos activos para los filtros seleccionados</p>
+                )}
+            </div>
+
+            {/* Evolución mensual y Medidas de Protección */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm">
+                    <h3 className="font-bold text-lg mb-1 dark:text-white">Evolución Mensual de Ingresos</h3>
+                    <p className="text-xs text-on-surface-variant mb-5">Altas de ingresos por mes (según el tipo de fecha y rango elegidos arriba).</p>
+                    {evolucionMensual.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={evolucionMensual}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis dataKey="nombre" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                                <Tooltip />
+                                <Bar dataKey="cantidad" fill="#0d50d5" radius={[6, 6, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <p className="text-center text-on-surface-variant py-12">Sin datos</p>
+                    )}
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-[#e5e7eb] dark:border-[#333] shadow-sm">
+                    <h3 className="font-bold text-lg mb-1 dark:text-white">Medidas de Protección por Estado</h3>
+                    <p className="text-xs text-on-surface-variant mb-5">Todas las medidas definidas en el sistema, agrupadas por su estado actual.</p>
+                    {medidasPorEstado.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={medidasPorEstado}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis dataKey="nombre" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                                <Tooltip />
+                                <Bar dataKey="cantidad" fill="#FFBB28" radius={[6, 6, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <p className="text-center text-on-surface-variant py-12">Sin medidas registradas para los filtros seleccionados</p>
                     )}
                 </div>
             </div>

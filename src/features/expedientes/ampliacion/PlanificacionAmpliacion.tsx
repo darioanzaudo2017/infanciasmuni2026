@@ -148,7 +148,6 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
             <section className="space-y-6">
                 <Breadcrumbs
                     items={[
-                        { label: 'Inicio', path: '/' },
                         { label: 'Expedientes', path: '/expedientes' },
                         { label: 'Historial de Ingresos', path: `/expedientes/${ingreso.expediente_id}/ingresos` },
                         { label: 'Detalle de Legajo', path: `/expedientes/${ingreso.expediente_id}/ingresos/${ingreso.id}` },

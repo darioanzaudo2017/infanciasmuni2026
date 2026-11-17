@@ -185,7 +185,7 @@ const EmailNotificationModal: React.FC<EmailNotificationModalProps> = ({ isOpen,
                     <button
                         onClick={handleSend}
                         disabled={isSending || !to}
-                        className="w-full sm:w-auto px-6 sm:px-10 h-11 sm:h-12 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-xl sm:rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                        className="w-full sm:w-auto px-6 sm:px-10 h-11 sm:h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl sm:rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
                     >
                         {isSending ? (
                             <>

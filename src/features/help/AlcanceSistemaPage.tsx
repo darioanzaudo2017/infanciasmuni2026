@@ -122,7 +122,6 @@ const AlcanceSistemaPage: React.FC = () => {
             {/* Breadcrumbs */}
             <Breadcrumbs
                 items={[
-                    { label: 'Inicio', path: '/' },
                     { label: 'Alcance y Seguridad', active: true }
                 ]}
             />

@@ -1092,7 +1092,7 @@ const FormularioRecepcion: React.FC = () => {
             {/* Sidebar Navigation */}
             <aside className="w-80 bg-white dark:bg-slate-900 border-r border-[#dbdfe6] dark:border-slate-800 flex flex-col overflow-y-auto hidden lg:flex">
                 <div className="p-8">
-                    <h2 className="text-xs font-bold text-[#60708a] mb-6 uppercase tracking-[0.2em]">Recepción de la Demanda</h2>
+                    <h2 className="text-xs font-bold text-on-surface-variant mb-6 uppercase tracking-[0.2em]">Recepción de la Demanda</h2>
                     <nav className="flex flex-col gap-2">
                         {steps.map((step) => {
                             const isActive = currentStep === step.id;
@@ -1103,10 +1103,10 @@ const FormularioRecepcion: React.FC = () => {
                                     key={step.id}
                                     onClick={() => setCurrentStep(step.id)}
                                     className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all border-l-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${isActive
-                                        ? 'bg-primary/10 text-primary border-primary'
+                                        ? 'bg-secondary/10 text-secondary border-secondary'
                                         : isCompleted
                                             ? 'text-green-600 bg-green-50/50 dark:bg-green-900/10 border-transparent'
-                                            : 'text-[#60708a] border-transparent hover:opacity-100 opacity-60'
+                                            : 'text-on-surface-variant border-transparent hover:opacity-100 opacity-60'
                                         }`}
                                 >
                                     <span className={`material-symbols-outlined text-xl ${isActive || isCompleted ? 'fill-current' : ''}`}>
@@ -1138,7 +1138,7 @@ const FormularioRecepcion: React.FC = () => {
                                     onClick={() => setCurrentStep(step.id)}
                                     className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                                         isActive
-                                            ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                            ? 'bg-secondary text-white shadow-md shadow-secondary/20'
                                             : isCompleted
                                                 ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
                                                 : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
@@ -1189,13 +1189,13 @@ const FormularioRecepcion: React.FC = () => {
                     <div className="mb-10 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm transition-all">
                         <div className="flex justify-between items-end mb-4">
                             <div>
-                                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-1">Etapa Actual</p>
+                                <p className="font-label-section text-[10px] text-secondary mb-1">Etapa Actual</p>
                                 <h2 className="text-2xl font-black tracking-tighter">{steps[currentStep - 1].name}</h2>
                             </div>
                             <div className="text-right">
-                                <p className="text-xs font-bold text-[#60708a] uppercase tracking-widest">Paso {currentStep} de 8 ({(currentStep / 8 * 100).toFixed(0)}%)</p>
+                                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Paso {currentStep} de 8 ({(currentStep / 8 * 100).toFixed(0)}%)</p>
                                 {lastSavedAt && (
-                                    <p className="text-[10px] text-slate-400 flex items-center justify-end gap-1 mt-1">
+                                    <p className="text-xs text-slate-500 flex items-center justify-end gap-1 mt-1">
                                         <span className="material-symbols-outlined text-xs">cloud_done</span>
                                         Borrador guardado {formatDistanceToNow(lastSavedAt, { addSuffix: true, locale: es })}
                                     </p>
@@ -1203,7 +1203,7 @@ const FormularioRecepcion: React.FC = () => {
                             </div>
                         </div>
                         <div className="h-2 w-full bg-[#dbdfe6] dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-primary rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_#3c83f6]" style={{ width: `${(currentStep / 8 * 100)}%` }}></div>
+                            <div className="h-full bg-secondary rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_#0d50d5]" style={{ width: `${(currentStep / 8 * 100)}%` }}></div>
                         </div>
                     </div>
 
@@ -1211,19 +1211,19 @@ const FormularioRecepcion: React.FC = () => {
                     {loadingNino ? (
                         <div className="mb-6 bg-white dark:bg-slate-900 p-8 rounded-2xl border border-[#dbdfe6] dark:border-slate-800 shadow-sm flex items-center justify-center gap-3">
                             <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            <span className="text-xs font-bold text-[#60708a] uppercase tracking-[0.2em]">Cargando datos del niño/a...</span>
+                            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-[0.2em]">Cargando datos del niño/a...</span>
                         </div>
                     ) : (ninoData || formData.nino_id) ? (
-                        <div className="mb-6 bg-white dark:bg-slate-900 p-4 rounded-2xl border-l-4 border-primary shadow-sm flex justify-between items-center">
+                        <div className="mb-6 bg-white dark:bg-slate-900 p-4 rounded-2xl border-l-4 border-secondary shadow-sm flex justify-between items-center">
                             <div className="flex items-center gap-4">
-                                <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                <div className="size-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
                                     <span className="material-symbols-outlined">child_care</span>
                                 </div>
                                 <div>
                                     <h4 className="font-black uppercase tracking-tight text-slate-900 dark:text-white">
                                         {ninoData ? `${ninoData.apellido}, ${ninoData.nombre}` : 'Identificando...'}
                                     </h4>
-                                    <p className="text-xs text-[#60708a] font-bold">
+                                    <p className="text-xs text-on-surface-variant font-bold">
                                         DNI: {ninoData?.dni || 'Verificando...'} • {ninoData ? new Date().getFullYear() - new Date(ninoData.fecha_nacimiento).getFullYear() : '--'} años
                                     </p>
                                 </div>
@@ -1235,7 +1235,7 @@ const FormularioRecepcion: React.FC = () => {
                                     if (nextState) setCurrentStep(1);
                                 }}
                                 disabled={isSaving}
-                                className={`text-[10px] font-bold uppercase transition-all ${isSaving ? 'text-slate-400 cursor-not-allowed' : 'text-primary hover:underline'}`}
+                                className={`text-[10px] font-bold uppercase transition-all ${isSaving ? 'text-slate-400 cursor-not-allowed' : 'text-secondary hover:underline'}`}
                             >
                                 {isEditingNino ? 'Cancelar Edición' : 'Editar NNyA'}
                             </button>
@@ -1261,37 +1261,37 @@ const FormularioRecepcion: React.FC = () => {
                                         </div>
                                         <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nombres</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nombres</label>
                                                 <input
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     value={formData.nombre}
                                                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                                                     placeholder="Nombres completos"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Apellidos</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Apellidos</label>
                                                 <input
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     value={formData.apellido}
                                                     onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
                                                     placeholder="Apellidos completos"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">DNI (Opcional)</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">DNI (Opcional)</label>
                                                 <input
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     value={formData.dni}
                                                     onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
                                                     placeholder="DNI sin puntos"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Nacimiento</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Fecha de Nacimiento</label>
                                                 <input
                                                     type="date"
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     value={formData.fecha_nacimiento}
                                                     onChange={(e) => {
                                                         const dob = e.target.value;
@@ -1311,9 +1311,9 @@ const FormularioRecepcion: React.FC = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Género</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Género</label>
                                                 <select
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     value={formData.genero}
                                                     onChange={(e) => setFormData({ ...formData, genero: e.target.value })}
                                                 >
@@ -1324,10 +1324,10 @@ const FormularioRecepcion: React.FC = () => {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Edad (Años)</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Edad (Años)</label>
                                                 <input
                                                     type="number"
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     value={formData.edad}
                                                     onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
                                                     placeholder="Edad sugerida o manual"
@@ -1344,9 +1344,9 @@ const FormularioRecepcion: React.FC = () => {
                                     </div>
                                     <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div className="col-span-1 md:col-span-2">
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Calle y Número</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Calle y Número</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Ej: Av. Rivadavia 1234, Piso 2 B"
                                                 type="text"
                                                 value={formData.domicilio}
@@ -1354,10 +1354,10 @@ const FormularioRecepcion: React.FC = () => {
                                             />
                                         </div>
                                         <div className="relative" ref={barrioRef}>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Barrio</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Barrio</label>
                                             <div
                                                 onClick={() => setIsBarrioDropdownOpen(!isBarrioDropdownOpen)}
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium flex items-center justify-between cursor-pointer select-none"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium flex items-center justify-between cursor-pointer select-none"
                                             >
                                                 <span className={formData.barrio ? "text-slate-800 dark:text-white" : "text-slate-400"}>
                                                     {barrios.find(b => b.nombre === formData.barrio) ? formData.barrio : (formData.barrio ? "OTRO: " + formData.barrio : "Seleccionar barrio")}
@@ -1372,7 +1372,7 @@ const FormularioRecepcion: React.FC = () => {
                                                             <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
                                                             <input
                                                                 autoFocus
-                                                                className="w-full h-10 pl-10 pr-4 bg-slate-50 dark:bg-slate-900 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary"
+                                                                className="w-full h-10 pl-10 pr-4 bg-slate-50 dark:bg-slate-900 border-none rounded-lg text-sm font-medium focus:ring-2 focus:ring-secondary"
                                                                 placeholder="Buscar barrio..."
                                                                 value={barrioSearch}
                                                                 onChange={(e) => setBarrioSearch(e.target.value)}
@@ -1391,7 +1391,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                         setIsBarrioDropdownOpen(false);
                                                                         setBarrioSearch('');
                                                                     }}
-                                                                    className={`w-full text-left px-5 py-3 text-sm font-bold transition-colors flex items-center gap-3 ${formData.barrio === b.nombre ? 'bg-primary/5 text-primary border-l-4 border-primary' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                                                                    className={`w-full text-left px-5 py-3 text-sm font-bold transition-colors flex items-center gap-3 ${formData.barrio === b.nombre ? 'bg-secondary/5 text-secondary border-l-4 border-secondary' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
                                                                 >
                                                                     <span className="material-symbols-outlined text-sm opacity-40">location_on</span>
                                                                     {b.nombre}
@@ -1414,9 +1414,9 @@ const FormularioRecepcion: React.FC = () => {
                                         </div>
                                         {(formData.barrio === "" || !barrios.some(b => b.nombre === formData.barrio)) && (
                                             <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                                                <label className="block mb-2 text-xs font-bold text-primary uppercase tracking-widest">Nombre del Barrio (Otro)</label>
+                                                <label className="block mb-2 text-xs font-bold text-secondary uppercase tracking-widest">Nombre del Barrio (Otro)</label>
                                                 <input
-                                                    className="w-full h-12 rounded-lg border-primary/30 border-2 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-secondary/30 border-2 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     placeholder="Escriba el nombre del barrio"
                                                     type="text"
                                                     value={formData.barrio}
@@ -1425,9 +1425,9 @@ const FormularioRecepcion: React.FC = () => {
                                             </div>
                                         )}
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Ciudad / Localidad</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Ciudad / Localidad</label>
                                             <select
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 value={formData.localidad}
                                                 onChange={(e) => setFormData({ ...formData, localidad: e.target.value })}
                                             >
@@ -1438,9 +1438,9 @@ const FormularioRecepcion: React.FC = () => {
                                             </select>
                                         </div>
                                         <div className="col-span-1 md:col-span-2">
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Referencia de la ubicación / Otros datos</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Referencia de la ubicación / Otros datos</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Ej: Portón verde, entre calle X e Y, frente a la plaza..."
                                                 type="text"
                                                 value={formData.referencia_ubicacion}
@@ -1455,8 +1455,8 @@ const FormularioRecepcion: React.FC = () => {
                                         <h3 className="text-lg font-bold tracking-tight">Asignación de Servicio de Protección</h3>
                                     </div>
                                     <div className="p-8 space-y-6">
-                                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 flex gap-4">
-                                            <span className="material-symbols-outlined text-primary">info</span>
+                                        <div className="p-4 bg-secondary/5 rounded-xl border border-secondary/10 flex gap-4">
+                                            <span className="material-symbols-outlined text-secondary">info</span>
                                             <p className="text-sm text-slate-600 dark:text-slate-300">
                                                 {currentRole === 'Administrador' || currentRole === 'Coordinador'
                                                     ? 'Como Administrador/Coordinador, debe seleccionar el SPD responsable de este nuevo caso.'
@@ -1464,14 +1464,14 @@ const FormularioRecepcion: React.FC = () => {
                                             </p>
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">SPD Responsable</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">SPD Responsable</label>
                                             {currentRole !== 'Administrador' && currentRole !== 'Coordinador' ? (
                                                 <div className="w-full h-12 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center px-4 border border-[#dbdfe6] dark:border-slate-700 font-bold text-sm">
                                                     {userProfile?.servicios_proteccion?.nombre || 'Cargando...'}
                                                 </div>
                                             ) : (
                                                 <select
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary font-bold text-sm px-4 outline-none"
                                                     value={formData.spd_id}
                                                     onChange={(e) => setFormData({ ...formData, spd_id: e.target.value })}
                                                 >
@@ -1489,10 +1489,10 @@ const FormularioRecepcion: React.FC = () => {
                                     </div>
                                     <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Ingreso</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Fecha de Ingreso</label>
                                             <input
                                                 type="date"
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 value={formData.fecha_ingreso}
                                                 onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
                                             />
@@ -1500,7 +1500,7 @@ const FormularioRecepcion: React.FC = () => {
                                         </div>
                                         {formData.fecha_carga && (
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Carga (sistema)</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Fecha de Carga (sistema)</label>
                                                 <div className="w-full h-12 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center px-4 border border-[#dbdfe6] dark:border-slate-700 font-bold text-sm text-slate-500">
                                                     {format(new Date(formData.fecha_carga), "dd/MM/yyyy HH:mm")}
                                                 </div>
@@ -1509,10 +1509,10 @@ const FormularioRecepcion: React.FC = () => {
                                         )}
                                         {!formData.expediente_id && (
                                             <div>
-                                                <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Fecha de Apertura del Expediente</label>
+                                                <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Fecha de Apertura del Expediente</label>
                                                 <input
                                                     type="date"
-                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                    className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                     value={formData.fecha_apertura}
                                                     onChange={(e) => setFormData({ ...formData, fecha_apertura: e.target.value })}
                                                 />
@@ -1528,9 +1528,9 @@ const FormularioRecepcion: React.FC = () => {
                                     </div>
                                     <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div className="md:col-span-2">
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Origen de la Consulta</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Origen de la Consulta</label>
                                             <select
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary font-bold text-sm px-4 outline-none"
                                                 value={formData.origen_consulta}
                                                 onChange={(e) => setFormData({ ...formData, origen_consulta: e.target.value })}
                                             >
@@ -1544,9 +1544,9 @@ const FormularioRecepcion: React.FC = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Vía de Ingreso</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Vía de Ingreso</label>
                                             <select
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary font-bold text-sm px-4 outline-none"
                                                 value={formData.derivacion.via_ingreso}
                                                 onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, via_ingreso: e.target.value } })}
                                             >
@@ -1559,27 +1559,27 @@ const FormularioRecepcion: React.FC = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Ej: SAC 12345/2024"
                                                 value={formData.derivacion.oficio_numero}
                                                 onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, oficio_numero: e.target.value } })}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nombre del Solicitante / Informante</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nombre del Solicitante / Informante</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Nombre y Apellido"
                                                 value={formData.derivacion.nombre_solicitante}
                                                 onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, nombre_solicitante: e.target.value } })}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Cargo / Parentesco</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Cargo / Parentesco</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Ej: Tía, Director Escuela X, Juez..."
                                                 value={formData.derivacion.cargo_solicitante}
                                                 onChange={(e) => setFormData({ ...formData, derivacion: { ...formData.derivacion, cargo_solicitante: e.target.value } })}
@@ -1600,9 +1600,9 @@ const FormularioRecepcion: React.FC = () => {
                                     </div>
                                     <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nivel Educativo Actual</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nivel Educativo Actual</label>
                                             <select
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 value={formData.nivel_educativo}
                                                 onChange={(e) => setFormData({ ...formData, nivel_educativo: e.target.value })}
                                             >
@@ -1614,9 +1614,9 @@ const FormularioRecepcion: React.FC = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Grado / Año</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Grado / Año</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Ej: 3ro 'B'"
                                                 type="text"
                                                 value={formData.curso}
@@ -1624,9 +1624,9 @@ const FormularioRecepcion: React.FC = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Turno</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Turno</label>
                                             <select
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 value={formData.turno}
                                                 onChange={(e) => setFormData({ ...formData, turno: e.target.value })}
                                             >
@@ -1636,9 +1636,9 @@ const FormularioRecepcion: React.FC = () => {
                                             </select>
                                         </div>
                                         <div className="col-span-1 md:col-span-2">
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nombre de la Institución Educativa</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nombre de la Institución Educativa</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Ej: Escuela Nro 15 'Gral. San Martín'"
                                                 type="text"
                                                 value={formData.institucion_educativa}
@@ -1647,7 +1647,7 @@ const FormularioRecepcion: React.FC = () => {
                                         </div>
                                         <div className="flex items-center gap-4 py-2">
                                             <div
-                                                className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.asiste_regularmente ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}
+                                                className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.asiste_regularmente ? 'bg-secondary text-white' : 'border-2 border-slate-300'}`}
                                                 onClick={() => setFormData({ ...formData, asiste_regularmente: !formData.asiste_regularmente })}
                                             >
                                                 {formData.asiste_regularmente && <span className="material-symbols-outlined text-sm font-black">check</span>}
@@ -1664,27 +1664,27 @@ const FormularioRecepcion: React.FC = () => {
                                     </div>
                                     <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Centro de Salud de Referencia</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Centro de Salud de Referencia</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Nombre del hospital/entidad"
                                                 value={formData.centro_salud}
                                                 onChange={(e) => setFormData({ ...formData, centro_salud: e.target.value })}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Nº Historia Clínica</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nº Historia Clínica</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Nro de registro médico"
                                                 value={formData.historia_clinica}
                                                 onChange={(e) => setFormData({ ...formData, historia_clinica: e.target.value })}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Obra Social / Prepaga</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Obra Social / Prepaga</label>
                                             <input
-                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                                className="w-full h-12 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 font-medium"
                                                 placeholder="Nombre de la cobertura"
                                                 value={formData.cobertura_medica}
                                                 onChange={(e) => setFormData({ ...formData, cobertura_medica: e.target.value })}
@@ -1693,7 +1693,7 @@ const FormularioRecepcion: React.FC = () => {
                                         <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pt-2">
                                             <div className="flex items-center gap-4">
                                                 <div
-                                                    className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_cud ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}
+                                                    className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_cud ? 'bg-secondary text-white' : 'border-2 border-slate-300'}`}
                                                     onClick={() => setFormData({ ...formData, tiene_cud: !formData.tiene_cud })}
                                                 >
                                                     {formData.tiene_cud && <span className="material-symbols-outlined text-sm font-black">check</span>}
@@ -1702,7 +1702,7 @@ const FormularioRecepcion: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <div
-                                                    className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_discapacidad ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}
+                                                    className={`size-6 rounded-lg flex items-center justify-center transition-all cursor-pointer ${formData.tiene_discapacidad ? 'bg-secondary text-white' : 'border-2 border-slate-300'}`}
                                                     onClick={() => setFormData({ ...formData, tiene_discapacidad: !formData.tiene_discapacidad })}
                                                 >
                                                     {formData.tiene_discapacidad && <span className="material-symbols-outlined text-sm font-black">check</span>}
@@ -1712,7 +1712,7 @@ const FormularioRecepcion: React.FC = () => {
                                             {formData.tiene_discapacidad && (
                                                 <div className="animate-in fade-in slide-in-from-left-2 duration-200">
                                                     <select
-                                                        className="w-full h-11 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 text-sm font-medium"
+                                                        className="w-full h-11 rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary px-4 text-sm font-medium"
                                                         value={formData.tipo_discapacidad}
                                                         onChange={(e) => setFormData({ ...formData, tipo_discapacidad: e.target.value })}
                                                     >
@@ -1726,9 +1726,9 @@ const FormularioRecepcion: React.FC = () => {
                                             )}
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="block mb-2 text-xs font-bold text-[#60708a] uppercase tracking-widest">Observaciones de Salud / Discapacidad</label>
+                                            <label className="block mb-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">Observaciones de Salud / Discapacidad</label>
                                             <textarea
-                                                className="w-full min-h-[100px] rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary p-4 font-medium resize-none"
+                                                className="w-full min-h-[100px] rounded-lg border-[#dbdfe6] dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-secondary p-4 font-medium resize-none"
                                                 placeholder="Detalle cualquier información relevante sobre el estado de salud o discapacidad..."
                                                 value={formData.observaciones_salud}
                                                 onChange={(e) => setFormData({ ...formData, observaciones_salud: e.target.value })}
@@ -1745,7 +1745,7 @@ const FormularioRecepcion: React.FC = () => {
                                     <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                                         <div>
                                             <h3 className="text-lg font-bold tracking-tight">Grupo Conviviente</h3>
-                                            <p className="text-xs text-[#60708a] font-medium uppercase tracking-widest mt-0.5">Personas que residen con el niño/a</p>
+                                            <p className="text-xs text-on-surface-variant font-medium uppercase tracking-widest mt-0.5">Personas que residen con el niño/a</p>
                                         </div>
                                         <button
                                             onClick={handleAddMember}
@@ -1760,12 +1760,12 @@ const FormularioRecepcion: React.FC = () => {
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-[#dbdfe6] dark:border-slate-800">
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Nombre y Apellido</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">DNI</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Edad</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Vínculo</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em] text-center">Convive</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em] text-right">Acciones</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Nombre y Apellido</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">DNI</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Edad</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Vínculo</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] text-center">Convive</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] text-right">Acciones</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[#dbdfe6] dark:divide-slate-800">
@@ -1780,27 +1780,27 @@ const FormularioRecepcion: React.FC = () => {
                                                     </tr>
                                                 ) : (
                                                     formData.grupo_familiar.map((member, index) => (
-                                                        <tr key={index} className="hover:bg-primary/[0.02] transition-colors group">
+                                                        <tr key={index} className="hover:bg-secondary/[0.02] transition-colors group">
                                                             <td className="px-8 py-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">
+                                                                    <div className="size-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-[10px]">
                                                                         {member.nombre.substring(0, 2).toUpperCase()}
                                                                     </div>
                                                                     <span className="font-bold text-sm tracking-tight">{member.nombre}</span>
                                                                     {member.linked_expediente_id && (
-                                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-700/50 group/link cursor-help" title="Expediente Vinculado">
+                                                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-700/50 group/link cursor-help" title="Expediente Vinculado">
                                                                             <span className="material-symbols-outlined text-[14px] font-bold">link</span>
-                                                                            <span className="text-[9px] font-black uppercase tracking-tighter">Vinculado</span>
+                                                                            <span className="text-[11px] font-black uppercase tracking-tighter">Vinculado</span>
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-8 py-4 text-sm text-[#60708a] font-medium">{member.dni}</td>
-                                                            <td className="px-8 py-4 text-sm text-[#60708a] font-black">
+                                                            <td className="px-8 py-4 text-sm text-on-surface-variant font-medium">{member.dni}</td>
+                                                            <td className="px-8 py-4 text-sm text-on-surface-variant font-black">
                                                                 {(member.edad || calculateAge(member.fecha_nacimiento)) ? `${member.edad || calculateAge(member.fecha_nacimiento)} años` : '-'}
                                                             </td>
                                                             <td className="px-8 py-4">
-                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter bg-primary/10 text-primary">
+                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter bg-secondary/10 text-secondary">
                                                                     {member.vinculo}
                                                                 </span>
                                                             </td>
@@ -1813,13 +1813,13 @@ const FormularioRecepcion: React.FC = () => {
                                                                 <div className="flex justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                                     <button
                                                                         onClick={() => handleEditMember(index)}
-                                                                        className="p-2 text-[#60708a] hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                                                        className="p-2 text-on-surface-variant hover:text-secondary hover:bg-secondary/10 rounded-lg transition-all"
                                                                     >
                                                                         <span className="material-symbols-outlined text-xl">edit</span>
                                                                     </button>
                                                                     <button
                                                                         onClick={() => handleRemoveMember(index)}
-                                                                        className="p-2 text-[#60708a] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                                        className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                                                     >
                                                                         <span className="material-symbols-outlined text-xl">delete</span>
                                                                     </button>
@@ -1833,7 +1833,7 @@ const FormularioRecepcion: React.FC = () => {
                                     </div>
                                     {formData.grupo_familiar.length > 0 && (
                                         <div className="px-8 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-t border-[#dbdfe6] dark:border-slate-800 flex items-center justify-between">
-                                            <p className="text-[10px] font-bold text-[#60708a] uppercase tracking-widest">Total: {formData.grupo_familiar.length} integrantes</p>
+                                            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Total: {formData.grupo_familiar.length} integrantes</p>
                                         </div>
                                     )}
                                 </section>
@@ -1865,11 +1865,11 @@ const FormularioRecepcion: React.FC = () => {
 
                                                     <div className="relative flex-1 px-8 py-10 overflow-y-auto space-y-8">
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Número de DNI</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Número de DNI</label>
                                                             <div className="relative">
-                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#60708a] text-xl">badge</span>
+                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">badge</span>
                                                                 <input
-                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                     placeholder="Ej: 30.123.456"
                                                                     type="text"
                                                                     value={currentMember.dni}
@@ -1893,11 +1893,11 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nombres</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Nombres</label>
                                                             <div className="relative">
-                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#60708a] text-xl">person</span>
+                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">person</span>
                                                                 <input
-                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                     placeholder="Nombres"
                                                                     type="text"
                                                                     value={currentMember.nombre}
@@ -1907,11 +1907,11 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Apellidos</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Apellidos</label>
                                                             <div className="relative">
-                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#60708a] text-xl">person</span>
+                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">person</span>
                                                                 <input
-                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                     placeholder="Apellidos"
                                                                     type="text"
                                                                     value={currentMember.apellido}
@@ -1922,9 +1922,9 @@ const FormularioRecepcion: React.FC = () => {
 
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Fecha de Nacimiento</label>
+                                                                <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Fecha de Nacimiento</label>
                                                                 <input
-                                                                    className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                     type="date"
                                                                     value={currentMember.fecha_nacimiento}
                                                                     onChange={(e) => {
@@ -1945,9 +1945,9 @@ const FormularioRecepcion: React.FC = () => {
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Edad</label>
+                                                                <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Edad</label>
                                                                 <input
-                                                                    className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                     type="number"
                                                                     placeholder="Edad"
                                                                     value={currentMember.edad || ''}
@@ -1957,9 +1957,9 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Vínculo / Parentesco</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Vínculo / Parentesco</label>
                                                             <select
-                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold appearance-none outline-none"
+                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold appearance-none outline-none"
                                                                 value={currentMember.vinculo}
                                                                 onChange={(e) => setCurrentMember({ ...currentMember, vinculo: e.target.value })}
                                                             >
@@ -1980,9 +1980,9 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Ocupación</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Ocupación</label>
                                                             <select
-                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold appearance-none outline-none"
+                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold appearance-none outline-none"
                                                                 value={currentMember.ocupacion}
                                                                 onChange={(e) => setCurrentMember({ ...currentMember, ocupacion: e.target.value })}
                                                             >
@@ -1998,9 +1998,9 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nivel Educativo</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Nivel Educativo</label>
                                                             <select
-                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold appearance-none outline-none"
+                                                                className="w-full h-14 px-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold appearance-none outline-none"
                                                                 value={currentMember.nivel_educativo}
                                                                 onChange={(e) => setCurrentMember({ ...currentMember, nivel_educativo: e.target.value })}
                                                             >
@@ -2016,11 +2016,11 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Teléfono de Contacto</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Teléfono de Contacto</label>
                                                             <div className="relative">
-                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#60708a] text-xl">call</span>
+                                                                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">call</span>
                                                                 <input
-                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                    className="w-full pl-12 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                     placeholder="11 0000-0000"
                                                                     type="tel"
                                                                     value={currentMember.telefono}
@@ -2033,16 +2033,16 @@ const FormularioRecepcion: React.FC = () => {
                                                             className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-[#dbdfe6] dark:border-slate-800 cursor-pointer"
                                                             onClick={() => setCurrentMember({ ...currentMember, convive: !currentMember.convive })}
                                                         >
-                                                            <div className={`size-6 rounded-lg flex items-center justify-center transition-all ${currentMember.convive ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}>
+                                                            <div className={`size-6 rounded-lg flex items-center justify-center transition-all ${currentMember.convive ? 'bg-secondary text-white' : 'border-2 border-slate-300'}`}>
                                                                 {currentMember.convive && <span className="material-symbols-outlined text-sm font-black">check</span>}
                                                             </div>
                                                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Convive actualmente en el hogar</label>
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Dirección (Si no convive)</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Dirección (Si no convive)</label>
                                                             <input
-                                                                className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                className="w-full px-4 h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                 placeholder="Calle, Nro, Localidad"
                                                                 type="text"
                                                                 value={currentMember.direccion}
@@ -2051,9 +2051,9 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="block text-[10px] font-black text-[#60708a] uppercase tracking-widest">Observaciones / Datos Relevantes</label>
+                                                            <label className="block text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Observaciones / Datos Relevantes</label>
                                                             <textarea
-                                                                className="w-full p-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary font-bold transition-all outline-none"
+                                                                className="w-full p-4 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-secondary font-bold transition-all outline-none"
                                                                 placeholder="Cualquier información adicional importante..."
                                                                 rows={3}
                                                                 value={currentMember.observaciones}
@@ -2113,7 +2113,7 @@ const FormularioRecepcion: React.FC = () => {
                                                     </button>
                                                     <button
                                                         onClick={() => handleSaveMember(true)}
-                                                        className="h-14 border border-[#dbdfe6] dark:border-slate-800 text-[#60708a] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                                                        className="h-14 border border-[#dbdfe6] dark:border-slate-800 text-on-surface-variant font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                                                         disabled={isSaving}
                                                     >
                                                         Sólo agregar al grupo
@@ -2132,7 +2132,7 @@ const FormularioRecepcion: React.FC = () => {
                                     <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                                         <div>
                                             <h3 className="text-lg font-bold tracking-tight">Red de Apoyo y Referentes</h3>
-                                            <p className="text-xs text-[#60708a] font-medium uppercase tracking-widest mt-0.5">Personas de confianza que pueden colaborar con el caso</p>
+                                            <p className="text-xs text-on-surface-variant font-medium uppercase tracking-widest mt-0.5">Personas de confianza que pueden colaborar con el caso</p>
                                         </div>
                                         <button
                                             onClick={handleAddReferente}
@@ -2147,11 +2147,11 @@ const FormularioRecepcion: React.FC = () => {
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-[#dbdfe6] dark:border-slate-800">
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Referente</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Vínculo</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em]">Contacto</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em] text-center">Acompaña</th>
-                                                    <th className="px-8 py-4 text-[10px] font-black text-[#60708a] uppercase tracking-[0.2em] text-right">Acciones</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Referente</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Vínculo</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em]">Contacto</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] text-center">Acompaña</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] text-right">Acciones</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[#dbdfe6] dark:divide-slate-800">
@@ -2166,7 +2166,7 @@ const FormularioRecepcion: React.FC = () => {
                                                     </tr>
                                                 ) : (
                                                     formData.referentes.map((ref, index) => (
-                                                        <tr key={index} className="hover:bg-primary/[0.02] transition-colors group">
+                                                        <tr key={index} className="hover:bg-secondary/[0.02] transition-colors group">
                                                             <td className="px-8 py-4">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className={`size-8 rounded-full border-2 flex items-center justify-center font-black text-[10px] ${ref.es_referente_principal ? 'bg-amber-500 border-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
@@ -2183,7 +2183,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                     {ref.vinculo}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-8 py-4 text-sm text-[#60708a] font-medium">{ref.telefono || 'Sin teléfono'}</td>
+                                                            <td className="px-8 py-4 text-sm text-on-surface-variant font-medium">{ref.telefono || 'Sin teléfono'}</td>
                                                             <td className="px-8 py-4 text-center">
                                                                 <span className={`material-symbols-outlined text-lg ${ref.puede_acompanar ? 'text-green-500' : 'text-slate-200'}`}>
                                                                     {ref.puede_acompanar ? 'verified' : 'circle'}
@@ -2191,8 +2191,8 @@ const FormularioRecepcion: React.FC = () => {
                                                             </td>
                                                             <td className="px-8 py-4 text-right">
                                                                 <div className="flex justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                                                    <button onClick={() => handleEditReferente(index)} className="p-2 text-[#60708a] hover:text-primary hover:bg-primary/10 rounded-lg"><span className="material-symbols-outlined text-xl">edit</span></button>
-                                                                    <button onClick={() => handleRemoveReferente(index)} className="p-2 text-[#60708a] hover:text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-xl">delete</span></button>
+                                                                    <button onClick={() => handleEditReferente(index)} className="p-2 text-on-surface-variant hover:text-secondary hover:bg-secondary/10 rounded-lg"><span className="material-symbols-outlined text-xl">edit</span></button>
+                                                                    <button onClick={() => handleRemoveReferente(index)} className="p-2 text-on-surface-variant hover:text-red-500 hover:bg-red-50 rounded-lg"><span className="material-symbols-outlined text-xl">delete</span></button>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -2220,25 +2220,25 @@ const FormularioRecepcion: React.FC = () => {
                                                     <div className="flex-1 px-8 py-10 overflow-y-auto space-y-6">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Nombre</label>
+                                                                <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Nombre</label>
                                                                 <input className="w-full h-12 px-4 rounded-xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 font-bold outline-none" value={currentReferente.nombre} onChange={e => setCurrentReferente({ ...currentReferente, nombre: e.target.value })} />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Apellido</label>
+                                                                <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Apellido</label>
                                                                 <input className="w-full h-12 px-4 rounded-xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 font-bold outline-none" value={currentReferente.apellido} onChange={e => setCurrentReferente({ ...currentReferente, apellido: e.target.value })} />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Vínculo / Relación</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Vínculo / Relación</label>
                                                             <input placeholder="Ej: Vecino, Tía materna, Maestra..." className="w-full h-12 px-4 rounded-xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 font-bold outline-none" value={currentReferente.vinculo} onChange={e => setCurrentReferente({ ...currentReferente, vinculo: e.target.value })} />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Teléfono</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Teléfono</label>
                                                             <input className="w-full h-12 px-4 rounded-xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 font-bold outline-none" value={currentReferente.telefono} onChange={e => setCurrentReferente({ ...currentReferente, telefono: e.target.value })} />
                                                         </div>
 
                                                         <div className="space-y-3 pt-4">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Capacidad de Intervención</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Capacidad de Intervención</label>
                                                             <div className="space-y-2">
                                                                 {[
                                                                     { key: 'puede_acompanar', label: 'Puede brindar acompañamiento' },
@@ -2246,7 +2246,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                     { key: 'es_referente_principal', label: 'Es el referente principal fuera del hogar' }
                                                                 ].map((opt) => (
                                                                     <div key={opt.key} className="flex items-center gap-4 p-3 rounded-xl border border-[#dbdfe6] dark:border-slate-800 cursor-pointer" onClick={() => setCurrentReferente({ ...currentReferente, [opt.key]: !currentReferente[opt.key as keyof typeof currentReferente] })}>
-                                                                        <div className={`size-5 rounded flex items-center justify-center transition-all ${(currentReferente as any)[opt.key] ? 'bg-primary text-white' : 'border-2 border-slate-300'}`}>
+                                                                        <div className={`size-5 rounded flex items-center justify-center transition-all ${(currentReferente as any)[opt.key] ? 'bg-secondary text-white' : 'border-2 border-slate-300'}`}>
                                                                             {(currentReferente as any)[opt.key] && <span className="material-symbols-outlined text-[14px] font-black">check</span>}
                                                                         </div>
                                                                         <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer">{opt.label}</label>
@@ -2256,7 +2256,7 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-1">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Observaciones</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Observaciones</label>
                                                             <textarea rows={3} className="w-full p-4 rounded-xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 font-bold outline-none" value={currentReferente.observaciones} onChange={e => setCurrentReferente({ ...currentReferente, observaciones: e.target.value })} />
                                                         </div>
                                                     </div>
@@ -2277,20 +2277,20 @@ const FormularioRecepcion: React.FC = () => {
                                 {/* Header / Context */}
                                 <div className="flex flex-col gap-2">
                                     <h1 className="text-[#111418] dark:text-white text-3xl font-black leading-tight tracking-tight">Motivo de Consulta e Intervención</h1>
-                                    <p className="text-[#60708a] dark:text-slate-400 text-base max-w-2xl">Realice un relato detallado de la situación detectada en este primer contacto.</p>
+                                    <p className="text-on-surface-variant dark:text-slate-400 text-base max-w-2xl">Realice un relato detallado de la situación detectada en este primer contacto.</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-8">
                                     <div className="flex flex-col gap-6">
                                         {/* Narrative Description Full Width */}
-                                        <section className={`bg-white dark:bg-slate-900 rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${formData.relato_situacion.length < 50 ? 'border-amber-200 dark:border-amber-900/30' : 'border-primary/20 dark:border-slate-800'}`}>
+                                        <section className={`bg-white dark:bg-slate-900 rounded-2xl border-2 transition-all shadow-sm overflow-hidden ${formData.relato_situacion.length < 50 ? 'border-amber-200 dark:border-amber-900/30' : 'border-secondary/20 dark:border-slate-800'}`}>
                                             <div className="px-8 py-5 border-b border-[#dbdfe6] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
                                                 <h2 className="text-lg font-bold flex items-center gap-2 tracking-tight">
-                                                    <span className="material-symbols-outlined text-primary">description</span>
+                                                    <span className="material-symbols-outlined text-secondary">description</span>
                                                     Relato de la Situación
                                                 </h2>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-[10px] font-black bg-primary/10 text-primary px-3 py-1 rounded-full uppercase tracking-widest">
+                                                    <span className="text-[10px] font-black bg-secondary/10 text-secondary px-3 py-1 rounded-full uppercase tracking-widest">
                                                         {formData.relato_situacion.length} / 5000
                                                     </span>
                                                 </div>
@@ -2348,11 +2348,11 @@ const FormularioRecepcion: React.FC = () => {
 
                                         return (
                                             <div key={index} className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-[#dbdfe6] dark:border-slate-800 overflow-hidden transition-all group">
-                                                <div className="absolute top-0 left-0 w-2 h-full bg-primary/20 group-hover:bg-primary transition-all"></div>
+                                                <div className="absolute top-0 left-0 w-2 h-full bg-secondary/20 group-hover:bg-secondary transition-all"></div>
                                                 <div className="p-8">
                                                     <div className="flex justify-between items-start mb-8">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm">{index + 1}</div>
+                                                            <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary font-black text-sm">{index + 1}</div>
                                                             <h3 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase tracking-[0.05em]">Registro de Vulneración</h3>
                                                         </div>
                                                         <button
@@ -2365,9 +2365,9 @@ const FormularioRecepcion: React.FC = () => {
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                         <div className="space-y-2">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Derecho (Categoría)</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Derecho (Categoría)</label>
                                                             <select
-                                                                className="w-full h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary font-bold px-4 outline-none transition-all"
+                                                                className="w-full h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-secondary font-bold px-4 outline-none transition-all"
                                                                 value={vuln.categoria_temp || currentRight?.categoria || ''}
                                                                 onChange={(e) => updateVulneracion(index, 'categoria_temp', e.target.value)}
                                                             >
@@ -2377,9 +2377,9 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Subcategoría específica</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Subcategoría específica</label>
                                                             <select
-                                                                className="w-full h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary font-bold px-4 outline-none transition-all disabled:opacity-50"
+                                                                className="w-full h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-secondary font-bold px-4 outline-none transition-all disabled:opacity-50"
                                                                 value={vuln.derecho_id}
                                                                 disabled={!vuln.categoria_temp && !currentRight}
                                                                 onChange={(e) => updateVulneracion(index, 'derecho_id', e.target.value)}
@@ -2390,9 +2390,9 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="md:col-span-2 space-y-2">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Indicador de Vulneración</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Indicador de Vulneración</label>
                                                             <input
-                                                                className="w-full h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary font-bold px-4 outline-none transition-all"
+                                                                className="w-full h-14 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-secondary font-bold px-4 outline-none transition-all"
                                                                 placeholder="Ej: Falta de controles pediátricos en los últimos 12 meses"
                                                                 type="text"
                                                                 value={vuln.indicador}
@@ -2401,9 +2401,9 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
 
                                                         <div className="md:col-span-2 space-y-2">
-                                                            <label className="text-[10px] font-black text-[#60708a] uppercase tracking-widest">Observación Técnica y Justificación</label>
+                                                            <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Observación Técnica y Justificación</label>
                                                             <textarea
-                                                                className="w-full p-6 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary font-bold outline-none transition-all min-h-[140px] resize-none"
+                                                                className="w-full p-6 rounded-2xl border-[#dbdfe6] dark:border-slate-800 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-secondary font-bold outline-none transition-all min-h-[140px] resize-none"
                                                                 placeholder="Describa el contexto y la justificación técnica de por qué este derecho está comprometido..."
                                                                 value={vuln.observaciones}
                                                                 onChange={(e) => updateVulneracion(index, 'observaciones', e.target.value)}
@@ -2436,9 +2436,9 @@ const FormularioRecepcion: React.FC = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-12 flex flex-col items-center justify-center text-center group hover:border-primary transition-all cursor-pointer overflow-hidden relative">
-                                        <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-all"></div>
-                                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+                                    <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-12 flex flex-col items-center justify-center text-center group hover:border-secondary transition-all cursor-pointer overflow-hidden relative">
+                                        <div className="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-all"></div>
+                                        <div className="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center text-secondary mb-6 group-hover:scale-110 transition-transform">
                                             <span className="material-symbols-outlined text-4xl">cloud_upload</span>
                                         </div>
                                         <h3 className="text-xl font-black tracking-tight mb-2 uppercase tracking-widest text-xs">Subir Documento</h3>
@@ -2482,7 +2482,7 @@ const FormularioRecepcion: React.FC = () => {
                                                                         <span className="material-symbols-outlined text-2xl">description</span>
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Archivo Detectado</p>
+                                                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Archivo Detectado</p>
                                                                         <p className="text-sm font-bold truncate max-w-[200px]">{file.nombre}</p>
                                                                     </div>
                                                                 </div>
@@ -2500,9 +2500,9 @@ const FormularioRecepcion: React.FC = () => {
 
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-50 dark:border-slate-800/50 mt-2">
                                                                 <div className="space-y-1.5">
-                                                                    <label className="text-[9px] font-black text-[#60708a] uppercase tracking-widest">Nombre Descriptivo</label>
+                                                                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Nombre Descriptivo</label>
                                                                     <input
-                                                                        className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs font-bold outline-none focus:ring-1 focus:ring-primary border-none"
+                                                                        className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs font-bold outline-none focus:ring-1 focus:ring-secondary border-none"
                                                                         value={file.nombre}
                                                                         onChange={(e) => {
                                                                             const next = [...formData.archivos];
@@ -2512,9 +2512,9 @@ const FormularioRecepcion: React.FC = () => {
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-1.5">
-                                                                    <label className="text-[9px] font-black text-[#60708a] uppercase tracking-widest">Clasificación</label>
+                                                                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Clasificación</label>
                                                                     <select
-                                                                        className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs font-bold outline-none focus:ring-1 focus:ring-primary border-none cursor-pointer appearance-none"
+                                                                        className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs font-bold outline-none focus:ring-1 focus:ring-secondary border-none cursor-pointer appearance-none"
                                                                         value={file.subcategoria}
                                                                         onChange={(e) => {
                                                                             const next = [...formData.archivos];
@@ -2554,7 +2554,7 @@ const FormularioRecepcion: React.FC = () => {
                                     </header>
 
                                     <section className="space-y-4">
-                                        <h3 className="text-[10px] font-black uppercase tracking-widest text-[#60708a] dark:text-slate-400">Seleccione la acción a seguir</h3>
+                                        <h3 className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant dark:text-slate-400">Seleccione la acción a seguir</h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                             {[
                                                 { id: 'asesoramiento', label: 'Asesoramiento', icon: 'info', desc: 'Orientación legal o técnica sin apertura de intervención directa.', color: 'blue' },
@@ -2568,14 +2568,14 @@ const FormularioRecepcion: React.FC = () => {
                                                         checked={formData.decision_id === opt.id}
                                                         onChange={() => setFormData({ ...formData, decision_id: opt.id as any })}
                                                     />
-                                                    <div className="h-full p-6 bg-white dark:bg-slate-800 border-2 border-transparent peer-checked:border-primary peer-checked:ring-4 peer-checked:ring-primary/10 rounded-2xl transition-all shadow-sm hover:shadow-md dark:shadow-slate-900/50">
+                                                    <div className="h-full p-6 bg-white dark:bg-slate-800 border-2 border-transparent peer-checked:border-secondary peer-checked:ring-4 peer-checked:ring-secondary/10 rounded-2xl transition-all shadow-sm hover:shadow-md dark:shadow-slate-900/50">
                                                         <div className={`w-12 h-12 bg-${opt.color}-50 dark:bg-${opt.color}-900/20 text-${opt.color}-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                                                             <span className="material-symbols-outlined">{opt.icon}</span>
                                                         </div>
                                                         <h4 className="font-black text-lg mb-2 tracking-tight">{opt.label}</h4>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{opt.desc}</p>
                                                         <div className="absolute top-4 right-4 opacity-0 peer-checked:opacity-100 transition-opacity">
-                                                            <span className="material-symbols-outlined text-primary fill-current">check_circle</span>
+                                                            <span className="material-symbols-outlined text-secondary fill-current">check_circle</span>
                                                         </div>
                                                     </div>
                                                 </label>
@@ -2586,13 +2586,13 @@ const FormularioRecepcion: React.FC = () => {
                                     {formData.decision_id === 'asesoramiento' && (
                                         <section className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-[#60708a] dark:text-slate-400">Resultado o definición del asesoramiento</label>
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant dark:text-slate-400">Resultado o definición del asesoramiento</label>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
                                                     {formData.observaciones_cierre.length} carácteres
                                                 </span>
                                             </div>
                                             <textarea
-                                                className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-6 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all resize-none dark:text-white font-medium text-lg leading-relaxed min-h-[250px]"
+                                                className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl p-6 focus:ring-4 focus:ring-secondary/10 focus:border-primary transition-all resize-none dark:text-white font-medium text-lg leading-relaxed min-h-[250px]"
                                                 placeholder="Describa los motivos técnicos de la decisión tomada..."
                                                 value={formData.observaciones_cierre}
                                                 onChange={(e) => setFormData({ ...formData, observaciones_cierre: e.target.value })}
@@ -2633,7 +2633,7 @@ const FormularioRecepcion: React.FC = () => {
                                                         </div>
                                                         <button
                                                             onClick={() => setCurrentStep(check.step)}
-                                                            className="text-[10px] font-black text-primary opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity uppercase tracking-widest"
+                                                            className="text-[10px] font-black text-secondary opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity uppercase tracking-widest"
                                                         >
                                                             Revisar
                                                         </button>
@@ -2652,7 +2652,7 @@ const FormularioRecepcion: React.FC = () => {
             {/* Sticky Action Footer */}
             <footer className="h-20 bg-white dark:bg-slate-900 border-t border-[#dbdfe6] dark:border-slate-800 fixed bottom-0 left-0 right-0 z-50 flex items-center px-4 sm:px-8 md:px-12 shadow-[0_-5px_20px_-15px_rgba(0,0,0,0.1)]">
                 <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-2">
-                    <div className="hidden sm:flex items-center gap-3 text-[#60708a] text-[10px] font-bold uppercase tracking-widest">
+                    <div className="hidden sm:flex items-center gap-3 text-on-surface-variant text-[10px] font-bold uppercase tracking-widest">
                         <span className="material-symbols-outlined text-green-500 text-lg fill-current">cloud_done</span>
                         Auto-guardado activo
                     </div>

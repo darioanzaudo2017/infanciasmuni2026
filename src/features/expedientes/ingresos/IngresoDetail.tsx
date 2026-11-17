@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import IntervencionesPDF from './IntervencionesPDF';
 import { generateExpedientePDF } from './generateExpedientePDF';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
+import Button from '../../../components/ui/Button';
 import { buscarVinculacionPorDni } from '../../../services/vinculacionService';
 import EmailNotificationModal from './EmailNotificationModal';
+
+const MOTIVO_CESE_LABELS: Record<string, string> = {
+    restitucion_integral: 'Restitución integral de los derechos vulnerados',
+    incumplimiento_estrategias: 'Incumplimiento reiterado de las estrategias acordadas',
+    fallecimiento: 'Fallecimiento del NNA',
+    otra_causal: 'Otra causal que impide la continuidad de intervención',
+    cambio_residencia: 'Cambio de ciudad de residencia',
+    solicitud_medida_excepcional: 'Derivado a SENAF (medida excepcional)',
+};
 
 interface IngresoDetalle {
     id: number;
@@ -57,6 +67,9 @@ interface IngresoDetalle {
     senaf?: any;
     senaf_seguimiento?: any[];
     origenes_adicionales?: any[];
+    ultima_seccion?: string | null;
+    ultima_seccion_fecha?: string | null;
+    ultima_seccion_usuario?: string | null;
 }
 
 const IngresoDetail = () => {
@@ -150,7 +163,8 @@ const IngresoDetail = () => {
                     { data: ceseData },
                     { data: senafData },
                     { data: origenesAdicionalesData },
-                    { data: responsablesData }
+                    { data: responsablesData },
+                    { data: ultimaActividadData }
                 ] = await Promise.all([
                     supabase.from('form1_derivacion').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('form1_motivo').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
@@ -166,7 +180,8 @@ const IngresoDetail = () => {
                     supabase.from('form9_cese_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('solicitudes_senaf').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
                     supabase.from('origenes_consulta_adicionales').select('*').eq('ingreso_id', ingresoId).order('created_at', { ascending: false }),
-                    supabase.from('ingreso_responsables').select('*, usuarios!ingreso_responsables_usuario_id_fkey(nombre_completo)').eq('ingreso_id', ingresoId)
+                    supabase.from('ingreso_responsables').select('*, usuarios!ingreso_responsables_usuario_id_fkey(nombre_completo)').eq('ingreso_id', ingresoId),
+                    supabase.from('vw_ultima_modificacion_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
                 ]);
 
                 setIngreso({
@@ -198,7 +213,10 @@ const IngresoDetail = () => {
                     cese: ceseData,
                     senaf: senafData,
                     senaf_seguimiento: [],
-                    origenes_adicionales: origenesAdicionalesData || []
+                    origenes_adicionales: origenesAdicionalesData || [],
+                    ultima_seccion: ultimaActividadData?.seccion || null,
+                    ultima_seccion_fecha: ultimaActividadData?.created_at || null,
+                    ultima_seccion_usuario: ultimaActividadData?.usuario_nombre || null
                 });
                 setResponsables(responsablesData || []);
 
@@ -522,7 +540,7 @@ const IngresoDetail = () => {
         } else if (idx === activeStageIndex) {
             if (isClosed && idx === 5) {
                 status = 'completed';
-                icon = 'verified';
+                icon = 'check_circle';
                 date = 'Caso Cerrado';
             } else {
                 status = 'active';
@@ -536,315 +554,339 @@ const IngresoDetail = () => {
 
         return {
             name: name === 'Definición de Medidas' ? 'Definición' :
-                name === 'Cese de Intervención' ? 'Cese' :
-                    name === 'Cerrado' ? 'Finalizado' : name,
+            name === 'Cese de Intervención' ? 'Cese' : name,
             icon,
             status,
             date
-        };
-    });
-
-    const getFileType = (url: string = '', nombre: string = '') => {
-        const ext = (nombre || url).split('.').pop()?.toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return 'image';
-        if (ext === 'pdf') return 'pdf';
-        if (['doc', 'docx'].includes(ext || '')) return 'word';
-        if (['xls', 'xlsx'].includes(ext || '')) return 'excel';
-        return 'other';
     };
+});
 
-    const handlePreview = (doc: any) => {
-        setSelectedDoc(doc);
-        setShowPreview(true);
-    };
+const getFileType = (url: string = '', nombre: string = '') => {
+    const ext = (nombre || url).split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) return 'image';
+    if (ext === 'pdf') return 'pdf';
+    if (['doc', 'docx'].includes(ext || '')) return 'word';
+    if (['xls', 'xlsx'].includes(ext || '')) return 'excel';
+    return 'other';
+};
 
-    const handleFileUpload = async () => {
-        if (pendingFiles.length === 0 || !ingreso || !ingresoId) return;
+const handlePreview = (doc: any) => {
+    setSelectedDoc(doc);
+    setShowPreview(true);
+};
 
-        setIsUploading(true);
-        try {
-            for (const doc of pendingFiles) {
-                const fileExt = doc.file.name.split('.').pop();
-                const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-                const filePath = `${ingreso.expediente_id}/${fileName}`;
+const handleFileUpload = async () => {
+    if (pendingFiles.length === 0 || !ingreso || !ingresoId) return;
 
-                // 1. Upload to Storage
-                const { error: uploadError } = await supabase.storage
-                    .from('expedientes')
-                    .upload(filePath, doc.file);
+    setIsUploading(true);
+    try {
+        for (const doc of pendingFiles) {
+            const fileExt = doc.file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+            const filePath = `${ingreso.expediente_id}/${fileName}`;
 
-                if (uploadError) throw uploadError;
+            // 1. Upload to Storage
+            const { error: uploadError } = await supabase.storage
+                .from('expedientes')
+                .upload(filePath, doc.file);
 
-                // 2. Get Public URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('expedientes')
-                    .getPublicUrl(filePath);
+            if (uploadError) throw uploadError;
 
-                // 3. Register in 'documentos' table
-                const { error: dbError } = await supabase
-                    .from('documentos')
-                    .insert({
-                        ingreso_id: parseInt(ingresoId),
-                        nombre: doc.nombre,
-                        tipo: fileExt?.toUpperCase() === 'PDF' ? 'PDF' : 'Imagen',
-                        url: publicUrl,
-                        origen: ingreso.etapa,
-                        subcategoria: doc.subcategoria
-                    });
+            // 2. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('expedientes')
+                .getPublicUrl(filePath);
 
-                if (dbError) throw dbError;
-            }
-
-            // 4. Refresh documents
-            const { data: refreshedDocs } = await supabase
+            // 3. Register in 'documentos' table
+            const { error: dbError } = await supabase
                 .from('documentos')
-                .select('*')
-                .eq('ingreso_id', ingresoId);
+                .insert({
+                    ingreso_id: parseInt(ingresoId),
+                    nombre: doc.nombre,
+                    tipo: fileExt?.toUpperCase() === 'PDF' ? 'PDF' : 'Imagen',
+                    url: publicUrl,
+                    origen: ingreso.etapa,
+                    subcategoria: doc.subcategoria
+                });
 
-            setIngreso(prev => prev ? { ...prev, documentos: refreshedDocs || [] } : null);
-            setIsUploadModalOpen(false);
-            setPendingFiles([]);
-            alert('Documentos subidos con éxito');
-        } catch (error) {
-            console.error('Error al subir archivos:', error);
-            alert('Error al subir los archivos. Verifique su conexión.');
-        } finally {
-            setIsUploading(false);
+            if (dbError) throw dbError;
         }
-    };
 
-    const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        const newDocs = files.map(f => ({
-            file: f,
-            nombre: f.name,
-            subcategoria: 'Informe Técnico'
-        }));
-        setPendingFiles(prev => [...prev, ...newDocs]);
-    };
+        // 4. Refresh documents
+        const { data: refreshedDocs } = await supabase
+            .from('documentos')
+            .select('*')
+            .eq('ingreso_id', ingresoId);
 
-    return (
-        <main className="flex-1 font-manrope">
-            {/* VISTA DE IMPRESIÓN (OCULTA EN WEB) */}
-            <div className="hidden print:block bg-white p-10 text-[#111] print-only no-print-background">
-                <header className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-black uppercase tracking-tighter">Servicio local de promoción y protección de derechos de NNyA</h1>
-                        <p className="text-xs font-bold text-slate-600">Ministerio de Justicia y Derechos Humanos - Provincia de Córdoba</p>
+        setIngreso(prev => prev ? { ...prev, documentos: refreshedDocs || [] } : null);
+        setIsUploadModalOpen(false);
+        setPendingFiles([]);
+        alert('Documentos subidos con éxito');
+    } catch (error) {
+        console.error('Error al subir archivos:', error);
+        alert('Error al subir los archivos. Verifique su conexión.');
+    } finally {
+        setIsUploading(false);
+    }
+};
+
+const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newDocs = files.map(f => ({
+        file: f,
+        nombre: f.name,
+        subcategoria: 'Informe Técnico'
+    }));
+    setPendingFiles(prev => [...prev, ...newDocs]);
+};
+
+return (
+    <main className="flex-1 font-manrope">
+        {/* VISTA DE IMPRESIÓN (OCULTA EN WEB) */}
+        <div className="hidden print:block bg-white p-10 text-[#111] print-only no-print-background">
+            <header className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
+                <div>
+                    <h1 className="text-2xl font-black uppercase tracking-tighter">Servicio local de promoción y protección de derechos de NNyA</h1>
+                    <p className="text-xs font-bold text-slate-600">Ministerio de Justicia y Derechos Humanos - Provincia de Córdoba</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-xl font-black text-primary"># {ingreso.expediente_numero}</p>
+                    <p className="text-xs uppercase font-bold text-slate-500 italic">Fecha de Impresión: {format(new Date(), "dd/MM/yyyy HH:mm")}</p>
+                </div>
+            </header>
+
+            <div className="space-y-10">
+                {/* Informe Section */}
+                <div className="text-center py-4 bg-slate-100 rounded-lg border border-slate-200">
+                    <h2 className="text-xl font-bold uppercase tracking-widest text-slate-800">Informe Técnico de Recepción</h2>
+                </div>
+
+                {/* Datos del NNYA */}
+                <section>
+                    <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">1. Datos Personales del NNyA</h3>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-12 text-sm">
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Nombre y Apellido</span> {ingreso.nino_nombre} {ingreso.nino_apellido}</div>
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">DNI</span> {ingreso.nino_dni || 'No informado'}</div>
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Fecha de Nacimiento</span> {ingreso.nino_fecha_nacimiento ? format(new Date(ingreso.nino_fecha_nacimiento), "dd/MM/yyyy") : 'N/A'} ({calculateAge(ingreso.nino_fecha_nacimiento)} años)</div>
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Domicilio Declarado</span> {ingreso.nino_domicilio || 'N/A'}, {ingreso.nino_localidad || ''}</div>
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Escolaridad</span> {ingreso.nino_nivel_educativo || 'N/A'} {ingreso.nino_curso ? `- ${ingreso.nino_curso}` : ''}</div>
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Centro de Salud</span> {ingreso.nino_centro_salud || 'N/A'}</div>
                     </div>
-                    <div className="text-right">
-                        <p className="text-xl font-black text-primary"># {ingreso.expediente_numero}</p>
-                        <p className="text-[10px] uppercase font-bold text-slate-400 italic">Fecha de Impresión: {format(new Date(), "dd/MM/yyyy HH:mm")}</p>
+                </section>
+
+                {/* Origen */}
+                <section>
+                    <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">2. Origen de la Demanda / Derivación</h3>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-12 text-sm">
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Vía de Ingreso</span> {ingreso.derivacion?.via_ingreso || 'N/A'}</div>
+                        <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Nro Oficio/Exp. Externo</span> {ingreso.derivacion?.oficio_numero || 'S/N'}</div>
+                        <div className="col-span-2"><span className="font-bold text-slate-500 uppercase text-[10px] block">Sujeto/Institución Derivante</span> {ingreso.derivacion?.nombre_solicitante || 'Particular'} - {ingreso.derivacion?.cargo_solicitante || ''}</div>
                     </div>
-                </header>
+                </section>
 
-                <div className="space-y-10">
-                    {/* Informe Section */}
-                    <div className="text-center py-4 bg-slate-100 rounded-lg border border-slate-200">
-                        <h2 className="text-xl font-bold uppercase tracking-widest text-slate-800">Informe Técnico de Recepción</h2>
+                {/* Vulneraciones */}
+                <section>
+                    <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">3. Derechos Vulnerados (Presunto)</h3>
+                    <div className="space-y-4">
+                        {ingreso.vulneraciones?.map((v, i) => (
+                            <div key={i} className="pl-4 border-l-2 border-primary/30 py-1">
+                                <p className="text-sm font-bold uppercase text-slate-800">{v.catalogo_derechos?.categoria}</p>
+                                <p className="text-xs font-bold text-primary italic mb-1">{v.catalogo_derechos?.subcategoria}</p>
+                                <p className="text-sm text-slate-700">{v.indicador}</p>
+                            </div>
+                        ))}
                     </div>
+                </section>
 
-                    {/* Datos del NNYA */}
-                    <section>
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">1. Datos Personales del NNyA</h3>
-                        <div className="grid grid-cols-2 gap-y-4 gap-x-12 text-sm">
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Nombre y Apellido</span> {ingreso.nino_nombre} {ingreso.nino_apellido}</div>
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">DNI</span> {ingreso.nino_dni || 'No informado'}</div>
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Fecha de Nacimiento</span> {ingreso.nino_fecha_nacimiento ? format(new Date(ingreso.nino_fecha_nacimiento), "dd/MM/yyyy") : 'N/A'} ({calculateAge(ingreso.nino_fecha_nacimiento)} años)</div>
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Domicilio Declarado</span> {ingreso.nino_domicilio || 'N/A'}, {ingreso.nino_localidad || ''}</div>
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Escolaridad</span> {ingreso.nino_nivel_educativo || 'N/A'} {ingreso.nino_curso ? `- ${ingreso.nino_curso}` : ''}</div>
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Centro de Salud</span> {ingreso.nino_centro_salud || 'N/A'}</div>
-                        </div>
-                    </section>
+                {/* Relato */}
+                <section className="print-break">
+                    <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">4. Relato de la Situación (Demanda Inicial)</h3>
+                    <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 italic shadow-inner">
+                        <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                            "{ingreso.motivo?.descripcion_situacion || 'No se registró relato de situación.'}"
+                        </p>
+                    </div>
+                </section>
 
-                    {/* Origen */}
-                    <section>
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">2. Origen de la Demanda / Derivación</h3>
-                        <div className="grid grid-cols-2 gap-y-4 gap-x-12 text-sm">
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Vía de Ingreso</span> {ingreso.derivacion?.via_ingreso || 'N/A'}</div>
-                            <div><span className="font-bold text-slate-500 uppercase text-[10px] block">Nro Oficio/Exp. Externo</span> {ingreso.derivacion?.oficio_numero || 'S/N'}</div>
-                            <div className="col-span-2"><span className="font-bold text-slate-500 uppercase text-[10px] block">Sujeto/Institución Derivante</span> {ingreso.derivacion?.nombre_solicitante || 'Particular'} - {ingreso.derivacion?.cargo_solicitante || ''}</div>
-                        </div>
-                    </section>
-
-                    {/* Vulneraciones */}
-                    <section>
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">3. Derechos Vulnerados (Presunto)</h3>
-                        <div className="space-y-4">
-                            {ingreso.vulneraciones?.map((v, i) => (
-                                <div key={i} className="pl-4 border-l-2 border-primary/30 py-1">
-                                    <p className="text-sm font-bold uppercase text-slate-800">{v.catalogo_derechos?.categoria}</p>
-                                    <p className="text-xs font-bold text-primary italic mb-1">{v.catalogo_derechos?.subcategoria}</p>
-                                    <p className="text-sm text-slate-700">{v.indicador}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Relato */}
-                    <section className="print-break">
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">4. Relato de la Situación (Demanda Inicial)</h3>
-                        <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 italic shadow-inner">
-                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">
-                                "{ingreso.motivo?.descripcion_situacion || 'No se registró relato de situación.'}"
-                            </p>
-                        </div>
-                    </section>
-
-                    {/* Grupo Familiar */}
-                    <section>
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">5. Grupo Familiar y Conviviente</h3>
-                        <table className="w-full text-sm border-collapse">
-                            <thead>
-                                <tr className="bg-slate-100 text-[10px] font-black uppercase text-slate-500">
-                                    <th className="border border-slate-200 p-2 text-left">Nombre y Apellido</th>
-                                    <th className="border border-slate-200 p-2 text-left">Vínculo</th>
-                                    <th className="border border-slate-200 p-2 text-center">Convive</th>
+                {/* Grupo Familiar */}
+                <section>
+                    <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">5. Grupo Familiar y Conviviente</h3>
+                    <table className="w-full text-sm border-collapse">
+                        <thead>
+                            <tr className="bg-slate-100 text-[10px] font-black uppercase text-slate-500">
+                                <th className="border border-slate-200 p-2 text-left">Nombre y Apellido</th>
+                                <th className="border border-slate-200 p-2 text-left">Vínculo</th>
+                                <th className="border border-slate-200 p-2 text-center">Convive</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ingreso.grupo_familiar?.map((m, i) => (
+                                <tr key={i} className="text-xs">
+                                    <td className="border border-slate-200 p-2 font-bold">{m.nombre} {m.apellido}</td>
+                                    <td className="border border-slate-200 p-2">{m.vinculo}</td>
+                                    <td className="border border-slate-200 p-2 text-center">{m.convive ? 'SI' : 'NO'}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {ingreso.grupo_familiar?.map((m, i) => (
-                                    <tr key={i} className="text-xs">
-                                        <td className="border border-slate-200 p-2 font-bold">{m.nombre} {m.apellido}</td>
-                                        <td className="border border-slate-200 p-2">{m.vinculo}</td>
-                                        <td className="border border-slate-200 p-2 text-center">{m.convive ? 'SI' : 'NO'}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </section>
+                            ))}
+                        </tbody>
+                    </table>
+                </section>
 
-                    {/* Dictamen */}
-                    <section className="mt-auto">
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">6. Dictamen Técnico y Sugerencia de Intervención</h3>
-                        <div className="mb-6">
-                            <p className="text-[10px] font-black text-slate-500 uppercase mb-2">Decisión Inicial:</p>
-                            <span className="px-6 py-2 bg-slate-100 border-2 border-slate-800 text-slate-800 font-black uppercase text-xs rounded-full">
-                                {ingreso.decision?.decision_id?.replace('_', ' ') || 'Asesoramiento'}
-                            </span>
-                        </div>
-                        <div className="p-6 border-2 border-dashed border-slate-300 rounded-xl">
-                            <p className="text-sm font-bold text-slate-400 uppercase text-[9px] mb-2 tracking-widest">Fundamentación:</p>
-                            <p className="text-sm text-slate-800 leading-relaxed italic">
-                                {ingreso.decision?.observaciones || 'Sin fundamentación registrada.'}
-                            </p>
-                        </div>
-                    </section>
+                {/* Dictamen */}
+                <section className="mt-auto">
+                    <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-1 mb-4">6. Dictamen Técnico y Sugerencia de Intervención</h3>
+                    <div className="mb-6">
+                        <p className="text-[10px] font-black text-slate-500 uppercase mb-2">Decisión Inicial:</p>
+                        <span className="px-6 py-2 bg-slate-100 border-2 border-slate-800 text-slate-800 font-black uppercase text-xs rounded-full">
+                            {ingreso.decision?.decision_id?.replace('_', ' ') || 'Asesoramiento'}
+                        </span>
+                    </div>
+                    <div className="p-6 border-2 border-dashed border-slate-300 rounded-xl">
+                        <p className="text-sm font-bold text-slate-500 uppercase text-[11px] mb-2 tracking-widest">Fundamentación:</p>
+                        <p className="text-sm text-slate-800 leading-relaxed italic">
+                            {ingreso.decision?.observaciones || 'Sin fundamentación registrada.'}
+                        </p>
+                    </div>
+                </section>
 
-                    {/* Firmas */}
-                    <div className="pt-20 grid grid-cols-2 gap-20">
-                        <div className="border-t border-slate-400 pt-4 text-center">
-                            <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Firma y Sello</p>
-                            <p className="text-xs font-bold">{ingreso.profesional_asignado_nombre || 'Profesional Actuante'}</p>
-                        </div>
-                        <div className="border-t border-slate-400 pt-4 text-center">
-                            <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Responsable del Servicio</p>
-                            <div className="h-4"></div>
-                        </div>
+                {/* Firmas */}
+                <div className="pt-20 grid grid-cols-2 gap-20">
+                    <div className="border-t border-slate-400 pt-4 text-center">
+                        <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Firma y Sello</p>
+                        <p className="text-xs font-bold">{ingreso.profesional_asignado_nombre || 'Profesional Actuante'}</p>
+                    </div>
+                    <div className="border-t border-slate-400 pt-4 text-center">
+                        <p className="text-[10px] font-black uppercase text-slate-500 mb-1">Responsable del Servicio</p>
+                        <div className="h-4"></div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            {/* UI NORMAL (OCULTA EN IMPRESIÓN) */}
-            <div className="no-print">
-                {/* Header and Breadcrumbs Row */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <div>
-                        <Breadcrumbs
-                            items={[
-                                { label: 'Inicio', path: '/' },
-                                { label: 'Expedientes', path: '/expedientes' },
-                                { label: 'Historial de Ingresos', path: `/expedientes/${ingreso.expediente_id}/ingresos` },
-                                { label: 'Detalle de Legajo', active: true }
-                            ]}
-                        />
-                        <h1 className="text-[#111818] dark:text-white text-xl font-bold tracking-tight">Detalle del Caso</h1>
-                    </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={async () => {
-                                if (!ingreso || !ingresoId) return;
+        {/* UI NORMAL (OCULTA EN IMPRESIÓN) */}
+        <div className="no-print">
+            {/* Header and Breadcrumbs Row */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <Breadcrumbs
+                        items={[
+                            { label: 'Expedientes', path: '/expedientes' },
+                            { label: 'Historial de Ingresos', path: `/expedientes/${ingreso.expediente_id}/ingresos` },
+                            { label: 'Detalle de Legajo', active: true }
+                        ]}
+                    />
+                    <h1 className="text-[#111818] dark:text-white text-xl font-bold tracking-tight">Detalle del Caso</h1>
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={async () => {
+                            if (!ingreso || !ingresoId) return;
 
-                                // Cargar medidas con acciones si no están cargadas
-                                let medidasParaPDF = measuresSummary;
+                            // Cargar medidas con acciones si no están cargadas
+                            let medidasParaPDF = measuresSummary;
 
-                                if (!medidasParaPDF || medidasParaPDF.length === 0) {
-                                    const { data: medidasData } = await supabase
-                                        .from('medidas')
-                                        .select('id, medida_propuesta, estado, responsables, created_at')
-                                        .eq('ingreso_id', ingresoId)
-                                        .order('created_at', { ascending: false });
+                            if (!medidasParaPDF || medidasParaPDF.length === 0) {
+                                const { data: medidasData } = await supabase
+                                    .from('medidas')
+                                    .select('id, medida_propuesta, estado, responsables, created_at')
+                                    .eq('ingreso_id', ingresoId)
+                                    .order('created_at', { ascending: false });
 
-                                    if (medidasData) {
-                                        medidasParaPDF = await Promise.all(
-                                            medidasData.map(async (medida) => {
-                                                const { data: acciones } = await supabase
-                                                    .from('acciones')
-                                                    .select('*')
-                                                    .eq('medida_id', medida.id)
-                                                    .order('created_at', { ascending: false });
+                                if (medidasData) {
+                                    medidasParaPDF = await Promise.all(
+                                        medidasData.map(async (medida) => {
+                                            const { data: acciones } = await supabase
+                                                .from('acciones')
+                                                .select('*')
+                                                .eq('medida_id', medida.id)
+                                                .order('created_at', { ascending: false });
 
-                                                return {
-                                                    ...medida,
-                                                    acciones: acciones || []
-                                                };
-                                            })
-                                        );
-                                    }
+                                            return {
+                                                ...medida,
+                                                acciones: acciones || []
+                                            };
+                                        })
+                                    );
                                 }
+                            }
 
-                                generateExpedientePDF(ingreso as any, medidasParaPDF || []);
-                            }}
-                            className="flex items-center justify-center gap-2 rounded-xl h-9 px-4 bg-white dark:bg-zinc-800 text-[#60708a] dark:text-white text-[11px] font-bold hover:bg-gray-50 border border-[#e5e7eb] dark:border-[#333] transition-colors"
+                            generateExpedientePDF(ingreso as any, medidasParaPDF || []);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">download</span>
+                        Descargar PDF
+                    </Button>
+                    {measuresSummary.length > 0 && !isClosed && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/cierre/${ingreso.id}`)}
+                            className="gap-2 text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50"
                         >
-                            <span className="material-symbols-outlined text-[18px]">download</span>
-                            Descargar PDF
-                        </button>
-                        {measuresSummary.length > 0 && !isClosed && (
-                            <button
-                                onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/cierre/${ingreso.id}`)}
-                                className="flex items-center justify-center gap-2 rounded-xl h-9 px-4 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[11px] font-bold hover:bg-rose-50 border border-rose-100 dark:border-rose-900/30 transition-colors"
-                            >
-                                <span className="material-symbols-outlined text-[18px]">gavel</span>
-                                Cierre de Intervención
-                            </button>
-                        )}
-                        <button
+                            <span className="material-symbols-outlined text-[18px]">gavel</span>
+                            Cierre de Intervención
+                        </Button>
+                    )}
+                    {!isClosed && (
+                        <Button
+                            variant="primary"
+                            size="sm"
                             onClick={handleFinalizeStage}
-                            className="flex items-center justify-center rounded-xl h-9 px-5 bg-primary text-white text-[11px] font-bold hover:brightness-110 transition-all shadow-sm uppercase tracking-wider"
+                            className="uppercase tracking-wider font-bold"
                         >
                             Finalizar Etapa
-                        </button>
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Compact Informative Strip */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                {/* Child Summary - Smaller */}
+                <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-outline-variant dark:border-[#333] shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div className="size-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/10">
+                        <span className="material-symbols-outlined text-2xl">face</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="font-title-md text-title-md text-on-surface dark:text-white truncate">{ingreso.nino_nombre} {ingreso.nino_apellido}</h2>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 font-body-md text-xs font-semibold text-on-surface-variant">
+                            <span>DNI: {ingreso.nino_dni}</span>
+                            <span>{calculateAge(ingreso.nino_fecha_nacimiento)} años</span>
+                            <span className="text-secondary font-bold">{ingreso.expediente_numero}</span>
+                        </div>
+                        {(ingreso.ultima_seccion || (isClosed && ingreso.cese?.motivo_cese)) && (
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-on-surface-variant mt-1">
+                                {isClosed && ingreso.cese?.motivo_cese && (
+                                    <span className="flex items-center gap-1 truncate" title={MOTIVO_CESE_LABELS[ingreso.cese.motivo_cese] || ingreso.cese.motivo_cese}>
+                                        <span className="material-symbols-outlined text-[13px]">gavel</span>
+                                        Motivo: {MOTIVO_CESE_LABELS[ingreso.cese.motivo_cese] || ingreso.cese.motivo_cese}
+                                    </span>
+                                )}
+                                {ingreso.ultima_seccion && (
+                                    <span className="flex items-center gap-1 truncate">
+                                        <span className="material-symbols-outlined text-[13px]">history</span>
+                                        Última actividad: {ingreso.ultima_seccion}
+                                        {ingreso.ultima_seccion_usuario ? ` · ${ingreso.ultima_seccion_usuario}` : ''}
+                                        {ingreso.ultima_seccion_fecha ? ` · ${formatDistanceToNow(new Date(ingreso.ultima_seccion_fecha), { addSuffix: true, locale: es })}` : ''}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className={`px-2 py-1 rounded-lg shrink-0 ${isClosed ? 'bg-rose-100 dark:bg-rose-900/30' : !ingreso.expediente_activo ? 'bg-surface-container-high dark:bg-zinc-800' : 'bg-secondary/10'}`}>
+                        <span className={`text-[11px] font-bold uppercase ${isClosed ? 'text-rose-700' : !ingreso.expediente_activo ? 'text-on-surface-variant dark:text-slate-400' : 'text-secondary'}`}>
+                            {isClosed ? 'Cerrado' : !ingreso.expediente_activo ? 'Inactivo' : 'Activo'}
+                        </span>
                     </div>
                 </div>
 
-                {/* Compact Informative Strip */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                    {/* Child Summary - Smaller */}
-                    <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex items-center gap-4 hover:shadow-lg transition-shadow">
-                        <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10">
-                            <span className="material-symbols-outlined text-2xl">face</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h2 className="text-sm font-bold tracking-tight truncate">{ingreso.nino_nombre} {ingreso.nino_apellido}</h2>
-                            <div className="flex gap-3 text-[10px] font-semibold text-[#60708a]">
-                                <span>DNI: {ingreso.nino_dni}</span>
-                                <span>{calculateAge(ingreso.nino_fecha_nacimiento)} años</span>
-                                <span className="text-primary font-bold">{ingreso.expediente_numero}</span>
-                            </div>
-                        </div>
-                        <div className={`px-2 py-1 rounded-lg shrink-0 ${isClosed ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-primary/10'}`}>
-                            <span className={`text-[10px] font-bold uppercase ${isClosed ? 'text-rose-600' : 'text-primary'}`}>
-                                {isClosed || !ingreso.expediente_activo ? 'Inactivo' : 'Activo'}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Micro Stats Row */}
-                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center border-l-4 border-l-primary hover:shadow-lg transition-shadow">
-                        <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none mb-1">Días Totales</p>
+                {/* Micro Stats Row */}
+                <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-outline-variant dark:border-[#333] shadow-sm flex flex-col justify-center border-l-4 border-l-secondary hover:shadow-md transition-shadow">
+                        <p className="font-label-section text-label-section text-on-surface-variant leading-none mb-1">Días Totales</p>
                         <div className="flex items-center gap-2">
-                            <p className="text-[#111818] dark:text-white text-sm font-bold">
+                            <p className="text-on-surface dark:text-white text-sm font-bold">
                                 {differenceInDays(
                                     ingreso.fecha_cierre ? new Date(ingreso.fecha_cierre) : new Date(),
                                     new Date(ingreso.fecha_ingreso)
@@ -856,9 +898,9 @@ const IngresoDetail = () => {
                         </div>
                     </div>
 
-                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center border-l-4 border-l-amber-500 hover:shadow-lg transition-shadow">
-                        <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none mb-1">Días en Etapa</p>
-                        <p className="text-[#111818] dark:text-white text-sm font-bold">
+                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-outline-variant dark:border-[#333] shadow-sm flex flex-col justify-center border-l-4 border-l-amber-500 hover:shadow-md transition-shadow">
+                        <p className="font-label-section text-label-section text-on-surface-variant leading-none mb-1">Días en Etapa</p>
+                        <p className="text-on-surface dark:text-white text-sm font-bold">
                             {/* Note: This is currently using fecha_ingreso as proxy for stage start */}
                             {differenceInDays(
                                 ingreso.fecha_cierre ? new Date(ingreso.fecha_cierre) : new Date(),
@@ -867,21 +909,32 @@ const IngresoDetail = () => {
                         </p>
                     </div>
 
-                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-primary/20 shadow-md flex flex-col justify-center border-l-4 border-l-emerald-500 hover:shadow-lg transition-shadow">
+                    <div className="col-span-1 bg-white dark:bg-zinc-900 rounded-xl p-4 border border-outline-variant dark:border-[#333] shadow-sm flex flex-col justify-center border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between mb-1">
-                            <p className="text-[#60708a] text-[9px] font-bold uppercase tracking-widest leading-none">Responsables</p>
-                            <button onClick={handleOpenResponsablesModal} title="Asignar responsables" className="text-slate-300 hover:text-primary transition-colors">
+                            <p className="font-label-section text-label-section text-on-surface-variant leading-none">Responsables</p>
+                            <button onClick={handleOpenResponsablesModal} title="Asignar responsables" className="text-slate-300 hover:text-secondary transition-colors">
                                 <span className="material-symbols-outlined text-base">edit</span>
                             </button>
                         </div>
                         {responsables.length === 0 ? (
                             <p className="text-xs text-slate-400 italic">Sin asignar</p>
+                        ) : responsables.every((r: any) => !r.usuarios?.nombre_completo) ? (
+                            <div className="flex items-center gap-1.5 text-on-surface-variant" title="No tenés acceso a los nombres de otro SPD">
+                                <span className="material-symbols-outlined text-sm">lock</span>
+                                <span className="text-xs italic">Dato en resguardo</span>
+                            </div>
                         ) : (
                             <div className="flex -space-x-2 items-center">
                                 {responsables.slice(0, 4).map((r: any) => (
-                                    <div key={r.id} title={r.usuarios?.nombre_completo} className="size-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase">
-                                        {r.usuarios?.nombre_completo?.substring(0, 2) || '??'}
-                                    </div>
+                                    r.usuarios?.nombre_completo ? (
+                                        <div key={r.id} title={r.usuarios.nombre_completo} className="size-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase">
+                                            {r.usuarios.nombre_completo.substring(0, 2)}
+                                        </div>
+                                    ) : (
+                                        <div key={r.id} title="Dato en resguardo (otro SPD)" className="size-7 rounded-full bg-surface-container-high border-2 border-white dark:border-zinc-900 flex items-center justify-center text-on-surface-variant">
+                                            <span className="material-symbols-outlined text-xs">lock</span>
+                                        </div>
+                                    )
                                 ))}
                                 {responsables.length > 4 && (
                                     <div className="size-7 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-black text-slate-500">
@@ -891,10 +944,10 @@ const IngresoDetail = () => {
                             </div>
                         )}
                     </div>
-                </div>
+            </div>
 
-                {/* Main Area: High Preponderance Section */}
-                <div className="bg-white dark:bg-zinc-900 border border-[#f0f2f5] dark:border-[#333] rounded-2xl overflow-hidden shadow-md flex flex-col min-h-[500px]">
+            {/* Main Area: High Preponderance Section */}
+            <div className="bg-white dark:bg-zinc-900 border border-[#f0f2f5] dark:border-[#333] rounded-2xl overflow-hidden shadow-md flex flex-col min-h-[500px]">
                     {/* Stepper Integrated as a Header of the Work Section */}
                     <div className="p-6 bg-slate-50/50 dark:bg-black/10 border-b border-[#f0f2f5] dark:border-[#333]">
                         <div className="flex items-center w-full max-w-4xl mx-auto overflow-x-auto pb-1">
@@ -905,25 +958,25 @@ const IngresoDetail = () => {
                                 let textClass = "";
 
                                 if (stage.status === 'completed') {
-                                    circleClass = "bg-primary/10 text-primary";
-                                    textClass = "text-primary";
+                                    circleClass = "bg-secondary/10 text-secondary";
+                                    textClass = "text-secondary";
                                 } else if (stage.status === 'active') {
-                                    circleClass = "bg-primary text-[#112121] ring-2 ring-primary/20 shadow-sm";
-                                    textClass = "text-primary";
+                                    circleClass = "bg-secondary text-white ring-2 ring-secondary/20 shadow-sm";
+                                    textClass = "text-secondary";
                                 } else {
-                                    circleClass = "bg-gray-200 dark:bg-zinc-800 text-[#60708a]";
-                                    textClass = "text-[#60708a]";
+                                    circleClass = "bg-surface-container-high dark:bg-zinc-800 text-on-surface-variant";
+                                    textClass = "text-on-surface-variant";
                                 }
 
                                 const stepContent = (
                                     <div className="flex flex-col items-center flex-1 min-w-[72px] relative group">
-                                        <div className={`size-8 rounded-full flex items-center justify-center z-10 transition-all duration-300 ${circleClass} ${isReception ? 'group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20' : ''}`}>
+                                        <div className={`size-8 rounded-full flex items-center justify-center z-10 transition-all duration-300 ${circleClass} ${isReception ? 'group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-secondary/20' : ''}`}>
                                             <span className="material-symbols-outlined text-lg font-bold">{stage.icon}</span>
                                         </div>
                                         {!isLast && (
-                                            <div className={`absolute top-4 left-1/2 w-full h-[1.5px] ${stage.status === 'completed' ? 'bg-primary' : 'bg-gray-200 dark:bg-[#333]'}`}></div>
+                                            <div className={`absolute top-4 left-1/2 w-full h-[1.5px] ${stage.status === 'completed' ? 'bg-secondary' : 'bg-outline-variant dark:bg-[#333]'}`}></div>
                                         )}
-                                        <p className={`mt-2 text-[9px] font-bold uppercase tracking-wider text-center whitespace-nowrap ${textClass}`}>{stage.name}</p>
+                                        <p className={`mt-2 font-label-section text-[9px] uppercase tracking-wider text-center whitespace-nowrap ${textClass}`}>{stage.name}</p>
                                     </div>
                                 );
 
@@ -969,1319 +1022,1344 @@ const IngresoDetail = () => {
                     </div>
 
                     {/* Operation Tabs */}
-                    <div className="flex overflow-x-auto border-b border-[#f0f2f5] dark:border-[#333] px-2">
-                        {[
-                            { id: 'recepcion', label: ' Recepción de demanda', icon: 'assignment' },
-                            ...(activeStageIndex >= 1 ? [{ id: 'ampliacion', label: 'Ampliación y verificación de información', icon: 'insights' }] : []),
-                            ...(activeStageIndex >= 2 || (ingreso.intervenciones && ingreso.intervenciones.length > 0) ? [{ id: 'sintesis', label: 'Informe Síntesis', icon: 'gavel' }] : []),
-                            ...(activeStageIndex >= 3 ? [{ id: 'definicion', label: 'Definición de Medidas', icon: 'security' }] : []),
-                            ...((ingreso.cese || ingreso.estado === 'cerrado' || measuresSummary.length > 0) ? [{ id: 'cese', label: 'Cese de Intervención', icon: 'verified' }] : []),
-                            { id: 'transferencias', label: 'Transferencias', icon: 'swap_horiz' },
-                            { id: 'historial', label: 'Historial', icon: 'history' },
-                            { id: 'documentos', label: 'Documentos', icon: 'description' }
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`shrink-0 whitespace-nowrap px-6 py-4 text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all relative
-                                ${activeTab === tab.id
-                                        ? 'text-primary'
-                                        : 'text-[#60708a] hover:text-primary hover:bg-gray-50'}`}
-                            >
-                                <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
-                                {tab.label}
-                                {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>}
-                            </button>
-                        ))}
+                    <div className="flex flex-wrap items-center justify-between border-b border-slate-200 dark:border-zinc-800 p-3 sm:px-4 gap-2 bg-slate-50/40 dark:bg-zinc-900/40">
+                        {/* Grupo Principal: Etapas del Proceso */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {[
+                                { id: 'recepcion', label: 'Recepción de demanda', icon: 'assignment' },
+                                ...(activeStageIndex >= 1 ? [{ id: 'ampliacion', label: 'Ampliación y verificación de información', icon: 'insights' }] : []),
+                                ...(activeStageIndex >= 2 || (ingreso.intervenciones && ingreso.intervenciones.length > 0) ? [{ id: 'sintesis', label: 'Informe Síntesis', icon: 'gavel' }] : []),
+                                ...(activeStageIndex >= 3 ? [{ id: 'definicion', label: 'Definición de Medidas', icon: 'security' }] : []),
+                                ...((ingreso.cese || ingreso.estado === 'cerrado' || measuresSummary.length > 0) ? [{ id: 'cese', label: 'Cese de Intervención', icon: 'verified' }] : []),
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-3.5 sm:px-4 py-2 text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl transition-all border ${
+                                        activeTab === tab.id
+                                            ? 'bg-secondary/10 border-secondary/40 text-secondary shadow-sm'
+                                            : 'bg-white dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-secondary hover:border-slate-300'
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Grupo Secundario: Información Complementaria */}
+                        <div className="flex flex-wrap items-center gap-1.5 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-zinc-700 pt-2 sm:pt-0 sm:pl-3">
+                            <span className="hidden xl:inline-block text-[10px] font-bold uppercase tracking-widest text-slate-400 mr-1 select-none">
+                                Más:
+                            </span>
+                            {[
+                                { id: 'transferencias', label: 'Transferencias', icon: 'swap_horiz' },
+                                { id: 'historial', label: 'Historial', icon: 'history' },
+                                { id: 'documentos', label: 'Documentos', icon: 'description' }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-3 sm:px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 rounded-xl transition-all border ${
+                                        activeTab === tab.id
+                                            ? 'bg-secondary/10 border-secondary/40 text-secondary shadow-sm'
+                                            : 'bg-white dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-secondary hover:border-slate-300'
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="p-8">
-                        {activeTab === 'ampliacion' && (
-                            <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
-                                    <div>
-                                        <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Resumen de Ampliación de Información</h3>
-                                        <p className="text-slate-500 font-medium text-sm italic">Desarrollo de objetivos y estrategias del plan de acción.</p>
+                        <div className="p-8">
+                            {activeTab === 'ampliacion' && (
+                                <div className="space-y-10 animate-in fade-in duration-500">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                        <div>
+                                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Resumen de Ampliación de Información</h3>
+                                            <p className="text-slate-500 font-medium text-sm italic">Desarrollo de objetivos y estrategias del plan de acción.</p>
+                                        </div>
+                                        <button
+                                            onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/ampliacion/${ingreso.id}`)}
+                                            className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                        >
+                                            Agregar intervenciones de ampliación de información
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/ampliacion/${ingreso.id}`)}
-                                        className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
-                                    >
-                                        Agregar intervenciones de ampliación de información
-                                    </button>
-                                </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                                    <section className="space-y-8">
-                                        <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-primary/20 shadow-lg space-y-6">
-                                            <div>
-                                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-md">target</span>
-                                                    Objetivos del Plan
-                                                </h4>
-                                                <p className="text-slate-700 dark:text-slate-300 text-md font-medium leading-relaxed italic">
-                                                    "{ingreso.planificacion?.objetivos || 'Sin planificación registrada'}"
-                                                </p>
-                                            </div>
-                                            <div className="pt-6 border-t border-slate-100 dark:border-zinc-800">
-                                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-md">strategy</span>
-                                                    Estrategia Seleccionada
-                                                </h4>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
-                                                    {ingreso.planificacion?.estrategias || '-'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-4 pt-4">
-                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-zinc-700 shadow-sm">
-                                                    <span className="material-symbols-outlined text-sm text-primary">event</span>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Fin: {ingreso.planificacion?.fecha_fin_estimada ? format(new Date(ingreso.planificacion.fecha_fin_estimada), "dd/MM/yyyy") : '-'}</span>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                        <section className="space-y-8">
+                                            <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-secondary/20 shadow-lg space-y-6">
+                                                <div>
+                                                    <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-md">target</span>
+                                                        Objetivos del Plan
+                                                    </h4>
+                                                    <p className="text-slate-700 dark:text-slate-300 text-md font-medium leading-relaxed italic">
+                                                        "{ingreso.planificacion?.objetivos || 'Sin planificación registrada'}"
+                                                    </p>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-md">history</span>
-                                                Historial de Acciones ({ingreso.intervenciones?.length || 0})
-                                            </h4>
-
-                                            {(ingreso.intervenciones || []).length > 0 && (
-                                                <PDFDownloadLink
-                                                    document={<IntervencionesPDF ingreso={ingreso} intervenciones={ingreso.intervenciones || []} />}
-                                                    fileName={`Entrevistas_${ingreso.expediente_numero}.pdf`}
-                                                >
-                                                    {({ loading: pdfLoading }) => (
-                                                        <button disabled={pdfLoading} className="text-[10px] font-bold text-slate-500 hover:text-primary flex items-center gap-1 uppercase tracking-wider">
-                                                            <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-                                                            {pdfLoading ? '...' : 'Descargar'}
-                                                        </button>
-                                                    )}
-                                                </PDFDownloadLink>
-                                            )}
-                                        </div>
-                                        <div className="space-y-3">
-                                            {(ingreso.intervenciones || []).length === 0 ? (
-                                                <div className="p-8 text-center bg-slate-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-slate-200">
-                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin intervenciones registradas</p>
+                                                <div className="pt-6 border-t border-slate-100 dark:border-zinc-800">
+                                                    <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-md">strategy</span>
+                                                        Estrategia Seleccionada
+                                                    </h4>
+                                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
+                                                        {ingreso.planificacion?.estrategias || '-'}
+                                                    </p>
                                                 </div>
-                                            ) : (
-                                                (ingreso.intervenciones || []).map((inter, i) => (
-                                                    <div key={i} className="p-5 bg-white dark:bg-zinc-900 rounded-[24px] border border-slate-100 dark:border-zinc-800 shadow-sm hover:border-primary/30 transition-all flex items-center justify-between group">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className={`size-3 rounded-full ${inter.asistencia === 'Asistió' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                                                            <div>
-                                                                <p className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight">{inter.entrevistado_nombre}</p>
-                                                                <p className="text-[10px] text-slate-500 font-medium">{format(new Date(inter.fecha), "dd MMM yyyy", { locale: es })} • {inter.vinculo}</p>
-                                                            </div>
-                                                        </div>
-                                                        <Link to={`/expedientes/${ingreso.expediente_id}/ampliacion/${ingreso.id}`} className="p-2 text-slate-300 group-hover:text-primary transition-colors">
-                                                            <span className="material-symbols-outlined">chevron_right</span>
-                                                        </Link>
+                                                <div className="flex items-center gap-4 pt-4">
+                                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-zinc-700 shadow-sm">
+                                                        <span className="material-symbols-outlined text-sm text-secondary">event</span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Fin: {ingreso.planificacion?.fecha_fin_estimada ? format(new Date(ingreso.planificacion.fecha_fin_estimada), "dd/MM/yyyy") : '-'}</span>
                                                     </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </section>
-                                </div>
-                            </div>
-                        )}
-                        {activeTab === 'sintesis' && (
-                            <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
-                                    <div>
-                                        <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Informe Síntesis</h3>
-                                        <p className="text-slate-500 font-medium text-sm italic">Evaluación técnica y cierre de la etapa investigativa.</p>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section className="space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-md">history</span>
+                                                    Historial de Acciones ({ingreso.intervenciones?.length || 0})
+                                                </h4>
+
+                                                {(ingreso.intervenciones || []).length > 0 && (
+                                                    <PDFDownloadLink
+                                                        document={<IntervencionesPDF ingreso={ingreso} intervenciones={ingreso.intervenciones || []} />}
+                                                        fileName={`Entrevistas_${ingreso.expediente_numero}.pdf`}
+                                                    >
+                                                        {({ loading: pdfLoading }) => (
+                                                            <button disabled={pdfLoading} className="text-[10px] font-bold text-slate-500 hover:text-secondary flex items-center gap-1 uppercase tracking-wider">
+                                                                <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                                                                {pdfLoading ? '...' : 'Descargar'}
+                                                            </button>
+                                                        )}
+                                                    </PDFDownloadLink>
+                                                )}
+                                            </div>
+                                            <div className="space-y-3">
+                                                {(ingreso.intervenciones || []).length === 0 ? (
+                                                    <div className="p-8 text-center bg-slate-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-slate-200">
+                                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin intervenciones registradas</p>
+                                                    </div>
+                                                ) : (
+                                                    (ingreso.intervenciones || []).map((inter, i) => (
+                                                        <div key={i} className="p-5 bg-white dark:bg-zinc-900 rounded-[24px] border border-slate-100 dark:border-zinc-800 shadow-sm hover:border-secondary/30 transition-all flex items-center justify-between group">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`size-3 rounded-full ${inter.asistencia === 'Asistió' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-tight">{inter.entrevistado_nombre}</p>
+                                                                    <p className="text-[10px] text-slate-500 font-medium">{format(new Date(inter.fecha), "dd MMM yyyy", { locale: es })} • {inter.vinculo}</p>
+                                                                </div>
+                                                            </div>
+                                                            <Link to={`/expedientes/${ingreso.expediente_id}/ampliacion/${ingreso.id}`} className="p-2 text-slate-300 group-hover:text-secondary transition-colors">
+                                                                <span className="material-symbols-outlined">chevron_right</span>
+                                                            </Link>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </section>
                                     </div>
-                                    <button
-                                        onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/sintesis/${ingreso.id}`)}
-                                        className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
-                                    >
-                                        {ingreso.informe_sintesis ? 'Editar Informe' : 'Redactar Informe'}
-                                    </button>
                                 </div>
-
-                                {ingreso.informe_sintesis ? (
-                                    <div className="grid grid-cols-1 gap-8">
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                                <span className="material-symbols-outlined text-8xl text-primary">gavel</span>
-                                            </div>
-                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Fundamento Normativo</h4>
-                                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
-                                                {ingreso.informe_sintesis.fundamento_normativo || 'Sin contenido.'}
-                                            </p>
+                            )}
+                            {activeTab === 'sintesis' && (
+                                <div className="space-y-10 animate-in fade-in duration-500">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                        <div>
+                                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Informe Síntesis</h3>
+                                            <p className="text-slate-500 font-medium text-sm italic">Evaluación técnica y cierre de la etapa investigativa.</p>
                                         </div>
+                                        <button
+                                            onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/sintesis/${ingreso.id}`)}
+                                            className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                        >
+                                            {ingreso.informe_sintesis ? 'Editar Informe' : 'Redactar Informe'}
+                                        </button>
+                                    </div>
 
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                                <span className="material-symbols-outlined text-8xl text-primary">psychology</span>
+                                    {ingreso.informe_sintesis ? (
+                                        <div className="grid grid-cols-1 gap-8">
+                                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-secondary/20 shadow-lg relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                    <span className="material-symbols-outlined text-8xl text-secondary">gavel</span>
+                                                </div>
+                                                <h4 className="text-sm font-black text-secondary uppercase tracking-widest mb-4">Fundamento Normativo</h4>
+                                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
+                                                    {ingreso.informe_sintesis.fundamento_normativo || 'Sin contenido.'}
+                                                </p>
                                             </div>
-                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Valoración Integral</h4>
-                                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
-                                                {ingreso.informe_sintesis.valoracion_integral || 'Sin contenido.'}
-                                            </p>
-                                        </div>
 
-                                        <div className="bg-gradient-to-br from-primary/5 to-transparent p-8 rounded-3xl border border-primary/20 shadow-lg">
-                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Medidas de Protección Integral sugeridas</h4>
-                                            <p className="text-slate-800 dark:text-white font-medium leading-relaxed whitespace-pre-wrap text-sm">
-                                                {ingreso.informe_sintesis.plan_accion || 'Sin contenido.'}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                                <span className="material-symbols-outlined text-8xl text-primary">gavel</span>
+                                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-secondary/20 shadow-lg relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                    <span className="material-symbols-outlined text-8xl text-secondary">psychology</span>
+                                                </div>
+                                                <h4 className="text-sm font-black text-secondary uppercase tracking-widest mb-4">Valoración Integral</h4>
+                                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
+                                                    {ingreso.informe_sintesis.valoracion_integral || 'Sin contenido.'}
+                                                </p>
                                             </div>
-                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-6 flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-primary">warning</span>
-                                                Derechos Vulnerados (Síntesis)
-                                            </h4>
-                                            {(ingreso.vulneraciones || []).length === 0 ? (
-                                                <p className="text-slate-500 italic text-sm">No se registraron derechos específicos en esta etapa.</p>
-                                            ) : (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {(ingreso.vulneraciones || []).map((v, i) => (
-                                                        <div key={i} className="flex gap-4 p-4 bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-slate-100 dark:border-zinc-800/50 items-start">
-                                                            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+
+                                            <div className="bg-gradient-to-br from-secondary/5 to-transparent p-8 rounded-3xl border border-secondary/20 shadow-lg">
+                                                <h4 className="text-sm font-black text-secondary uppercase tracking-widest mb-4">Medidas de Protección Integral sugeridas</h4>
+                                                <p className="text-slate-800 dark:text-white font-medium leading-relaxed whitespace-pre-wrap text-sm">
+                                                    {ingreso.informe_sintesis.plan_accion || 'Sin contenido.'}
+                                                </p>
+                                            </div>
+
+                                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-secondary/20 shadow-lg relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                    <span className="material-symbols-outlined text-8xl text-secondary">gavel</span>
+                                                </div>
+                                                <h4 className="text-sm font-black text-secondary uppercase tracking-widest mb-6 flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-secondary">warning</span>
+                                                    Derechos Vulnerados (Síntesis)
+                                                </h4>
+                                                {(ingreso.vulneraciones || []).length === 0 ? (
+                                                    <p className="text-slate-500 italic text-sm">No se registraron derechos específicos en esta etapa.</p>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {(ingreso.vulneraciones || []).map((v, i) => (
+                                                            <div key={i} className="flex gap-4 p-4 bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-slate-100 dark:border-zinc-800/50 items-start">
+                                                                <div className="size-8 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                                                                    <span className="material-symbols-outlined text-[18px]">gavel</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-tight">{v.catalogo_derechos?.categoria}</p>
+                                                                    <p className="text-[10px] text-secondary font-bold mb-2 tracking-wide uppercase uppercase">{v.catalogo_derechos?.subcategoria}</p>
+                                                                    {v.indicador && <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 italic">"{v.indicador}"</p>}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex justify-end pt-4">
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-800 rounded-lg">
+                                                    <span className={`size-2 rounded-full ${ingreso.informe_sintesis.estado === 'finalizado' ? 'bg-secondary' : 'bg-orange-400 animate-pulse'}`}></span>
+                                                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Estado: {ingreso.informe_sintesis.estado}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-secondary/20 shadow-lg space-y-6 text-center">
+                                            <span className="material-symbols-outlined text-6xl text-slate-300">description</span>
+                                            <p className="text-slate-500 font-medium">Acceda al módulo de redacción para completar la evaluación técnica.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {activeTab === 'definicion' && (
+                                <div className="space-y-10 animate-in fade-in duration-500">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                        <div>
+                                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Definición de Medidas</h3>
+                                            <p className="text-slate-500 font-medium text-sm italic">Estrategias de protección y restitución de derechos.</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/acta/${ingresoId}`)}
+                                                className="px-6 h-12 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 dark:hover:bg-zinc-700 transition-all text-sm flex items-center gap-2"
+                                            >
+                                                <span className="material-symbols-outlined text-lg">description</span>
+                                                Acta
+                                            </button>
+                                            <button
+                                                onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`)}
+                                                className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                            >
+                                                Gestionar Medidas
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {measuresSummary.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {measuresSummary.map(m => (
+                                                <div key={m.id} className="bg-white dark:bg-zinc-900 border border-secondary/20 p-4 rounded-2xl flex items-center justify-between shadow-lg">
+                                                    <div>
+                                                        <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-1">{m.medida_propuesta}</h4>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`size-2 rounded-full ${m.estado === 'activa' ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                                                            <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">{m.estado}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Responsable</span>
+                                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{m.responsables || '-'}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`)} className="bg-slate-50 dark:bg-zinc-800/50 border border-dashed border-slate-200 dark:border-zinc-700 p-4 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+                                                <span className="text-xs font-bold text-secondary uppercase tracking-widest">+ Ver Detalle Completo</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-10 text-center bg-slate-50 dark:bg-zinc-800/30 rounded-3xl border-2 border-dashed border-secondary/20 shadow-lg">
+                                            <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">security</span>
+                                            <p className="text-slate-500 font-medium">Acceda al módulo de gestión para configurar las medidas de protección.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {activeTab === 'recepcion' && (
+                                <div className="space-y-10 animate-in fade-in duration-500">
+                                    {/* Summary Header */}
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                        <div>
+                                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Informe de Recepción y Demanda</h3>
+                                            <div className="flex items-center gap-4">
+                                                <p className="text-slate-500 font-medium text-sm">Registro técnico consolidado de la primera escucha e intervención inicial.</p>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/recepcion/${ingreso.id}`)}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-secondary hover:text-white text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">edit</span>
+                                                        Editar Informe
+                                                    </button>
+                                                    <button
+                                                        onClick={() => window.print()}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-secondary hover:text-white text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                                                        Generar PDF
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${ingreso.estado === 'cerrado' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                {ingreso.estado === 'cerrado' ? 'Proceso Cerrado' : 'Proceso en Trámite'}
+                                            </span>
+                                            <p className="text-[11px] font-bold text-slate-500 mt-2 uppercase tracking-tighter">Fecha: {format(new Date(ingreso.fecha_ingreso + 'T12:00:00'), "dd/MM/yyyy")}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                        {/* Left Column: Origin and Motive */}
+                                        <div className="space-y-8">
+                                            <section>
+                                                <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] mb-4">01. Origen de la Demanda</h4>
+                                                <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-secondary/20 shadow-lg">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Vía de Ingreso</p>
+                                                            <p className="font-bold text-sm">{ingreso.derivacion?.via_ingreso || 'N/A'}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Nro Oficio/Exp.</p>
+                                                            <p className="font-bold text-sm">{ingreso.derivacion?.oficio_numero || 'Sin número'}</p>
+                                                        </div>
+                                                        <div className="sm:col-span-2">
+                                                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Solicitante / Institución</p>
+                                                            <p className="font-bold text-sm">{ingreso.derivacion?.nombre_solicitante || 'Persona Particular'}</p>
+                                                            <p className="text-xs text-slate-500 mt-1 capitalize">{ingreso.derivacion?.cargo_solicitante || ''}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em]">01b. Otros Orígenes de Consulta</h4>
+                                                    <button
+                                                        onClick={() => setIsOrigenModalOpen(true)}
+                                                        className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-secondary hover:underline"
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm">add_circle</span>
+                                                        Agregar Origen
+                                                    </button>
+                                                </div>
+                                                {(ingreso.origenes_adicionales || []).length === 0 ? (
+                                                    <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sin otros orígenes registrados sobre este caso</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        {(ingreso.origenes_adicionales || []).map((origen: any) => (
+                                                            <div key={origen.id} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-secondary/20 shadow-sm">
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Origen / Vía</p>
+                                                                        <p className="font-bold text-sm">{origen.origen_consulta || 'N/A'} {origen.via_ingreso ? `· ${origen.via_ingreso}` : ''}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Nro Oficio/Exp.</p>
+                                                                        <p className="font-bold text-sm">{origen.oficio_numero || 'Sin número'}</p>
+                                                                    </div>
+                                                                    <div className="sm:col-span-2">
+                                                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Solicitante / Institución</p>
+                                                                        <p className="font-bold text-sm">{origen.nombre_solicitante || 'N/A'}</p>
+                                                                        <p className="text-xs text-slate-500 mt-1">{origen.cargo_solicitante || ''}</p>
+                                                                    </div>
+                                                                    {origen.observaciones && (
+                                                                        <div className="sm:col-span-2">
+                                                                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Observaciones</p>
+                                                                            <p className="text-xs text-slate-600 dark:text-slate-300">{origen.observaciones}</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-xs text-slate-500 mt-3">Registrado: {format(new Date(origen.created_at), "dd/MM/yyyy HH:mm")}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </section>
+
+                                            <section>
+                                                <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] mb-4">02. Motivo y Relato</h4>
+                                                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-secondary/20 shadow-lg">
+                                                    <div className="mb-4 flex items-center gap-2">
+                                                        <span className={`size-3 rounded-full ${ingreso.motivo?.gravedad === 'Urgente' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">{ingreso.motivo?.gravedad || 'Moderada'}</span>
+                                                    </div>
+                                                    <p className="text-[#334155] dark:text-slate-300 text-[13px] leading-relaxed whitespace-pre-line italic bg-slate-50/30 dark:bg-slate-800/20 p-4 rounded-xl">
+                                                        "{ingreso.motivo?.descripcion_situacion || 'No se registró relato de situación.'}"
+                                                    </p>
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] mb-4">02b. Salud y Educación</h4>
+                                                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-secondary/20 shadow-lg grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Escolaridad</p>
+                                                        <p className="font-bold text-xs">{ingreso.nino_nivel_educativo || 'No informada'} {ingreso.nino_curso ? `(${ingreso.nino_curso})` : ''}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">CUD</p>
+                                                        <p className="font-bold text-xs">{ingreso.nino_tiene_cud ? 'Posee CUD' : 'No posee / No informa'}</p>
+                                                    </div>
+                                                    <div className="sm:col-span-2">
+                                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">Centro de Salud / Hospital</p>
+                                                        <p className="font-bold text-xs">{ingreso.nino_centro_salud || 'No informado'}</p>
+                                                    </div>
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] mb-4">03. Vulneración de Derechos</h4>
+                                                <div className="space-y-3">
+                                                    {ingreso.vulneraciones?.map((v, i) => (
+                                                        <div key={i} className="flex gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-secondary/20 shadow-lg items-start">
+                                                            <div className="size-8 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center shrink-0">
                                                                 <span className="material-symbols-outlined text-[18px]">gavel</span>
                                                             </div>
                                                             <div>
                                                                 <p className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-tight">{v.catalogo_derechos?.categoria}</p>
-                                                                <p className="text-[10px] text-primary font-bold mb-2 tracking-wide uppercase uppercase">{v.catalogo_derechos?.subcategoria}</p>
-                                                                {v.indicador && <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 italic">"{v.indicador}"</p>}
+                                                                <p className="text-[10px] text-slate-500 font-bold mb-2 tracking-wide uppercase">{v.catalogo_derechos?.subcategoria}</p>
+                                                                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">{v.indicador}</p>
                                                             </div>
                                                         </div>
                                                     ))}
+                                                    {(!ingreso.vulneraciones || ingreso.vulneraciones.length === 0) && (
+                                                        <p className="text-xs text-slate-500 font-medium italic">Sin vulneraciones registradas.</p>
+                                                    )}
                                                 </div>
-                                            )}
+                                            </section>
                                         </div>
 
-                                        <div className="flex justify-end pt-4">
-                                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-800 rounded-lg">
-                                                <span className={`size-2 rounded-full ${ingreso.informe_sintesis.estado === 'finalizado' ? 'bg-primary' : 'bg-orange-400 animate-pulse'}`}></span>
-                                                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Estado: {ingreso.informe_sintesis.estado}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-primary/20 shadow-lg space-y-6 text-center">
-                                        <span className="material-symbols-outlined text-6xl text-slate-300">description</span>
-                                        <p className="text-slate-500 font-medium">Acceda al módulo de redacción para completar la evaluación técnica.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {activeTab === 'definicion' && (
-                            <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
-                                    <div>
-                                        <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Definición de Medidas</h3>
-                                        <p className="text-slate-500 font-medium text-sm italic">Estrategias de protección y restitución de derechos.</p>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/acta/${ingresoId}`)}
-                                            className="px-6 h-12 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 dark:hover:bg-zinc-700 transition-all text-sm flex items-center gap-2"
-                                        >
-                                            <span className="material-symbols-outlined text-lg">description</span>
-                                            Acta
-                                        </button>
-                                        <button
-                                            onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`)}
-                                            className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
-                                        >
-                                            Gestionar Medidas
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {measuresSummary.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {measuresSummary.map(m => (
-                                            <div key={m.id} className="bg-white dark:bg-zinc-900 border border-primary/20 p-4 rounded-2xl flex items-center justify-between shadow-lg">
-                                                <div>
-                                                    <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-1">{m.medida_propuesta}</h4>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`size-2 rounded-full ${m.estado === 'activa' ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                                                        <span className="text-xs text-slate-500 uppercase font-bold tracking-wider">{m.estado}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Responsable</span>
-                                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{m.responsables || '-'}</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <div onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`)} className="bg-slate-50 dark:bg-zinc-800/50 border border-dashed border-slate-200 dark:border-zinc-700 p-4 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
-                                            <span className="text-xs font-bold text-primary uppercase tracking-widest">+ Ver Detalle Completo</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-10 text-center bg-slate-50 dark:bg-zinc-800/30 rounded-3xl border-2 border-dashed border-primary/20 shadow-lg">
-                                        <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">security</span>
-                                        <p className="text-slate-500 font-medium">Acceda al módulo de gestión para configurar las medidas de protección.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {activeTab === 'recepcion' && (
-                            <div className="space-y-10 animate-in fade-in duration-500">
-                                {/* Summary Header */}
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
-                                    <div>
-                                        <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Informe de Recepción y Demanda</h3>
-                                        <div className="flex items-center gap-4">
-                                            <p className="text-slate-500 font-medium text-sm">Registro técnico consolidado de la primera escucha e intervención inicial.</p>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/recepcion/${ingreso.id}`)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-primary hover:text-[#112121] text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
-                                                >
-                                                    <span className="material-symbols-outlined text-sm">edit</span>
-                                                    Editar Informe
-                                                </button>
-                                                <button
-                                                    onClick={() => window.print()}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-primary hover:text-[#112121] text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
-                                                >
-                                                    <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-                                                    Generar PDF
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${ingreso.estado === 'cerrado' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                            {ingreso.estado === 'cerrado' ? 'Proceso Finalizado' : 'Proceso en Trámite'}
-                                        </span>
-                                        <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-tighter">Fecha: {format(new Date(ingreso.fecha_ingreso + 'T12:00:00'), "dd/MM/yyyy")}</p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                                    {/* Left Column: Origin and Motive */}
-                                    <div className="space-y-8">
-                                        <section>
-                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">01. Origen de la Demanda</h4>
-                                            <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-primary/20 shadow-lg">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vía de Ingreso</p>
-                                                        <p className="font-bold text-sm">{ingreso.derivacion?.via_ingreso || 'N/A'}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nro Oficio/Exp.</p>
-                                                        <p className="font-bold text-sm">{ingreso.derivacion?.oficio_numero || 'Sin número'}</p>
-                                                    </div>
-                                                    <div className="sm:col-span-2">
-                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Solicitante / Institución</p>
-                                                        <p className="font-bold text-sm">{ingreso.derivacion?.nombre_solicitante || 'Persona Particular'}</p>
-                                                        <p className="text-[10px] text-slate-500 mt-1 capitalize">{ingreso.derivacion?.cargo_solicitante || ''}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">01b. Otros Orígenes de Consulta</h4>
-                                                <button
-                                                    onClick={() => setIsOrigenModalOpen(true)}
-                                                    className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-primary hover:underline"
-                                                >
-                                                    <span className="material-symbols-outlined text-sm">add_circle</span>
-                                                    Agregar Origen
-                                                </button>
-                                            </div>
-                                            {(ingreso.origenes_adicionales || []).length === 0 ? (
-                                                <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sin otros orígenes registrados sobre este caso</p>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {(ingreso.origenes_adicionales || []).map((origen: any) => (
-                                                        <div key={origen.id} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl p-6 border border-primary/20 shadow-sm">
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                                <div>
-                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Origen / Vía</p>
-                                                                    <p className="font-bold text-sm">{origen.origen_consulta || 'N/A'} {origen.via_ingreso ? `· ${origen.via_ingreso}` : ''}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nro Oficio/Exp.</p>
-                                                                    <p className="font-bold text-sm">{origen.oficio_numero || 'Sin número'}</p>
-                                                                </div>
-                                                                <div className="sm:col-span-2">
-                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Solicitante / Institución</p>
-                                                                    <p className="font-bold text-sm">{origen.nombre_solicitante || 'N/A'}</p>
-                                                                    <p className="text-[10px] text-slate-500 mt-1">{origen.cargo_solicitante || ''}</p>
-                                                                </div>
-                                                                {origen.observaciones && (
-                                                                    <div className="sm:col-span-2">
-                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Observaciones</p>
-                                                                        <p className="text-xs text-slate-600 dark:text-slate-300">{origen.observaciones}</p>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-[9px] text-slate-400 mt-3">Registrado: {format(new Date(origen.created_at), "dd/MM/yyyy HH:mm")}</p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </section>
-
-                                        <section>
-                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">02. Motivo y Relato</h4>
-                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-primary/20 shadow-lg">
-                                                <div className="mb-4 flex items-center gap-2">
-                                                    <span className={`size-3 rounded-full ${ingreso.motivo?.gravedad === 'Urgente' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">{ingreso.motivo?.gravedad || 'Moderada'}</span>
-                                                </div>
-                                                <p className="text-[#334155] dark:text-slate-300 text-[13px] leading-relaxed whitespace-pre-line italic bg-slate-50/30 dark:bg-slate-800/20 p-4 rounded-xl">
-                                                    "{ingreso.motivo?.descripcion_situacion || 'No se registró relato de situación.'}"
-                                                </p>
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">02b. Salud y Educación</h4>
-                                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-primary/20 shadow-lg grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Escolaridad</p>
-                                                    <p className="font-bold text-xs">{ingreso.nino_nivel_educativo || 'No informada'} {ingreso.nino_curso ? `(${ingreso.nino_curso})` : ''}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">CUD</p>
-                                                    <p className="font-bold text-xs">{ingreso.nino_tiene_cud ? 'Posee CUD' : 'No posee / No informa'}</p>
-                                                </div>
-                                                <div className="sm:col-span-2">
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Centro de Salud / Hospital</p>
-                                                    <p className="font-bold text-xs">{ingreso.nino_centro_salud || 'No informado'}</p>
-                                                </div>
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">03. Vulneración de Derechos</h4>
-                                            <div className="space-y-3">
-                                                {ingreso.vulneraciones?.map((v, i) => (
-                                                    <div key={i} className="flex gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-primary/20 shadow-lg items-start">
-                                                        <div className="size-8 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center shrink-0">
-                                                            <span className="material-symbols-outlined text-[18px]">gavel</span>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-tight">{v.catalogo_derechos?.categoria}</p>
-                                                            <p className="text-[10px] text-slate-500 font-bold mb-2 tracking-wide uppercase">{v.catalogo_derechos?.subcategoria}</p>
-                                                            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">{v.indicador}</p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                {(!ingreso.vulneraciones || ingreso.vulneraciones.length === 0) && (
-                                                    <p className="text-[11px] text-slate-400 font-medium italic">Sin vulneraciones registradas.</p>
-                                                )}
-                                            </div>
-                                        </section>
-                                    </div>
-
-                                    {/* Right Column: Context and Decision */}
-                                    <div className="space-y-8">
-                                        <section>
-                                            <div className="flex justify-between items-center mb-4">
-                                                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">04. Entorno Familiar</h4>
-                                                <button
-                                                    onClick={handleDiscoverLinks}
-                                                    disabled={isDiscoveringLinks}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-white transition-all disabled:opacity-50"
-                                                >
-                                                    <span className={`material-symbols-outlined text-sm ${isDiscoveringLinks ? 'animate-spin' : ''}`}>
-                                                        {isDiscoveringLinks ? 'sync' : 'link'}
-                                                    </span>
-                                                    {isDiscoveringLinks ? 'Buscando...' : 'Buscar Vínculos'}
-                                                </button>
-                                            </div>
-                                            <div className="space-y-2">
-                                                {ingreso.grupo_familiar?.map((m, i) => (
-                                                    <div key={i} className="flex flex-col gap-2 p-3 bg-slate-50/50 dark:bg-zinc-800/30 rounded-xl border border-slate-100 dark:border-zinc-800 text-[11px]">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="font-bold">{m.nombre} {m.apellido}</span>
-                                                                    {m.linked_expediente_id && (
-                                                                        <Link
-                                                                            to={`/expedientes/${m.linked_expediente_id}${m.linked_ingreso_id ? `/ingresos/${m.linked_ingreso_id}` : ''}`}
-                                                                            className="material-symbols-outlined text-primary text-sm hover:scale-110 transition-transform"
-                                                                            title="Ver Expediente Vinculado"
-                                                                        >
-                                                                            link
-                                                                        </Link>
-                                                                    )}
-                                                                </div>
-                                                                {(m.edad || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento))) && (
-                                                                    <span className="text-[#60708a] font-bold text-[10px]">({m.edad || calculateAge(m.fecha_nacimiento)} años)</span>
-                                                                )}
-                                                                {((m.edad && parseInt(m.edad) < 18) || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento) < 18)) && (
-                                                                    <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1">
-                                                                        <span className="material-symbols-outlined text-[10px]">child_care</span>
-                                                                        NNyA
-                                                                    </span>
-                                                                )}
-                                                                <span className="px-2 py-0.5 bg-slate-200 dark:bg-zinc-700 rounded-full text-[9px] uppercase font-black">{m.vinculo}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-4">
-                                                                <span className={m.convive ? "text-emerald-500 font-bold" : "text-slate-400"}>{m.convive ? 'Convive' : 'No convive'}</span>
-                                                            </div>
-                                                        </div>
-                                                        {(m.ocupacion || m.nivel_educativo) && (
-                                                            <div className="flex gap-4 pl-1 text-[10px] text-slate-500 font-medium">
-                                                                {m.ocupacion && (
-                                                                    <span className="flex items-center gap-1">
-                                                                        <span className="material-symbols-outlined text-[12px]">work</span>
-                                                                        {m.ocupacion}
-                                                                    </span>
-                                                                )}
-                                                                {m.nivel_educativo && (
-                                                                    <span className="flex items-center gap-1">
-                                                                        <span className="material-symbols-outlined text-[12px]">school</span>
-                                                                        {m.nivel_educativo}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                                {(!ingreso.grupo_familiar || ingreso.grupo_familiar.length === 0) && (
-                                                    <p className="text-[11px] text-slate-400 font-medium italic">Sin datos de familia registrados.</p>
-                                                )}
-                                            </div>
-                                        </section>
-
-                                        <section>
-                                            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">05. Decisión Técnica</h4>
-                                            <div className={`p-6 rounded-2xl border-2 shadow-lg ${ingreso.decision?.decision_id === 'asesoramiento' ? 'border-primary/20 bg-blue-50/10' : 'border-emerald-500/20 bg-emerald-50/10'}`}>
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <span className="material-symbols-outlined text-3xl text-primary">analytics</span>
-                                                    <div>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest text-[#60708a]">Dictamen Final de Recepción</p>
-                                                        <h5 className="text-lg font-black tracking-tight capitalize text-primary">
-                                                            {ingreso.decision?.decision_id?.replace('_', ' ') || 'Asesoramiento'}
-                                                        </h5>
-                                                    </div>
-                                                </div>
-                                                <div className="p-4 bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-inner">
-                                                    <p className="text-[12px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
-                                                        {ingreso.decision?.observaciones || 'Sin fundamentación registrada.'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </section>
-
-                                        <div className="p-6 bg-slate-900 rounded-2xl text-white relative overflow-hidden group">
-                                            <div className="relative z-10 flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Estado del Legajo</p>
-                                                    <h4 className="text-lg font-black uppercase tracking-tight">
-                                                        {ingreso.estado === 'cerrado' ? 'Intervención Cerrada' : 'Intervención Activa'}
-                                                    </h4>
-                                                </div>
-                                                <span className="material-symbols-outlined text-4xl text-primary/40 group-hover:scale-110 transition-transform">{ingreso.estado === 'cerrado' ? 'verified' : 'pending'}</span>
-                                            </div>
-                                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        {activeTab === 'documentos' && (
-                            <div className="space-y-6 animate-in fade-in duration-500">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-md font-bold tracking-tight text-slate-800 dark:text-white uppercase flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary text-lg">folder_open</span>
-                                        Documentación del Ingreso ({ingreso.documentos?.length || 0})
-                                    </h3>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => setIsUploadModalOpen(true)}
-                                            className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-white transition-all"
-                                        >
-                                            Subir Nuevo Documento
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {ingreso.documentos && ingreso.documentos.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {ingreso.documentos.map((doc, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 border border-primary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div className={`p-3 rounded-xl ${doc.tipo === 'PDF' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'} transition-colors group-hover:bg-primary group-hover:text-white`}>
-                                                        <span className="material-symbols-outlined text-2xl">
-                                                            {doc.tipo === 'PDF' ? 'picture_as_pdf' : 'image'}
+                                        {/* Right Column: Context and Decision */}
+                                        <div className="space-y-8">
+                                            <section>
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em]">04. Entorno Familiar</h4>
+                                                    <button
+                                                        onClick={handleDiscoverLinks}
+                                                        disabled={isDiscoveringLinks}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/10 text-secondary text-[11px] font-black uppercase tracking-widest rounded-lg hover:bg-secondary hover:text-white transition-all disabled:opacity-50"
+                                                    >
+                                                        <span className={`material-symbols-outlined text-sm ${isDiscoveringLinks ? 'animate-spin' : ''}`}>
+                                                            {isDiscoveringLinks ? 'sync' : 'link'}
                                                         </span>
-                                                    </div>
-                                                    <button className="text-slate-300 hover:text-primary transition-colors">
-                                                        <span className="material-symbols-outlined">more_vert</span>
+                                                        {isDiscoveringLinks ? 'Buscando...' : 'Buscar Vínculos'}
                                                     </button>
                                                 </div>
-                                                <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-1 truncate" title={doc.nombre}>{doc.nombre}</h4>
-                                                <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50 dark:border-zinc-800">
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
-                                                        {format(new Date(doc.created_at), "dd MMM yyyy", { locale: es })}
-                                                    </span>
-                                                    <div className="flex items-center gap-4">
-                                                        <button
-                                                            onClick={() => handlePreview(doc)}
-                                                            className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest hover:underline cursor-pointer"
-                                                        >
-                                                            Previsualizar
-                                                            <span className="material-symbols-outlined text-sm">visibility</span>
-                                                        </button>
-                                                        <a
-                                                            href={doc.url}
-                                                            download={doc.nombre}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-primary transition-colors"
-                                                        >
-                                                            Descargar
-                                                            <span className="material-symbols-outlined text-sm">download</span>
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 dark:bg-zinc-800/20 rounded-3xl border-2 border-dashed border-primary/20 shadow-lg">
-                                        <span className="material-symbols-outlined text-6xl text-slate-200 mb-4">cloud_off</span>
-                                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin documentos adjuntos</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {activeTab === 'cese' && (
-                            <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
-                                    <div>
-                                        <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Cese de Intervención</h3>
-                                        <p className="text-slate-500 font-medium text-sm italic">Cierre formal del expediente y conclusión del proceso.</p>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={() => setIsEmailModalOpen(true)}
-                                            className="px-8 h-12 bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg border border-slate-200 dark:border-zinc-700 hover:scale-105 active:scale-95 transition-all text-sm font-bold flex items-center gap-2"
-                                        >
-                                            <span className="material-symbols-outlined text-base">mail</span>
-                                            Notificar por Email
-                                        </button>
-                                        <button
-                                            onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/cierre/${ingreso.id}`)}
-                                            className="px-8 h-12 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
-                                        >
-                                            Ver Formulario de Cese
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {ingreso.cese ? (
-                                    <div className="grid grid-cols-1 gap-8">
-                                        {/* Motivo de Cese */}
-                                        <div className="bg-gradient-to-br from-danger/5 to-transparent p-8 rounded-3xl border border-danger/20 shadow-lg">
-                                            <h4 className="text-sm font-black text-danger uppercase tracking-widest mb-4 flex items-center gap-2">
-                                                <span className="material-symbols-outlined">gavel</span>
-                                                Motivo de Cese
-                                            </h4>
-                                            <p className="text-slate-800 dark:text-white font-bold text-lg">
-                                                {ingreso.cese.motivo_cese === 'restitucion_integral' && 'Restitución integral de los derechos vulnerados'}
-                                                {ingreso.cese.motivo_cese === 'incumplimiento_estrategias' && 'Incumplimiento reiterado de las estrategias acordadas'}
-                                                {ingreso.cese.motivo_cese === 'fallecimiento' && 'Fallecimiento del NNA'}
-                                                {ingreso.cese.motivo_cese === 'otra_causal' && 'Otra causal que impide la continuidad de intervención'}
-                                                {ingreso.cese.motivo_cese === 'cambio_residencia' && 'Cambio de ciudad de residencia (Se notifica por principio de corresponsabilidad)'}
-                                                {ingreso.cese.motivo_cese === 'solicitud_medida_excepcional' && 'Solicitud de medida excepcional al organismo provincial de protección de derechos (SENAF)'}
-                                            </p>
-                                        </div>
-
-                                        {/* Resumen de Logros */}
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                                <span className="material-symbols-outlined text-8xl text-primary">emoji_events</span>
-                                            </div>
-                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Resumen de Logros Alcanzados</h4>
-                                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
-                                                {ingreso.cese.resumen_logros || 'Sin contenido.'}
-                                            </p>
-                                        </div>
-
-                                        {/* Observaciones Finales */}
-                                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-primary/20 shadow-lg relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                                <span className="material-symbols-outlined text-8xl text-primary">description</span>
-                                            </div>
-                                            <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">Observaciones Finales</h4>
-                                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
-                                                {ingreso.cese.observaciones_finales || 'Sin observaciones adicionales.'}
-                                            </p>
-                                        </div>
-
-                                        {/* Fecha de Cierre */}
-                                        <div className="flex justify-end pt-4">
-                                            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-800 rounded-lg">
-                                                <span className="material-symbols-outlined text-sm text-danger">event</span>
-                                                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                                                    Fecha de Cierre: {ingreso.cese.fecha_cierre ? format(new Date(ingreso.cese.fecha_cierre), "dd/MM/yyyy", { locale: es }) : 'N/A'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-primary/20 shadow-lg space-y-6 text-center">
-                                        <span className="material-symbols-outlined text-6xl text-slate-300">verified</span>
-                                        <p className="text-slate-500 font-medium">No hay información de cese registrada para este ingreso.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {activeTab === 'transferencias' && (
-                            <div className="space-y-6 animate-in fade-in duration-500">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div>
-                                        <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Historial de Transferencias</h3>
-                                        <p className="text-slate-500 font-medium text-sm">Registro de movimientos del expediente entre servicios de protección</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    {transferHistory.length === 0 ? (
-                                        <div className="p-20 text-center bg-slate-50/50 dark:bg-zinc-800/20 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-zinc-800">
-                                            <span className="material-symbols-outlined text-6xl text-slate-200 mb-4">swap_horiz</span>
-                                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No hay transferencias registradas</p>
-                                        </div>
-                                    ) : (
-                                        transferHistory.map((t, i) => (
-                                            <div key={i} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
-                                                <div className="absolute top-0 right-0 p-4">
-                                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{format(new Date(t.created_at), "dd/MM/yyyy HH:mm")}</span>
-                                                </div>
-                                                <div className="flex flex-col md:flex-row md:items-center gap-8">
-                                                    <div className="flex items-center gap-4 flex-1">
-                                                        <div className="text-right">
-                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Origen</p>
-                                                            <p className="font-bold text-sm text-slate-700 dark:text-slate-300">{(t.spd_origen as any)?.nombre || 'S/D'}</p>
+                                                <div className="space-y-2">
+                                                    {ingreso.grupo_familiar?.map((m, i) => (
+                                                        <div key={i} className="flex flex-col gap-2 p-3 bg-slate-50/50 dark:bg-zinc-800/30 rounded-xl border border-slate-100 dark:border-zinc-800 text-xs">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="font-bold">{m.nombre} {m.apellido}</span>
+                                                                        {m.linked_expediente_id && (
+                                                                            <Link
+                                                                                to={`/expedientes/${m.linked_expediente_id}${m.linked_ingreso_id ? `/ingresos/${m.linked_ingreso_id}` : ''}`}
+                                                                                className="material-symbols-outlined text-secondary text-sm hover:scale-110 transition-transform"
+                                                                                title="Ver Expediente Vinculado"
+                                                                            >
+                                                                                link
+                                                                            </Link>
+                                                                        )}
+                                                                    </div>
+                                                                    {(m.edad || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento))) && (
+                                                                        <span className="text-on-surface-variant font-bold text-xs">({m.edad || calculateAge(m.fecha_nacimiento)} años)</span>
+                                                                    )}
+                                                                    {((m.edad && parseInt(m.edad) < 18) || (m.fecha_nacimiento && calculateAge(m.fecha_nacimiento) < 18)) && (
+                                                                        <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-[11px] font-black uppercase tracking-tighter flex items-center gap-1">
+                                                                            <span className="material-symbols-outlined text-[10px]">child_care</span>
+                                                                            NNyA
+                                                                        </span>
+                                                                    )}
+                                                                    <span className="px-2 py-0.5 bg-slate-200 dark:bg-zinc-700 rounded-full text-[11px] uppercase font-black">{m.vinculo}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-4">
+                                                                    <span className={m.convive ? "text-emerald-700 font-bold" : "text-slate-500 font-medium"}>{m.convive ? 'Convive' : 'No convive'}</span>
+                                                                </div>
+                                                            </div>
+                                                            {(m.ocupacion || m.nivel_educativo) && (
+                                                                <div className="flex gap-4 pl-1 text-xs text-slate-500 font-medium">
+                                                                    {m.ocupacion && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <span className="material-symbols-outlined text-[12px]">work</span>
+                                                                            {m.ocupacion}
+                                                                        </span>
+                                                                    )}
+                                                                    {m.nivel_educativo && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <span className="material-symbols-outlined text-[12px]">school</span>
+                                                                            {m.nivel_educativo}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                            <span className="material-symbols-outlined">arrow_forward</span>
-                                                        </div>
-                                                        <div className="text-left">
-                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Destino</p>
-                                                            <p className="font-bold text-sm text-primary">{(t.spd_destino as any)?.nombre}</p>
+                                                    ))}
+                                                    {(!ingreso.grupo_familiar || ingreso.grupo_familiar.length === 0) && (
+                                                        <p className="text-[11px] text-slate-400 font-medium italic">Sin datos de familia registrados.</p>
+                                                    )}
+                                                </div>
+                                            </section>
+
+                                            <section>
+                                                <h4 className="text-xs font-black text-secondary uppercase tracking-[0.15em] mb-4">05. Decisión Técnica</h4>
+                                                <div className={`p-6 rounded-2xl border-2 shadow-lg ${ingreso.decision?.decision_id === 'asesoramiento' ? 'border-secondary/20 bg-blue-50/10' : 'border-emerald-500/20 bg-emerald-50/10'}`}>
+                                                    <div className="flex items-center gap-3 mb-4">
+                                                        <span className="material-symbols-outlined text-3xl text-secondary">analytics</span>
+                                                        <div>
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Dictamen Final de Recepción</p>
+                                                            <h5 className="text-lg font-black tracking-tight capitalize text-secondary">
+                                                                {ingreso.decision?.decision_id?.replace('_', ' ') || 'Asesoramiento'}
+                                                            </h5>
                                                         </div>
                                                     </div>
-                                                    <div className="flex-1 border-t md:border-t-0 md:border-l border-slate-100 dark:border-zinc-800 pt-4 md:pt-0 md:pl-8">
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Motivo de Transferencia</p>
-                                                        <p className="text-sm text-slate-600 dark:text-slate-400 italic">"{t.motivo || 'Sin motivo registrado'}"</p>
-                                                        <p className="mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-1">
-                                                            <span className="material-symbols-outlined text-xs">person</span>
-                                                            Emitido por: {(t.usuario_emisor as any)?.nombre_completo}
+                                                    <div className="p-4 bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-inner">
+                                                        <p className="text-[12px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                                                            {ingreso.decision?.observaciones || 'Sin fundamentación registrada.'}
                                                         </p>
                                                     </div>
                                                 </div>
+                                            </section>
+
+                                            <div className="p-6 bg-slate-900 rounded-2xl text-white relative overflow-hidden group">
+                                                <div className="relative z-10 flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Estado del Legajo</p>
+                                                        <h4 className="text-lg font-black uppercase tracking-tight">
+                                                            {ingreso.estado === 'cerrado' ? 'Intervención Cerrada' : 'Intervención Activa'}
+                                                        </h4>
+                                                    </div>
+                                                    <span className="material-symbols-outlined text-4xl text-secondary/40 group-hover:scale-110 transition-transform">{ingreso.estado === 'cerrado' ? 'verified' : 'pending'}</span>
+                                                </div>
+                                                <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                        {activeTab === 'historial' && (
-                            <div className="space-y-6 animate-in fade-in duration-500">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div>
-                                        <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Mapa Histórico del Proceso</h3>
-                                        <p className="text-slate-500 font-medium text-sm">Visualización cronológica completa del expediente</p>
+                                        </div>
                                     </div>
                                 </div>
+                            )}
+                            {activeTab === 'documentos' && (
+                                <div className="space-y-6 animate-in fade-in duration-500">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-md font-bold tracking-tight text-slate-800 dark:text-white uppercase flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-secondary text-lg">folder_open</span>
+                                            Documentación del Ingreso ({ingreso.documentos?.length || 0})
+                                        </h3>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => setIsUploadModalOpen(true)}
+                                                className="px-4 py-2 bg-slate-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-secondary hover:text-white transition-all"
+                                            >
+                                                Subir Nuevo Documento
+                                            </button>
+                                        </div>
+                                    </div>
 
-                                {/* Timeline Container */}
-                                <div className="relative">
-                                    {/* Central Vertical Spine */}
-                                    <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-transparent transform -translate-x-1/2"></div>
+                                    {ingreso.documentos && ingreso.documentos.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {ingreso.documentos.map((doc, idx) => (
+                                                <div key={idx} className="bg-white dark:bg-zinc-900 border border-secondary/20 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group relative overflow-hidden">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className={`p-3 rounded-xl ${doc.tipo === 'PDF' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'} transition-colors group-hover:bg-secondary group-hover:text-white`}>
+                                                            <span className="material-symbols-outlined text-2xl">
+                                                                {doc.tipo === 'PDF' ? 'picture_as_pdf' : 'image'}
+                                                            </span>
+                                                        </div>
+                                                        <button className="text-slate-300 hover:text-secondary transition-colors">
+                                                            <span className="material-symbols-outlined">more_vert</span>
+                                                        </button>
+                                                    </div>
+                                                    <h4 className="font-bold text-sm text-slate-800 dark:text-white mb-1 truncate" title={doc.nombre}>{doc.nombre}</h4>
+                                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50 dark:border-zinc-800">
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                                                            {format(new Date(doc.created_at), "dd MMM yyyy", { locale: es })}
+                                                        </span>
+                                                        <div className="flex items-center gap-4">
+                                                            <button
+                                                                onClick={() => handlePreview(doc)}
+                                                                className="flex items-center gap-1 text-[10px] font-black text-secondary uppercase tracking-widest hover:underline cursor-pointer"
+                                                            >
+                                                                Previsualizar
+                                                                <span className="material-symbols-outlined text-sm">visibility</span>
+                                                            </button>
+                                                            <a
+                                                                href={doc.url}
+                                                                download={doc.nombre}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-secondary transition-colors"
+                                                            >
+                                                                Descargar
+                                                                <span className="material-symbols-outlined text-sm">download</span>
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 dark:bg-zinc-800/20 rounded-3xl border-2 border-dashed border-secondary/20 shadow-lg">
+                                            <span className="material-symbols-outlined text-6xl text-slate-200 mb-4">cloud_off</span>
+                                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Sin documentos adjuntos</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {activeTab === 'cese' && (
+                                <div className="space-y-10 animate-in fade-in duration-500">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800 pb-8">
+                                        <div>
+                                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Cese de Intervención</h3>
+                                            <p className="text-slate-500 font-medium text-sm italic">Cierre formal del expediente y conclusión del proceso.</p>
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <button
+                                                onClick={() => setIsEmailModalOpen(true)}
+                                                className="px-8 h-12 bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg border border-slate-200 dark:border-zinc-700 hover:scale-105 active:scale-95 transition-all text-sm font-bold flex items-center gap-2"
+                                            >
+                                                <span className="material-symbols-outlined text-base">mail</span>
+                                                Notificar por Email
+                                            </button>
+                                            <button
+                                                onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/cierre/${ingreso.id}`)}
+                                                className="px-8 h-12 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm font-bold"
+                                            >
+                                                Ver Formulario de Cese
+                                            </button>
+                                        </div>
+                                    </div>
 
-                                    <div className="space-y-16">
-                                        {/* Stage 1: Recepción */}
-                                        <div className="relative flex flex-col items-center">
-                                            <div className="z-10 size-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
-                                                1
-                                            </div>
-                                            <div className="mt-4 text-center">
-                                                <h3 className="text-xl font-bold text-slate-800 dark:text-white">Recepción</h3>
-                                                <p className="text-sm text-slate-500 font-semibold">
-                                                    {format(new Date(ingreso.fecha_ingreso + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                                    {ingreso.cese ? (
+                                        <div className="grid grid-cols-1 gap-8">
+                                            {/* Motivo de Cese */}
+                                            <div className="bg-gradient-to-br from-danger/5 to-transparent p-8 rounded-3xl border border-danger/20 shadow-lg">
+                                                <h4 className="text-sm font-black text-danger uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                    <span className="material-symbols-outlined">gavel</span>
+                                                    Motivo de Cese
+                                                </h4>
+                                                <p className="text-slate-800 dark:text-white font-bold text-lg">
+                                                    {ingreso.cese.motivo_cese === 'restitucion_integral' && 'Restitución integral de los derechos vulnerados'}
+                                                    {ingreso.cese.motivo_cese === 'incumplimiento_estrategias' && 'Incumplimiento reiterado de las estrategias acordadas'}
+                                                    {ingreso.cese.motivo_cese === 'fallecimiento' && 'Fallecimiento del NNA'}
+                                                    {ingreso.cese.motivo_cese === 'otra_causal' && 'Otra causal que impide la continuidad de intervención'}
+                                                    {ingreso.cese.motivo_cese === 'cambio_residencia' && 'Cambio de ciudad de residencia (Se notifica por principio de corresponsabilidad)'}
+                                                    {ingreso.cese.motivo_cese === 'solicitud_medida_excepcional' && 'Solicitud de medida excepcional al organismo provincial de protección de derechos (SENAF)'}
                                                 </p>
                                             </div>
 
-                                            {/* Branches */}
-                                            <div className="w-full max-w-4xl grid grid-cols-2 mt-8 gap-12 relative">
-                                                <div className="absolute top-1/2 left-0 w-full h-px bg-slate-200 dark:bg-slate-700 -z-10"></div>
-
-                                                {/* Left Branch */}
-                                                <div className="flex flex-col items-end gap-3">
-                                                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm w-64 hover:border-primary cursor-pointer transition-all">
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <span className="material-symbols-outlined text-primary">assignment</span>
-                                                            <p className="text-sm font-bold">Formulario de Recepción</p>
-                                                        </div>
-                                                        <p className="text-xs text-slate-500">
-                                                            {ingreso.derivacion?.via_ingreso || 'Derivación directa'}
-                                                        </p>
-                                                    </div>
+                                            {/* Resumen de Logros */}
+                                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-secondary/20 shadow-lg relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                    <span className="material-symbols-outlined text-8xl text-secondary">emoji_events</span>
                                                 </div>
+                                                <h4 className="text-sm font-black text-secondary uppercase tracking-widest mb-4">Resumen de Logros Alcanzados</h4>
+                                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
+                                                    {ingreso.cese.resumen_logros || 'Sin contenido.'}
+                                                </p>
+                                            </div>
 
-                                                {/* Right Branch */}
-                                                <div className="flex flex-col items-start gap-3">
-                                                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm w-64 hover:border-primary cursor-pointer transition-all">
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <span className="material-symbols-outlined text-green-500">person</span>
-                                                            <p className="text-sm font-bold">Profesional Asignado</p>
-                                                        </div>
-                                                        <p className="text-xs text-slate-500">
-                                                            {ingreso.profesional_asignado_nombre || 'Sin asignar'}
-                                                        </p>
-                                                    </div>
+                                            {/* Observaciones Finales */}
+                                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-secondary/20 shadow-lg relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                    <span className="material-symbols-outlined text-8xl text-secondary">description</span>
+                                                </div>
+                                                <h4 className="text-sm font-black text-secondary uppercase tracking-widest mb-4">Observaciones Finales</h4>
+                                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
+                                                    {ingreso.cese.observaciones_finales || 'Sin observaciones adicionales.'}
+                                                </p>
+                                            </div>
+
+                                            {/* Fecha de Cierre */}
+                                            <div className="flex justify-end pt-4">
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-800 rounded-lg">
+                                                    <span className="material-symbols-outlined text-sm text-danger">event</span>
+                                                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                                                        Fecha de Cierre: {ingreso.cese.fecha_cierre ? format(new Date(ingreso.cese.fecha_cierre), "dd/MM/yyyy", { locale: es }) : 'N/A'}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
+                                    ) : (
+                                        <div className="bg-slate-50/50 dark:bg-zinc-800/20 p-8 rounded-[40px] border border-secondary/20 shadow-lg space-y-6 text-center">
+                                            <span className="material-symbols-outlined text-6xl text-slate-300">verified</span>
+                                            <p className="text-slate-500 font-medium">No hay información de cese registrada para este ingreso.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {activeTab === 'transferencias' && (
+                                <div className="space-y-6 animate-in fade-in duration-500">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Historial de Transferencias</h3>
+                                            <p className="text-slate-500 font-medium text-sm">Registro de movimientos del expediente entre servicios de protección</p>
+                                        </div>
+                                    </div>
 
-                                        {/* Stage 2: Planificación (if exists) */}
-                                        {ingreso.planificacion && (
+                                    <div className="space-y-4">
+                                        {transferHistory.length === 0 ? (
+                                            <div className="p-20 text-center bg-slate-50/50 dark:bg-zinc-800/20 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-zinc-800">
+                                                <span className="material-symbols-outlined text-6xl text-slate-200 mb-4">swap_horiz</span>
+                                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No hay transferencias registradas</p>
+                                            </div>
+                                        ) : (
+                                            transferHistory.map((t, i) => (
+                                                <div key={i} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+                                                    <div className="absolute top-0 right-0 p-4">
+                                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{format(new Date(t.created_at), "dd/MM/yyyy HH:mm")}</span>
+                                                    </div>
+                                                    <div className="flex flex-col md:flex-row md:items-center gap-8">
+                                                        <div className="flex items-center gap-4 flex-1">
+                                                            <div className="text-right">
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Origen</p>
+                                                                <p className="font-bold text-sm text-slate-700 dark:text-slate-300">{(t.spd_origen as any)?.nombre || 'S/D'}</p>
+                                                            </div>
+                                                            <div className="size-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                                                                <span className="material-symbols-outlined">arrow_forward</span>
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Destino</p>
+                                                                <p className="font-bold text-sm text-secondary">{(t.spd_destino as any)?.nombre}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-1 border-t md:border-t-0 md:border-l border-slate-100 dark:border-zinc-800 pt-4 md:pt-0 md:pl-8">
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Motivo de Transferencia</p>
+                                                            <p className="text-sm text-slate-600 dark:text-slate-400 italic">"{t.motivo || 'Sin motivo registrado'}"</p>
+                                                            <p className="mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-tighter flex items-center gap-1">
+                                                                <span className="material-symbols-outlined text-xs">person</span>
+                                                                Emitido por: {(t.usuario_emisor as any)?.nombre_completo}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {activeTab === 'historial' && (
+                                <div className="space-y-6 animate-in fade-in duration-500">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white mb-2">Mapa Histórico del Proceso</h3>
+                                            <p className="text-slate-500 font-medium text-sm">Visualización cronológica completa del expediente</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Timeline Container */}
+                                    <div className="relative">
+                                        {/* Central Vertical Spine */}
+                                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-secondary via-secondary/50 to-transparent transform -translate-x-1/2"></div>
+
+                                        <div className="space-y-16">
+                                            {/* Stage 1: Recepción */}
                                             <div className="relative flex flex-col items-center">
-                                                <div className="z-10 size-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
-                                                    2
+                                                <div className="z-10 size-12 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
+                                                    1
                                                 </div>
                                                 <div className="mt-4 text-center">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white">Planificación</h3>
+                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white">Recepción</h3>
                                                     <p className="text-sm text-slate-500 font-semibold">
-                                                        {ingreso.planificacion.created_at && format(new Date(ingreso.planificacion.created_at), "dd 'de' MMMM", { locale: es })}
+                                                        {format(new Date(ingreso.fecha_ingreso + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: es })}
                                                     </p>
                                                 </div>
 
-                                                <div className="w-full max-w-2xl mt-8">
-                                                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-6 rounded-2xl">
-                                                        <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-4">Objetivos del Plan</p>
-                                                        <p className="text-sm text-slate-700 dark:text-slate-300 italic">
-                                                            "{ingreso.planificacion.objetivos?.substring(0, 200)}..."
+                                                {/* Branches */}
+                                                <div className="w-full max-w-4xl grid grid-cols-2 mt-8 gap-12 relative">
+                                                    <div className="absolute top-1/2 left-0 w-full h-px bg-slate-200 dark:bg-slate-700 -z-10"></div>
+
+                                                    {/* Left Branch */}
+                                                    <div className="flex flex-col items-end gap-3">
+                                                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm w-64 hover:border-secondary cursor-pointer transition-all">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <span className="material-symbols-outlined text-secondary">assignment</span>
+                                                                <p className="text-sm font-bold">Formulario de Recepción</p>
+                                                            </div>
+                                                            <p className="text-xs text-slate-500">
+                                                                {ingreso.derivacion?.via_ingreso || 'Derivación directa'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Right Branch */}
+                                                    <div className="flex flex-col items-start gap-3">
+                                                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm w-64 hover:border-secondary cursor-pointer transition-all">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <span className="material-symbols-outlined text-green-500">person</span>
+                                                                <p className="text-sm font-bold">Profesional Asignado</p>
+                                                            </div>
+                                                            <p className="text-xs text-slate-500">
+                                                                {ingreso.profesional_asignado_nombre || 'Sin asignar'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Stage 2: Planificación (if exists) */}
+                                            {ingreso.planificacion && (
+                                                <div className="relative flex flex-col items-center">
+                                                    <div className="z-10 size-12 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
+                                                        2
+                                                    </div>
+                                                    <div className="mt-4 text-center">
+                                                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">Planificación</h3>
+                                                        <p className="text-sm text-slate-500 font-semibold">
+                                                            {ingreso.planificacion.created_at && format(new Date(ingreso.planificacion.created_at), "dd 'de' MMMM", { locale: es })}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="w-full max-w-2xl mt-8">
+                                                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-6 rounded-2xl">
+                                                            <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-4">Objetivos del Plan</p>
+                                                            <p className="text-sm text-slate-700 dark:text-slate-300 italic">
+                                                                "{ingreso.planificacion.objetivos?.substring(0, 200)}..."
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Stage 3: Intervenciones */}
+                                            {ingreso.intervenciones && ingreso.intervenciones.length > 0 && (
+                                                <div className="relative flex flex-col items-center">
+                                                    <div className="z-10 size-12 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
+                                                        {ingreso.planificacion ? '3' : '2'}
+                                                    </div>
+                                                    <div className="mt-4 text-center">
+                                                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">Ampliación</h3>
+                                                        <p className="text-sm text-slate-500 font-semibold">
+                                                            {format(new Date(ingreso.intervenciones[ingreso.intervenciones.length - 1].fecha), "dd MMM", { locale: es })} - {format(new Date(ingreso.intervenciones[0].fecha), "dd MMM yyyy", { locale: es })}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="w-full flex justify-center gap-6 mt-8 flex-wrap">
+                                                        {ingreso.intervenciones.slice(0, 3).map((inter: any, idx: number) => (
+                                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm w-56 hover:border-secondary cursor-pointer transition-all">
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <span className="material-symbols-outlined text-blue-400">chat</span>
+                                                                    <p className="text-sm font-bold">{inter.modalidad}</p>
+                                                                </div>
+                                                                <p className="text-xs text-slate-500">
+                                                                    {inter.entrevistado_nombre} • {inter.vinculo}
+                                                                </p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Stage 4: Informe Síntesis */}
+                                            {ingreso.informe_sintesis && (
+                                                <div className="relative flex flex-col items-center">
+                                                    <div className="z-10 size-12 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
+                                                        {(ingreso.planificacion ? 1 : 0) + (ingreso.intervenciones && ingreso.intervenciones.length > 0 ? 1 : 0) + 2}
+                                                    </div>
+                                                    <div className="mt-4 text-center">
+                                                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">Informe Síntesis</h3>
+                                                        <p className="text-sm text-slate-500 font-semibold">
+                                                            {ingreso.informe_sintesis.created_at && format(new Date(ingreso.informe_sintesis.created_at), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="w-full max-w-2xl mt-8">
+                                                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-6 rounded-2xl">
+                                                            <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-4">Diagnóstico de Situación</p>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {ingreso.vulneraciones?.slice(0, 3).map((v: any, i: number) => (
+                                                                    <span key={i} className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full text-sm font-medium border border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                                                                        <span className="material-symbols-outlined text-[18px] text-amber-500">warning</span>
+                                                                        {v.catalogo_derechos?.categoria}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Stage 5: Definición de Medidas */}
+                                            {measuresSummary && measuresSummary.length > 0 && (
+                                                <div className="relative flex flex-col items-center">
+                                                    <div className="z-10 size-12 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
+                                                        {(ingreso.planificacion ? 1 : 0) + (ingreso.intervenciones && ingreso.intervenciones.length > 0 ? 1 : 0) + (ingreso.informe_sintesis ? 1 : 0) + 2}
+                                                    </div>
+                                                    <div className="mt-4 text-center">
+                                                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">Definición de Medidas</h3>
+                                                        <p className="text-sm text-slate-500 font-semibold">{measuresSummary.length} medida{measuresSummary.length !== 1 ? 's' : ''} de protección</p>
+                                                    </div>
+
+                                                    <div className="w-full max-w-3xl mt-8 space-y-4">
+                                                        {measuresSummary.map((medida: any, idx: number) => (
+                                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-l-4 border-l-secondary border border-slate-200 dark:border-zinc-800 shadow-md hover:shadow-lg transition-all">
+                                                                <div className="flex justify-between items-start mb-3">
+                                                                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider ${medida.estado === 'completa' ? 'bg-emerald-100 text-emerald-700' :
+                                                                        medida.estado === 'en proceso' ? 'bg-secondary/10 text-secondary' :
+                                                                            'bg-slate-100 dark:bg-zinc-800 text-slate-600'
+                                                                        }`}>
+                                                                        {medida.estado || 'Activa'}
+                                                                    </span>
+                                                                    {medida.created_at && (
+                                                                        <p className="text-xs text-slate-500">
+                                                                            {format(new Date(medida.created_at), "dd/MM/yyyy", { locale: es })}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                <h4 className="font-bold text-base mb-2 text-slate-800 dark:text-white">{medida.medida_propuesta}</h4>
+                                                                <p className="text-sm text-slate-500">
+                                                                    Responsables: {medida.responsables || 'Equipo técnico'}
+                                                                </p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Stage 6: Cese */}
+                                            {ingreso.cese ? (
+                                                <div className="relative flex flex-col items-center">
+                                                    <div className="z-10 size-12 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
+                                                        <span className="material-symbols-outlined">verified</span>
+                                                    </div>
+                                                    <div className="mt-4 text-center">
+                                                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">Cese</h3>
+                                                        <p className="text-sm text-slate-500 font-semibold">
+                                                            {ingreso.cese.fecha_cierre && format(new Date(ingreso.cese.fecha_cierre), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="mt-10 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 p-8 rounded-3xl w-full max-w-md text-center">
+                                                        <span className="material-symbols-outlined text-4xl text-green-500 mb-3">check_circle</span>
+                                                        <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Caso Cerrado</h4>
+                                                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                            {ingreso.cese.motivo_cese === 'restitucion_integral' && 'Restitución integral de derechos'}
+                                                            {ingreso.cese.motivo_cese === 'solicitud_medida_excepcional' && 'Derivado a SENAF'}
                                                         </p>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            ) : (
+                                                <div className="relative flex flex-col items-center">
+                                                    <div className="z-10 size-12 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
+                                                        <span className="material-symbols-outlined">lock_open</span>
+                                                    </div>
+                                                    <div className="mt-4 text-center">
+                                                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">Cese</h3>
+                                                        <p className="text-sm text-slate-500 font-semibold">En Proceso</p>
+                                                    </div>
 
-                                        {/* Stage 3: Intervenciones */}
-                                        {ingreso.intervenciones && ingreso.intervenciones.length > 0 && (
-                                            <div className="relative flex flex-col items-center">
-                                                <div className="z-10 size-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
-                                                    {ingreso.planificacion ? '3' : '2'}
-                                                </div>
-                                                <div className="mt-4 text-center">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white">Ampliación</h3>
-                                                    <p className="text-sm text-slate-500 font-semibold">
-                                                        {format(new Date(ingreso.intervenciones[ingreso.intervenciones.length - 1].fecha), "dd MMM", { locale: es })} - {format(new Date(ingreso.intervenciones[0].fecha), "dd MMM yyyy", { locale: es })}
-                                                    </p>
-                                                </div>
-
-                                                <div className="w-full flex justify-center gap-6 mt-8 flex-wrap">
-                                                    {ingreso.intervenciones.slice(0, 3).map((inter: any, idx: number) => (
-                                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm w-56 hover:border-primary cursor-pointer transition-all">
-                                                            <div className="flex items-center gap-3 mb-2">
-                                                                <span className="material-symbols-outlined text-blue-400">chat</span>
-                                                                <p className="text-sm font-bold">{inter.modalidad}</p>
-                                                            </div>
-                                                            <p className="text-xs text-slate-500">
-                                                                {inter.entrevistado_nombre} • {inter.vinculo}
-                                                            </p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Stage 4: Informe Síntesis */}
-                                        {ingreso.informe_sintesis && (
-                                            <div className="relative flex flex-col items-center">
-                                                <div className="z-10 size-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
-                                                    {(ingreso.planificacion ? 1 : 0) + (ingreso.intervenciones && ingreso.intervenciones.length > 0 ? 1 : 0) + 2}
-                                                </div>
-                                                <div className="mt-4 text-center">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white">Informe Síntesis</h3>
-                                                    <p className="text-sm text-slate-500 font-semibold">
-                                                        {ingreso.informe_sintesis.created_at && format(new Date(ingreso.informe_sintesis.created_at), "dd 'de' MMMM 'de' yyyy", { locale: es })}
-                                                    </p>
-                                                </div>
-
-                                                <div className="w-full max-w-2xl mt-8">
-                                                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-6 rounded-2xl">
-                                                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-4">Diagnóstico de Situación</p>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {ingreso.vulneraciones?.slice(0, 3).map((v: any, i: number) => (
-                                                                <span key={i} className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full text-sm font-medium border border-amber-200 dark:border-amber-800 flex items-center gap-2">
-                                                                    <span className="material-symbols-outlined text-[18px] text-amber-500">warning</span>
-                                                                    {v.catalogo_derechos?.categoria}
-                                                                </span>
-                                                            ))}
-                                                        </div>
+                                                    <div className="mt-10 bg-white dark:bg-zinc-900 border-2 border-dashed border-slate-300 dark:border-slate-700 p-8 rounded-3xl w-full max-w-md text-center">
+                                                        <span className="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-3">pending</span>
+                                                        <h4 className="text-lg font-bold text-slate-400 dark:text-slate-500">Cierre Pendiente</h4>
+                                                        <p className="text-sm text-slate-400 dark:text-slate-500 italic mt-2">
+                                                            El caso permanece activo. Acceda a Definición de Medidas para iniciar el cierre.
+                                                        </p>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
-
-                                        {/* Stage 5: Definición de Medidas */}
-                                        {measuresSummary && measuresSummary.length > 0 && (
-                                            <div className="relative flex flex-col items-center">
-                                                <div className="z-10 size-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
-                                                    {(ingreso.planificacion ? 1 : 0) + (ingreso.intervenciones && ingreso.intervenciones.length > 0 ? 1 : 0) + (ingreso.informe_sintesis ? 1 : 0) + 2}
-                                                </div>
-                                                <div className="mt-4 text-center">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white">Definición de Medidas</h3>
-                                                    <p className="text-sm text-slate-500 font-semibold">{measuresSummary.length} medida{measuresSummary.length !== 1 ? 's' : ''} de protección</p>
-                                                </div>
-
-                                                <div className="w-full max-w-3xl mt-8 space-y-4">
-                                                    {measuresSummary.map((medida: any, idx: number) => (
-                                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border-l-4 border-l-primary border border-slate-200 dark:border-zinc-800 shadow-md hover:shadow-lg transition-all">
-                                                            <div className="flex justify-between items-start mb-3">
-                                                                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider ${medida.estado === 'completa' ? 'bg-emerald-100 text-emerald-600' :
-                                                                    medida.estado === 'en proceso' ? 'bg-primary/10 text-primary' :
-                                                                        'bg-slate-100 dark:bg-zinc-800 text-slate-500'
-                                                                    }`}>
-                                                                    {medida.estado || 'Activa'}
-                                                                </span>
-                                                                {medida.created_at && (
-                                                                    <p className="text-xs text-slate-400">
-                                                                        {format(new Date(medida.created_at), "dd/MM/yyyy", { locale: es })}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                            <h4 className="font-bold text-base mb-2 text-slate-800 dark:text-white">{medida.medida_propuesta}</h4>
-                                                            <p className="text-sm text-slate-500">
-                                                                Responsables: {medida.responsables || 'Equipo técnico'}
-                                                            </p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Stage 6: Cese */}
-                                        {ingreso.cese ? (
-                                            <div className="relative flex flex-col items-center">
-                                                <div className="z-10 size-12 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
-                                                    <span className="material-symbols-outlined">verified</span>
-                                                </div>
-                                                <div className="mt-4 text-center">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white">Cese</h3>
-                                                    <p className="text-sm text-slate-500 font-semibold">
-                                                        {ingreso.cese.fecha_cierre && format(new Date(ingreso.cese.fecha_cierre), "dd 'de' MMMM 'de' yyyy", { locale: es })}
-                                                    </p>
-                                                </div>
-
-                                                <div className="mt-10 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 p-8 rounded-3xl w-full max-w-md text-center">
-                                                    <span className="material-symbols-outlined text-4xl text-green-500 mb-3">check_circle</span>
-                                                    <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Caso Cerrado</h4>
-                                                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                                                        {ingreso.cese.motivo_cese === 'restitucion_integral' && 'Restitución integral de derechos'}
-                                                        {ingreso.cese.motivo_cese === 'solicitud_medida_excepcional' && 'Derivado a SENAF'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="relative flex flex-col items-center">
-                                                <div className="z-10 size-12 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-white font-bold text-lg ring-8 ring-white dark:ring-zinc-900 shadow-lg">
-                                                    <span className="material-symbols-outlined">lock_open</span>
-                                                </div>
-                                                <div className="mt-4 text-center">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white">Cese</h3>
-                                                    <p className="text-sm text-slate-500 font-semibold">En Proceso</p>
-                                                </div>
-
-                                                <div className="mt-10 bg-white dark:bg-zinc-900 border-2 border-dashed border-slate-300 dark:border-slate-700 p-8 rounded-3xl w-full max-w-md text-center">
-                                                    <span className="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-3">pending</span>
-                                                    <h4 className="text-lg font-bold text-slate-400 dark:text-slate-500">Cierre Pendiente</h4>
-                                                    <p className="text-sm text-slate-400 dark:text-slate-500 italic mt-2">
-                                                        El caso permanece activo. Acceda a Definición de Medidas para iniciar el cierre.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Preview Modal */}
-            {showPreview && selectedDoc && (
-                <div className="fixed inset-0 z-[100] bg-[#112121]/90 backdrop-blur-md flex items-center justify-center p-4 md:p-10 animate-in fade-in zoom-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 w-full max-w-6xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/10">
-                        <div className="px-8 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                    <span className="material-symbols-outlined">
-                                        {getFileType(selectedDoc.url, selectedDoc.nombre) === 'pdf' ? 'picture_as_pdf' :
-                                            getFileType(selectedDoc.url, selectedDoc.nombre) === 'image' ? 'image' : 'description'}
-                                    </span>
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-800 dark:text-white leading-none">{selectedDoc.nombre}</h3>
-                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{selectedDoc.subcategoria || 'Documentación'}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <a
-                                    href={selectedDoc.url}
-                                    download={selectedDoc.nombre}
-                                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-gray-300 text-xs font-bold hover:bg-primary hover:text-white transition-all flex items-center gap-2"
-                                >
-                                    <span className="material-symbols-outlined text-sm">download</span>
-                                    Descargar
-                                </a>
-                                <button
-                                    onClick={() => setShowPreview(false)}
-                                    className="size-10 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-all text-slate-400 hover:text-rose-500"
-                                >
-                                    <span className="material-symbols-outlined">close</span>
-                                </button>
-                            </div>
+                            )}
                         </div>
+                    </div>
 
-                        <div className="flex-1 bg-slate-50 dark:bg-[#081111] p-4 flex items-center justify-center overflow-auto">
-                            {getFileType(selectedDoc.url, selectedDoc.nombre) === 'image' ? (
-                                <img
-                                    src={selectedDoc.url}
-                                    alt={selectedDoc.nombre}
-                                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                                />
-                            ) : getFileType(selectedDoc.url, selectedDoc.nombre) === 'pdf' ? (
-                                <iframe
-                                    src={`${selectedDoc.url}#toolbar=0`}
-                                    className="w-full h-full rounded-lg shadow-lg bg-white"
-                                    title="PDF Preview"
-                                />
-                            ) : (
-                                <div className="text-center space-y-4 max-w-sm">
-                                    <div className="size-24 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-300 mx-auto">
-                                        <span className="material-symbols-outlined text-5xl">visibility_off</span>
+                {/* Preview Modal */}
+                {showPreview && selectedDoc && (
+                    <div className="fixed inset-0 z-[100] bg-[#112121]/90 backdrop-blur-md flex items-center justify-center p-4 md:p-10 animate-in fade-in zoom-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 w-full max-w-6xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/10">
+                            <div className="px-8 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-4">
+                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <span className="material-symbols-outlined">
+                                            {getFileType(selectedDoc.url, selectedDoc.nombre) === 'pdf' ? 'picture_as_pdf' :
+                                                getFileType(selectedDoc.url, selectedDoc.nombre) === 'image' ? 'image' : 'description'}
+                                        </span>
                                     </div>
-                                    <h4 className="font-bold text-slate-700 dark:text-gray-200">Vista previa no disponible</h4>
-                                    <p className="text-sm text-slate-500">Este tipo de archivo (WORD/EXCEL) no se puede previsualizar directamente en el navegador por razones de seguridad.</p>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800 dark:text-white leading-none">{selectedDoc.nombre}</h3>
+                                        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{selectedDoc.subcategoria || 'Documentación'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
                                     <a
                                         href={selectedDoc.url}
                                         download={selectedDoc.nombre}
-                                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-[#112121] font-black rounded-2xl shadow-lg shadow-primary/20"
+                                        className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-gray-300 text-xs font-bold hover:bg-primary hover:text-white transition-all flex items-center gap-2"
                                     >
-                                        DESCARGAR PARA VER
+                                        <span className="material-symbols-outlined text-sm">download</span>
+                                        Descargar
                                     </a>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-            {isResponsablesModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isSavingResponsables && setIsResponsablesModalOpen(false)}></div>
-                    <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-lg max-h-[85vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
-                        <div className="px-8 py-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Responsables del Caso</h2>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Profesionales a cargo de este ingreso</p>
-                            </div>
-                            <button onClick={() => !isSavingResponsables && setIsResponsablesModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                                <span className="material-symbols-outlined text-slate-500">close</span>
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
-                            <input
-                                type="text"
-                                placeholder="Buscar profesional..."
-                                value={busquedaResponsable}
-                                onChange={e => setBusquedaResponsable(e.target.value)}
-                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-primary"
-                            />
-                            <div className="space-y-2">
-                                {usuariosDisponibles
-                                    .filter(u =>
-                                        responsableIdsSeleccionados.includes(u.id) ||
-                                        u.nombre_completo.toLowerCase().includes(busquedaResponsable.toLowerCase())
-                                    )
-                                    .sort((a, b) => {
-                                        const aS = responsableIdsSeleccionados.includes(a.id);
-                                        const bS = responsableIdsSeleccionados.includes(b.id);
-                                        return aS === bS ? 0 : aS ? -1 : 1;
-                                    })
-                                    .map(u => {
-                                        const isSel = responsableIdsSeleccionados.includes(u.id);
-                                        return (
-                                            <div
-                                                key={u.id}
-                                                onClick={() => handleToggleResponsable(u.id)}
-                                                className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer text-sm ${isSel ? 'border-primary bg-primary/5' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
-                                            >
-                                                <span className="font-bold">{u.nombre_completo}</span>
-                                                <span className={`material-symbols-outlined text-lg ${isSel ? 'text-primary' : 'text-slate-300'}`}>
-                                                    {isSel ? 'check_circle' : 'add_circle'}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                            </div>
-                        </div>
-                        <div className="p-8 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
-                            <button onClick={() => setIsResponsablesModalOpen(false)} disabled={isSavingResponsables} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800">
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleSaveResponsables}
-                                disabled={isSavingResponsables}
-                                className="bg-primary hover:bg-primary/90 text-white px-10 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
-                            >
-                                {isSavingResponsables ? 'Guardando...' : 'Guardar Responsables'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {isOrigenModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isSavingOrigen && setIsOrigenModalOpen(false)}></div>
-                    <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-2xl max-h-[90vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
-                        <div className="px-8 py-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Agregar Origen de Consulta</h2>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Otra institución/persona reclama sobre este mismo caso activo</p>
-                            </div>
-                            <button onClick={() => !isSavingOrigen && setIsOrigenModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                                <span className="material-symbols-outlined text-slate-500">close</span>
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Origen de la Consulta</label>
-                                    <select
-                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
-                                        value={newOrigen.origen_consulta}
-                                        onChange={(e) => setNewOrigen({ ...newOrigen, origen_consulta: e.target.value })}
+                                    <button
+                                        onClick={() => setShowPreview(false)}
+                                        className="size-10 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-all text-slate-400 hover:text-rose-500"
                                     >
-                                        <option value="">Seleccionar origen...</option>
-                                        <option value="Inst. Educativa">Inst. Educativa</option>
-                                        <option value="Inst. de Salud">Inst. de Salud</option>
-                                        <option value="Familia">Familia</option>
-                                        <option value="Niño, Niña o Adolescente">Niño, Niña o Adolescente</option>
-                                        <option value="Persona de la comunidad">Persona de la comunidad</option>
-                                        <option value="Otro">Otro</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Vía de Ingreso</label>
-                                    <select
-                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
-                                        value={newOrigen.via_ingreso}
-                                        onChange={(e) => setNewOrigen({ ...newOrigen, via_ingreso: e.target.value })}
-                                    >
-                                        <option value="">Seleccione vía...</option>
-                                        <option value="Oficio Judicial">Oficio Judicial</option>
-                                        <option value="Demanda Espontánea">Demanda Espontánea / Presencial</option>
-                                        <option value="Línea 102">Línea 102 / Telefónica</option>
-                                        <option value="Institución">Derivación Institucional</option>
-                                        <option value="Otro">Otro</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
-                                    <input
-                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
-                                        placeholder="Ej: SAC 12345/2024"
-                                        value={newOrigen.oficio_numero}
-                                        onChange={(e) => setNewOrigen({ ...newOrigen, oficio_numero: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Nombre del Solicitante / Institución</label>
-                                    <input
-                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
-                                        placeholder="Nombre y Apellido / Institución"
-                                        value={newOrigen.nombre_solicitante}
-                                        onChange={(e) => setNewOrigen({ ...newOrigen, nombre_solicitante: e.target.value })}
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Cargo / Parentesco</label>
-                                    <input
-                                        className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
-                                        placeholder="Ej: Tía, Director Escuela X, Juez..."
-                                        value={newOrigen.cargo_solicitante}
-                                        onChange={(e) => setNewOrigen({ ...newOrigen, cargo_solicitante: e.target.value })}
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Observaciones</label>
-                                    <textarea
-                                        className="w-full h-24 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 py-3 font-medium"
-                                        placeholder="Contexto adicional de este nuevo reclamo sobre el caso..."
-                                        value={newOrigen.observaciones}
-                                        onChange={(e) => setNewOrigen({ ...newOrigen, observaciones: e.target.value })}
-                                    />
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="px-8 py-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-4">
-                            <button onClick={() => setIsOrigenModalOpen(false)} disabled={isSavingOrigen} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800">
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleSaveOrigen}
-                                disabled={isSavingOrigen}
-                                className="bg-primary hover:bg-primary/90 text-white px-10 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
-                            >
-                                {isSavingOrigen ? 'Guardando...' : 'Guardar Origen'}
-                            </button>
+                            <div className="flex-1 bg-slate-50 dark:bg-[#081111] p-4 flex items-center justify-center overflow-auto">
+                                {getFileType(selectedDoc.url, selectedDoc.nombre) === 'image' ? (
+                                    <img
+                                        src={selectedDoc.url}
+                                        alt={selectedDoc.nombre}
+                                        className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                                    />
+                                ) : getFileType(selectedDoc.url, selectedDoc.nombre) === 'pdf' ? (
+                                    <iframe
+                                        src={`${selectedDoc.url}#toolbar=0`}
+                                        className="w-full h-full rounded-lg shadow-lg bg-white"
+                                        title="PDF Preview"
+                                    />
+                                ) : (
+                                    <div className="text-center space-y-4 max-w-sm">
+                                        <div className="size-24 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-300 mx-auto">
+                                            <span className="material-symbols-outlined text-5xl">visibility_off</span>
+                                        </div>
+                                        <h4 className="font-bold text-slate-700 dark:text-gray-200">Vista previa no disponible</h4>
+                                        <p className="text-sm text-slate-500">Este tipo de archivo (WORD/EXCEL) no se puede previsualizar directamente en el navegador por razones de seguridad.</p>
+                                        <a
+                                            href={selectedDoc.url}
+                                            download={selectedDoc.nombre}
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20"
+                                        >
+                                            DESCARGAR PARA VER
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {isUploadModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isUploading && setIsUploadModalOpen(false)}></div>
-                    <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-4xl max-h-[90vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="px-10 py-8 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Cargar Documentación</h2>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Legajo: {ingreso.expediente_numero}</p>
+                )}
+                {isResponsablesModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isSavingResponsables && setIsResponsablesModalOpen(false)}></div>
+                        <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-lg max-h-[85vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
+                            <div className="px-8 py-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Responsables del Caso</h2>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Profesionales a cargo de este ingreso</p>
+                                </div>
+                                <button onClick={() => !isSavingResponsables && setIsResponsablesModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                    <span className="material-symbols-outlined text-slate-500">close</span>
+                                </button>
                             </div>
-                            <button onClick={() => !isUploading && setIsUploadModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                                <span className="material-symbols-outlined text-slate-500">close</span>
-                            </button>
+                            <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
+                                <input
+                                    type="text"
+                                    placeholder="Buscar profesional..."
+                                    value={busquedaResponsable}
+                                    onChange={e => setBusquedaResponsable(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                                />
+                                <div className="space-y-2">
+                                    {usuariosDisponibles
+                                        .filter(u =>
+                                            responsableIdsSeleccionados.includes(u.id) ||
+                                            u.nombre_completo.toLowerCase().includes(busquedaResponsable.toLowerCase())
+                                        )
+                                        .sort((a, b) => {
+                                            const aS = responsableIdsSeleccionados.includes(a.id);
+                                            const bS = responsableIdsSeleccionados.includes(b.id);
+                                            return aS === bS ? 0 : aS ? -1 : 1;
+                                        })
+                                        .map(u => {
+                                            const isSel = responsableIdsSeleccionados.includes(u.id);
+                                            return (
+                                                <div
+                                                    key={u.id}
+                                                    onClick={() => handleToggleResponsable(u.id)}
+                                                    className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer text-sm ${isSel ? 'border-primary bg-primary/5' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
+                                                >
+                                                    <span className="font-bold">{u.nombre_completo}</span>
+                                                    <span className={`material-symbols-outlined text-lg ${isSel ? 'text-primary' : 'text-slate-300'}`}>
+                                                        {isSel ? 'check_circle' : 'add_circle'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                            </div>
+                            <div className="p-8 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+                                <button onClick={() => setIsResponsablesModalOpen(false)} disabled={isSavingResponsables} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800">
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveResponsables}
+                                    disabled={isSavingResponsables}
+                                    className="bg-primary hover:bg-primary/90 text-white px-10 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                                >
+                                    {isSavingResponsables ? 'Guardando...' : 'Guardar Responsables'}
+                                </button>
+                            </div>
                         </div>
+                    </div>
+                )}
 
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
-                            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                                        <span className="material-symbols-outlined text-3xl">upload_file</span>
+                {isOrigenModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isSavingOrigen && setIsOrigenModalOpen(false)}></div>
+                        <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-2xl max-h-[90vh] rounded-[32px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
+                            <div className="px-8 py-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Agregar Origen de Consulta</h2>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Otra institución/persona reclama sobre este mismo caso activo</p>
+                                </div>
+                                <button onClick={() => !isSavingOrigen && setIsOrigenModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                    <span className="material-symbols-outlined text-slate-500">close</span>
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Origen de la Consulta</label>
+                                        <select
+                                            className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                            value={newOrigen.origen_consulta}
+                                            onChange={(e) => setNewOrigen({ ...newOrigen, origen_consulta: e.target.value })}
+                                        >
+                                            <option value="">Seleccionar origen...</option>
+                                            <option value="Inst. Educativa">Inst. Educativa</option>
+                                            <option value="Inst. de Salud">Inst. de Salud</option>
+                                            <option value="Familia">Familia</option>
+                                            <option value="Niño, Niña o Adolescente">Niño, Niña o Adolescente</option>
+                                            <option value="Persona de la comunidad">Persona de la comunidad</option>
+                                            <option value="Otro">Otro</option>
+                                        </select>
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-slate-700 dark:text-white">Seleccionar Archivos</h4>
-                                        <p className="text-xs text-slate-500">Imágenes o PDFs (Máx. 10MB)</p>
+                                        <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Vía de Ingreso</label>
+                                        <select
+                                            className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary font-bold text-sm px-4 outline-none"
+                                            value={newOrigen.via_ingreso}
+                                            onChange={(e) => setNewOrigen({ ...newOrigen, via_ingreso: e.target.value })}
+                                        >
+                                            <option value="">Seleccione vía...</option>
+                                            <option value="Oficio Judicial">Oficio Judicial</option>
+                                            <option value="Demanda Espontánea">Demanda Espontánea / Presencial</option>
+                                            <option value="Línea 102">Línea 102 / Telefónica</option>
+                                            <option value="Institución">Derivación Institucional</option>
+                                            <option value="Otro">Otro</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Nro de Oficio / Expediente Externo</label>
+                                        <input
+                                            className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                            placeholder="Ej: SAC 12345/2024"
+                                            value={newOrigen.oficio_numero}
+                                            onChange={(e) => setNewOrigen({ ...newOrigen, oficio_numero: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Nombre del Solicitante / Institución</label>
+                                        <input
+                                            className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                            placeholder="Nombre y Apellido / Institución"
+                                            value={newOrigen.nombre_solicitante}
+                                            onChange={(e) => setNewOrigen({ ...newOrigen, nombre_solicitante: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Cargo / Parentesco</label>
+                                        <input
+                                            className="w-full h-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 font-medium"
+                                            placeholder="Ej: Tía, Director Escuela X, Juez..."
+                                            value={newOrigen.cargo_solicitante}
+                                            onChange={(e) => setNewOrigen({ ...newOrigen, cargo_solicitante: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Observaciones</label>
+                                        <textarea
+                                            className="w-full h-24 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary px-4 py-3 font-medium"
+                                            placeholder="Contexto adicional de este nuevo reclamo sobre el caso..."
+                                            value={newOrigen.observaciones}
+                                            onChange={(e) => setNewOrigen({ ...newOrigen, observaciones: e.target.value })}
+                                        />
                                     </div>
                                 </div>
-                                <label className="px-6 py-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all cursor-pointer shadow-sm">
-                                    + Buscar en Equipo
-                                    <input
-                                        type="file"
-                                        multiple
-                                        className="hidden"
-                                        accept="image/*,application/pdf"
-                                        onChange={handleFileSelection}
-                                    />
-                                </label>
                             </div>
 
-                            {pendingFiles.length > 0 ? (
-                                <div className="space-y-4">
-                                    {pendingFiles.map((doc, idx) => (
-                                        <div key={idx} className="flex flex-col md:flex-row gap-6 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm animate-in slide-in-from-left-4 duration-300 relative group">
-                                            <div className="flex-1 space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nombre del Archivo</label>
-                                                <input
-                                                    className="w-full h-12 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20"
-                                                    value={doc.nombre}
-                                                    onChange={(e) => {
-                                                        const docs = [...pendingFiles];
-                                                        docs[idx].nombre = e.target.value;
-                                                        setPendingFiles(docs);
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="w-full md:w-64 space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clasificación</label>
-                                                <select
-                                                    className="w-full h-12 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
-                                                    value={doc.subcategoria}
-                                                    onChange={(e) => {
-                                                        const docs = [...pendingFiles];
-                                                        docs[idx].subcategoria = e.target.value;
-                                                        setPendingFiles(docs);
-                                                    }}
-                                                >
-                                                    <option>Acta de Entrevista</option>
-                                                    <option>Informe Técnico</option>
-                                                    <option>Copia de DNI</option>
-                                                    <option>Certificado Médico</option>
-                                                    <option>Oficio Judicial</option>
-                                                    <option>Ficha de Solicitud de Intervención</option>
-                                                    <option>Otro</option>
-                                                </select>
-                                            </div>
-                                            <button
-                                                onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
-                                                className="md:mt-6 p-3 text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
-                                            >
-                                                <span className="material-symbols-outlined">delete</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-20 opacity-40">
-                                    <span className="material-symbols-outlined text-6xl mb-4">cloud_upload</span>
-                                    <p className="text-sm font-bold uppercase tracking-widest text-slate-400">No hay archivos seleccionados</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-10 py-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-4">
-                            <button
-                                onClick={() => !isUploading && setIsUploadModalOpen(false)}
-                                className="px-6 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleFileUpload}
-                                disabled={isUploading || pendingFiles.length === 0}
-                                className="px-10 h-14 bg-primary text-[#112121] text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-3"
-                            >
-                                {isUploading ? (
-                                    <>
-                                        <div className="animate-spin size-4 border-2 border-[#112121] border-t-transparent rounded-full"></div>
-                                        Subiendo...
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined text-lg">cloud_done</span>
-                                        Finalizar Subida
-                                    </>
-                                )}
-                            </button>
+                            <div className="px-8 py-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-4">
+                                <button onClick={() => setIsOrigenModalOpen(false)} disabled={isSavingOrigen} className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800">
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveOrigen}
+                                    disabled={isSavingOrigen}
+                                    className="bg-primary hover:bg-primary/90 text-white px-10 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                                >
+                                    {isSavingOrigen ? 'Guardando...' : 'Guardar Origen'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            <EmailNotificationModal
-                isOpen={isEmailModalOpen}
-                onClose={() => setIsEmailModalOpen(false)}
-                ingreso={ingreso}
-            />
+                {isUploadModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => !isUploading && setIsUploadModalOpen(false)}></div>
+                        <div className="bg-[#fcfdfe] dark:bg-[#0f172a] w-full max-w-4xl max-h-[90vh] rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative z-10 border border-white/20 animate-in zoom-in-95 duration-200">
+                            {/* Header */}
+                            <div className="px-10 py-8 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Cargar Documentación</h2>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Legajo: {ingreso.expediente_numero}</p>
+                                </div>
+                                <button onClick={() => !isUploading && setIsUploadModalOpen(false)} className="size-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                                    <span className="material-symbols-outlined text-slate-500">close</span>
+                                </button>
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                            <span className="material-symbols-outlined text-3xl">upload_file</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-700 dark:text-white">Seleccionar Archivos</h4>
+                                            <p className="text-xs text-slate-500">Imágenes o PDFs (Máx. 10MB)</p>
+                                        </div>
+                                    </div>
+                                    <label className="px-6 py-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary transition-all cursor-pointer shadow-sm">
+                                        + Buscar en Equipo
+                                        <input
+                                            type="file"
+                                            multiple
+                                            className="hidden"
+                                            accept="image/*,application/pdf"
+                                            onChange={handleFileSelection}
+                                        />
+                                    </label>
+                                </div>
+
+                                {pendingFiles.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {pendingFiles.map((doc, idx) => (
+                                            <div key={idx} className="flex flex-col md:flex-row gap-6 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm animate-in slide-in-from-left-4 duration-300 relative group">
+                                                <div className="flex-1 space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nombre del Archivo</label>
+                                                    <input
+                                                        className="w-full h-12 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20"
+                                                        value={doc.nombre}
+                                                        onChange={(e) => {
+                                                            const docs = [...pendingFiles];
+                                                            docs[idx].nombre = e.target.value;
+                                                            setPendingFiles(docs);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="w-full md:w-64 space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clasificación</label>
+                                                    <select
+                                                        className="w-full h-12 px-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                                                        value={doc.subcategoria}
+                                                        onChange={(e) => {
+                                                            const docs = [...pendingFiles];
+                                                            docs[idx].subcategoria = e.target.value;
+                                                            setPendingFiles(docs);
+                                                        }}
+                                                    >
+                                                        <option>Acta de Entrevista</option>
+                                                        <option>Informe Técnico</option>
+                                                        <option>Copia de DNI</option>
+                                                        <option>Certificado Médico</option>
+                                                        <option>Oficio Judicial</option>
+                                                        <option>Ficha de Solicitud de Intervención</option>
+                                                        <option>Otro</option>
+                                                    </select>
+                                                </div>
+                                                <button
+                                                    onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
+                                                    className="md:mt-6 p-3 text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
+                                                >
+                                                    <span className="material-symbols-outlined">delete</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-20 opacity-40">
+                                        <span className="material-symbols-outlined text-6xl mb-4">cloud_upload</span>
+                                        <p className="text-sm font-bold uppercase tracking-widest text-slate-400">No hay archivos seleccionados</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-10 py-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-4">
+                                <button
+                                    onClick={() => !isUploading && setIsUploadModalOpen(false)}
+                                    className="px-6 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleFileUpload}
+                                    disabled={isUploading || pendingFiles.length === 0}
+                                    className="px-10 h-14 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-3"
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <div className="animate-spin size-4 border-2 border-[#112121] border-t-transparent rounded-full"></div>
+                                            Subiendo...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-symbols-outlined text-lg">cloud_done</span>
+                                            Finalizar Subida
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <EmailNotificationModal
+                    isOpen={isEmailModalOpen}
+                    onClose={() => setIsEmailModalOpen(false)}
+                    ingreso={ingreso}
+                />
+            </div>
         </main>
     );
 };

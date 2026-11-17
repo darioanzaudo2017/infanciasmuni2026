@@ -231,7 +231,6 @@ const ActaCompromiso = () => {
                         <div className="flex flex-col gap-2 print:hidden">
                             <Breadcrumbs
                                 items={[
-                                    { label: 'Inicio', path: '/' },
                                     { label: 'Expedientes', path: '/expedientes' },
                                     { label: 'Historial de Ingresos', path: `/expedientes/${expedienteId}/ingresos` },
                                     { label: 'Detalle de Legajo', path: `/expedientes/${expedienteId}/ingresos/${ingresoId}` },

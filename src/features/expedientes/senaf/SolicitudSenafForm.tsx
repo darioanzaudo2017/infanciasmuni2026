@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
+import Button from '../../../components/ui/Button';
 import { generateSenafWord } from './generateSenafWord';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -419,7 +420,6 @@ const SolicitudSenafForm = () => {
             <main className="max-w-[1200px] mx-auto py-6 sm:py-10 px-4 sm:px-6">
                 <Breadcrumbs
                     items={[
-                        { label: 'Inicio', path: '/' },
                         { label: 'Expedientes', path: '/expedientes' },
                         { label: 'Detalle', path: `/expedientes/${expedienteId}/ingresos/${ingresoId}` },
                         { label: 'Solicitud SENAF', active: true }
@@ -529,43 +529,51 @@ const SolicitudSenafForm = () => {
                             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
                                 {!isViewOnly && userRole !== 'Administrador' && (
                                     <>
-                                        <button
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
                                             onClick={() => handleAction('save')}
                                             disabled={saving}
-                                            className="w-full sm:w-auto justify-center px-4 sm:px-6 py-2.5 sm:py-3 text-gray-500 font-bold text-xs sm:text-sm hover:text-gray-700 text-center"
+                                            className="w-full sm:w-auto text-gray-500 hover:text-gray-700"
                                         >
                                             Guardar Borrador
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
                                             onClick={() => handleAction('elevate')}
                                             disabled={saving || (userRole === 'Profesional' && !formData.documento_url)}
-                                            className={`w-full sm:w-auto justify-center px-6 sm:px-10 py-2.5 sm:py-3 bg-primary text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-primary/20 hover:brightness-110 transition-all flex items-center gap-2 ${(userRole === 'Profesional' && !formData.documento_url) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            className="w-full sm:w-auto gap-2"
                                             title={userRole === 'Profesional' && !formData.documento_url ? 'Debe subir el archivo firmado para elevar' : ''}
                                         >
                                             <span className="material-symbols-outlined text-lg">send</span>
                                             {userRole === 'Profesional' ? 'Elevar a Coordinación' : 'Elevar a Administración'}
-                                        </button>
+                                        </Button>
                                     </>
                                 )}
 
                                 {((userRole === 'Coordinador' && status === 'Pendiente Coordinación') || (userRole === 'Administrador' && status === 'Pendiente Administración')) && (
                                     <>
-                                        <button
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => setObservationModal(true)}
                                             disabled={saving}
-                                            className="w-full sm:w-auto justify-center px-4 sm:px-6 py-2.5 sm:py-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs sm:text-sm hover:bg-red-100 transition-all"
+                                            className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50"
                                         >
                                             Observar
-                                        </button>
+                                        </Button>
                                         {userRole === 'Administrador' && (
-                                            <button
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
                                                 onClick={() => handleAction('approve')}
                                                 disabled={saving}
-                                                className="w-full sm:w-auto justify-center px-6 sm:px-10 py-2.5 sm:py-3 bg-green-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-green-600/20 hover:bg-green-700 transition-all flex items-center gap-2"
+                                                className="w-full sm:w-auto gap-2 bg-emerald-600 hover:bg-emerald-700"
                                             >
                                                 <span className="material-symbols-outlined text-lg">send</span>
                                                 Aprobar y Enviar
-                                            </button>
+                                            </Button>
                                         )}
                                     </>
                                 )}

@@ -142,7 +142,6 @@ const NuevaRecepcion: React.FC = () => {
         <main className="max-w-[960px] mx-auto px-4 py-8">
             <Breadcrumbs
                 items={[
-                    { label: 'Inicio', path: '/' },
                     { label: 'Expedientes', path: '/expedientes' },
                     { label: 'Nueva Recepción', active: true }
                 ]}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
     Search,
     Plus,
@@ -38,6 +38,15 @@ interface ExpedienteRow {
 
 const PAGE_SIZE = 20;
 
+// Solo las columnas que la pantalla muestra (las de ExpedienteRow). Pedir '*' trae también
+// grupo_familiar_texto / referentes_texto / *_normalizado, que sirven únicamente para buscar y
+// obligan a recalcular los familiares de TODOS los expedientes visibles antes de paginar
+// (~2x más lento para el Administrador). La búsqueda filtra por esas columnas sin necesidad de seleccionarlas.
+const COLUMNAS_LISTA =
+    'id,numero,fecha_apertura,activo,anulado,motivo_anulacion,anulado_at,' +
+    'nino_nombre,nino_apellido,nino_dni,ultimo_profesional,spd_nombre,' +
+    'ultima_seccion,ultima_seccion_fecha,creado_por_nombre,creado_por_fecha';
+
 // Saca acentos/diacríticos para que la búsqueda coincida contra las columnas
 // ya normalizadas en vw_expedientes_list (unaccent aplicado en la vista)
 const normalizarTexto = (texto: string) =>
@@ -46,12 +55,19 @@ const normalizarTexto = (texto: string) =>
         .replace(/[̀-ͯ]/g, '')
         .toLowerCase();
 
+const VALID_ESTADOS = ['Activos', 'Cerrados', 'Todos', 'Anulados'];
+
 const ExpedientesList = () => {
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const urlEstado = searchParams.get('estado');
     const [expedientes, setExpedientes] = useState<ExpedienteRow[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
-    const [statusFilter, setStatusFilter] = useState('Activos');
+    const [statusFilter, setStatusFilter] = useState(
+        urlEstado && VALID_ESTADOS.includes(urlEstado) ? urlEstado : 'Activos'
+    );
     const [userRole, setUserRole] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
@@ -70,16 +86,29 @@ const ExpedientesList = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Sincronizar estado cuando cambia la URL
+    useEffect(() => {
+        if (urlEstado && VALID_ESTADOS.includes(urlEstado) && urlEstado !== statusFilter) {
+            setStatusFilter(urlEstado);
+        }
+    }, [urlEstado]);
+
     // Volver a la página 1 cuando cambian los filtros/búsqueda
     useEffect(() => {
         setPage(1);
     }, [statusFilter, debouncedSearchTerm]);
 
-    const fetchExpedientes = async () => {
+    const fetchExpedientes = async (forzarConteo = false) => {
         setLoading(true);
         setFetchError(null);
         try {
-            let query = supabase.from('vw_expedientes_list').select('*', { count: 'exact' });
+            // El conteo exacto repite el trabajo de toda la vista: se pide solo al entrar a la página 1
+            // (que es donde se aterriza al cambiar filtro/búsqueda) o cuando cambia el total (anular).
+            // Al paginar (página 2 en adelante) se reutiliza el total ya conocido.
+            const pedirConteo = forzarConteo || page === 1;
+            let query = supabase
+                .from('vw_expedientes_list')
+                .select(COLUMNAS_LISTA, pedirConteo ? { count: 'exact' } : undefined);
 
             if (statusFilter === 'Activos') query = query.eq('activo', true).eq('anulado', false);
             if (statusFilter === 'Cerrados') query = query.eq('activo', false).eq('anulado', false);
@@ -98,7 +127,7 @@ const ExpedientesList = () => {
             const { data, count, error } = await query;
             if (error) throw error;
             setExpedientes((data || []) as any);
-            setTotalCount(count || 0);
+            if (pedirConteo) setTotalCount(count ?? 0);
         } catch (error) {
             console.error('Error fetching expedientes:', error);
             setExpedientes([]);
@@ -157,7 +186,7 @@ const ExpedientesList = () => {
             if (error) throw error;
             setAnulando(null);
             setMotivoAnulacion('');
-            void fetchExpedientes();
+            void fetchExpedientes(true); // el total cambió: se vuelve a contar
         } catch (err: any) {
             alert('Error al anular: ' + err.message);
         } finally {
@@ -178,7 +207,6 @@ const ExpedientesList = () => {
         <div className="space-y-6 text-slate-800">
             <Breadcrumbs
                 items={[
-                    { label: 'Inicio', path: '/' },
                     { label: 'Expedientes', active: true }
                 ]}
             />
@@ -215,8 +243,17 @@ const ExpedientesList = () => {
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                     <select
+                        aria-label="Filtrar por estado"
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setStatusFilter(val);
+                            setSearchParams(prev => {
+                                const next = new URLSearchParams(prev);
+                                next.set('estado', val);
+                                return next;
+                            });
+                        }}
                         className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 text-slate-700"
                     >
                         <option value="Activos">Activos</option>
@@ -235,7 +272,135 @@ const ExpedientesList = () => {
             )}
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Vista Mobile: Tarjetas (<640px) */}
+                <div className="sm:hidden divide-y divide-slate-100">
+                    {loading ? (
+                        <div className="p-8 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                            <span className="text-slate-400 text-xs font-medium">Cargando expedientes...</span>
+                        </div>
+                    ) : expedientes.length === 0 ? (
+                        <div className="p-8 text-center flex flex-col items-center gap-2">
+                            <span className="material-symbols-outlined text-3xl text-slate-300">search_off</span>
+                            <p className="text-slate-500 text-xs font-medium">No se encontraron expedientes</p>
+                        </div>
+                    ) : (
+                        expedientes.map((row: ExpedienteRow) => (
+                            <div
+                                key={row.id}
+                                onClick={() => {
+                                    if (!row.anulado) {
+                                        navigate(`/expedientes/${row.id}/ingresos`);
+                                    }
+                                }}
+                                className={`p-4 flex flex-col gap-3 transition-colors ${!row.anulado ? 'cursor-pointer active:bg-slate-50' : 'opacity-60 bg-rose-50/20'} ${hasUnreadNotification(row) ? 'bg-amber-50/30' : ''}`}
+                            >
+                                {/* Header: Número + Fecha apertura + Estado */}
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                            {hasUnreadNotification(row) && (
+                                                <span className="size-2 bg-amber-500 rounded-full animate-pulse"></span>
+                                            )}
+                                            <span className={`font-bold text-base ${row.anulado ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                                                {row.numero}
+                                            </span>
+                                            {hasUnreadNotification(row) && (
+                                                <span className="flex items-center gap-1 text-[11px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
+                                                    <Bell size={10} />
+                                                    Novedad
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1 uppercase mt-0.5">
+                                            <Calendar size={12} className="text-slate-400" />
+                                            Apertura: {format(new Date(row.fecha_apertura + 'T12:00:00'), 'dd MMM yyyy')}
+                                        </span>
+                                        {row.anulado && row.motivo_anulacion && (
+                                            <span className="text-xs text-rose-600 font-medium italic mt-0.5">Motivo: {row.motivo_anulacion}</span>
+                                        )}
+                                    </div>
+                                    <div className="shrink-0">
+                                        {row.anulado ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 text-[11px] font-bold uppercase">
+                                                Anulado
+                                            </span>
+                                        ) : (
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-bold uppercase ${row.activo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                                <span className={`size-1.5 rounded-full ${row.activo ? 'bg-emerald-600' : 'bg-slate-400'}`}></span>
+                                                {row.activo ? 'Activo' : 'Inactivo'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Niño/a + DNI */}
+                                <div className="flex items-center gap-2.5 bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                        <User size={16} />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-bold text-slate-800 text-sm truncate">{row.nino_nombre} {row.nino_apellido}</span>
+                                        <span className="text-xs font-medium text-slate-600">DNI: {row.nino_dni}</span>
+                                    </div>
+                                </div>
+
+                                {/* Profesional + SPD */}
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Responsable</span>
+                                        <span className="font-semibold text-slate-700 truncate block">{row.ultimo_profesional || 'Sin asignar'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">SPD</span>
+                                        <span className="font-bold text-slate-700 truncate block">{row.spd_nombre || 'No asignado'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Acciones */}
+                                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                                    {!row.anulado && (
+                                        <Link
+                                            to={`/expedientes/${row.id}/ingresos`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="flex items-center gap-1 text-xs font-bold text-primary px-2.5 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+                                        >
+                                            <ExternalLink size={16} />
+                                            Ver detalle
+                                        </Link>
+                                    )}
+                                    {!row.anulado && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                            }}
+                                            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                            title="Descargar PDF"
+                                        >
+                                            <Download size={18} />
+                                        </button>
+                                    )}
+                                    {canAnular && !row.anulado && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAnulando(row);
+                                                setMotivoAnulacion('');
+                                            }}
+                                            className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                            title="Anular expediente"
+                                        >
+                                            <Ban size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Vista Desktop / Tablet: Tabla (>=640px) */}
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/50 border-b border-slate-200 text-slate-500 text-[11px] font-bold uppercase tracking-widest">
@@ -259,7 +424,15 @@ const ExpedientesList = () => {
                                 </tr>
                             ) : (
                                 expedientes.map((row: ExpedienteRow) => (
-                                    <tr key={row.id} className={`hover:bg-slate-50/50 transition-colors group ${row.anulado ? 'opacity-60 bg-rose-50/30' : ''} ${hasUnreadNotification(row) ? 'bg-amber-50/30' : ''}`}>
+                                    <tr
+                                        key={row.id}
+                                        onClick={() => {
+                                            if (!row.anulado) {
+                                                navigate(`/expedientes/${row.id}/ingresos`);
+                                            }
+                                        }}
+                                        className={`hover:bg-slate-50/50 transition-colors group ${!row.anulado ? 'cursor-pointer' : ''} ${row.anulado ? 'opacity-60 bg-rose-50/30' : ''} ${hasUnreadNotification(row) ? 'bg-amber-50/30' : ''}`}
+                                    >
                                         <td className="px-6 py-5">
                                             <div className="flex flex-col gap-1 relative">
                                                 <div className="flex items-center gap-2">
@@ -268,20 +441,20 @@ const ExpedientesList = () => {
                                                     )}
                                                     <span className={`font-bold text-base tracking-tight ${row.anulado ? 'line-through text-slate-400' : 'text-slate-900'}`}>{row.numero}</span>
                                                     {hasUnreadNotification(row) && (
-                                                        <span className="flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
+                                                        <span className="flex items-center gap-1 text-[11px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
                                                             <Bell size={10} />
                                                             Novedad
                                                         </span>
                                                     )}
                                                     {row.anulado && (
-                                                        <span className="text-[10px] font-black bg-rose-100 text-rose-600 px-2 py-0.5 rounded-md uppercase tracking-widest">Anulado</span>
+                                                        <span className="text-[11px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md uppercase tracking-widest">Anulado</span>
                                                     )}
                                                 </div>
-                                                <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 uppercase">
-                                                    <Calendar size={12} className="text-slate-300" /> Apertura: {format(new Date(row.fecha_apertura + 'T12:00:00'), 'dd MMM yyyy')}
+                                                <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1 uppercase">
+                                                    <Calendar size={12} className="text-slate-400" /> Apertura: {format(new Date(row.fecha_apertura + 'T12:00:00'), 'dd MMM yyyy')}
                                                 </span>
                                                 {row.anulado && row.motivo_anulacion && (
-                                                    <span className="text-[10px] text-rose-400 font-medium italic">Motivo: {row.motivo_anulacion}</span>
+                                                    <span className="text-xs text-rose-600 font-medium italic">Motivo: {row.motivo_anulacion}</span>
                                                 )}
                                             </div>
                                         </td>
@@ -292,7 +465,7 @@ const ExpedientesList = () => {
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-slate-800 leading-tight">{row.nino_nombre} {row.nino_apellido}</span>
-                                                    <span className="text-xs font-medium text-slate-400">DNI: {row.nino_dni}</span>
+                                                    <span className="text-xs font-medium text-slate-600">DNI: {row.nino_dni}</span>
                                                 </div>
                                             </div>
                                         </td>
@@ -300,13 +473,13 @@ const ExpedientesList = () => {
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-semibold text-slate-600">{row.ultimo_profesional || 'Sin asignar'}</span>
                                                 {row.ultima_seccion && (
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">
                                                         {row.ultima_seccion}
                                                         {row.ultima_seccion_fecha ? ` · ${format(new Date(row.ultima_seccion_fecha), 'dd/MM/yyyy')}` : ''}
                                                     </span>
                                                 )}
                                                 {row.creado_por_nombre && (
-                                                    <span className="text-[9px] text-slate-300" title={row.creado_por_fecha ? format(new Date(row.creado_por_fecha), 'dd/MM/yyyy HH:mm') : ''}>
+                                                    <span className="text-xs text-slate-500" title={row.creado_por_fecha ? format(new Date(row.creado_por_fecha), 'dd/MM/yyyy HH:mm') : ''}>
                                                         Cargado por: {row.creado_por_nombre}
                                                     </span>
                                                 )}
@@ -323,14 +496,14 @@ const ExpedientesList = () => {
                                         <td className="px-6 py-5">
                                             <div className="flex justify-center">
                                                 {row.anulado ? (
-                                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border bg-rose-50 text-rose-500 border-rose-200">
-                                                        <div className="size-2 rounded-full bg-rose-400"></div>
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider leading-none">ANULADO</span>
+                                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                                                        <div className="size-2 rounded-full bg-rose-600"></div>
+                                                        <span className="text-[11px] font-bold uppercase tracking-wider leading-none">ANULADO</span>
                                                     </div>
                                                 ) : (
-                                                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${row.activo ? 'bg-success/10 text-success border-success/20' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                                                        <div className={`size-2 rounded-full ${row.activo ? 'bg-success' : 'bg-slate-400'}`}></div>
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider leading-none">
+                                                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${row.activo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                                        <div className={`size-2 rounded-full ${row.activo ? 'bg-emerald-600' : 'bg-slate-400'}`}></div>
+                                                        <span className="text-[11px] font-bold uppercase tracking-wider leading-none">
                                                             {row.activo ? 'ACTIVO' : 'INACTIVO'}
                                                         </span>
                                                     </div>
@@ -342,6 +515,7 @@ const ExpedientesList = () => {
                                                 {!row.anulado && (
                                                     <Link
                                                         to={`/expedientes/${row.id}/ingresos`}
+                                                        onClick={(e) => e.stopPropagation()}
                                                         className="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
                                                         title="Ver detalle"
                                                     >
@@ -349,13 +523,23 @@ const ExpedientesList = () => {
                                                     </Link>
                                                 )}
                                                 {!row.anulado && (
-                                                    <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all" title="Descargar PDF">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                        }}
+                                                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                                                        title="Descargar PDF"
+                                                    >
                                                         <Download size={20} />
                                                     </button>
                                                 )}
                                                 {canAnular && !row.anulado && (
                                                     <button
-                                                        onClick={() => { setAnulando(row); setMotivoAnulacion(''); }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setAnulando(row);
+                                                            setMotivoAnulacion('');
+                                                        }}
                                                         className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                                                         title="Anular expediente"
                                                     >

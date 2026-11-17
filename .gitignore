@@ -19,6 +19,9 @@ dev-dist
 # Archivos de prueba/scratch locales
 scratch/
 
+# Dump de la base vieja (MySQL, pre-Supabase) con datos reales de personas — nunca versionar
+sqlviejoaleer/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

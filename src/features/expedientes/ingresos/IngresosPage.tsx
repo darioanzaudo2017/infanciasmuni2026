@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
+import Button from '../../../components/ui/Button';
 
 interface IngresoDetalle {
     id: number;
@@ -347,19 +348,17 @@ const IngresosPage: React.FC = () => {
                     <h2 className="text-2xl font-black leading-tight">Historial de Ingresos</h2>
                     <p className="text-sm text-[#638888] dark:text-gray-400">Seguimiento de etapas y estados del legajo</p>
                 </div>
-                <button
+                <Button
                     onClick={handleNuevoCaso}
                     disabled={hasActiveCase || loading}
-                    className={`flex min-w-[140px] items-center gap-2 justify-center rounded-lg h-11 px-6 text-sm font-bold leading-normal transition-all group
-                        ${hasActiveCase
-                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                            : 'bg-primary text-white hover:shadow-lg hover:shadow-primary/20 cursor-pointer'
-                        }`}
+                    variant={hasActiveCase ? 'outline' : 'primary'}
+                    size="md"
+                    className="flex min-w-[140px] items-center gap-2 justify-center group"
                     title={hasActiveCase ? "Ya existe un caso activo para este expediente" : "Abrir nuevo ingreso"}
                 >
                     <span className="material-symbols-outlined group-hover:rotate-90 transition-transform">add_circle</span>
                     <span>{hasActiveCase ? 'Caso Activo' : ingresos.length === 0 ? 'Agregar Ingreso' : 'Nuevo Reingreso'}</span>
-                </button>
+                </Button>
             </div>
 
             {/* Table Container */}

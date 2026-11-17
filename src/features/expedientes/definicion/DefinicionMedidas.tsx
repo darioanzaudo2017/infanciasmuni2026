@@ -333,7 +333,6 @@ const DefinicionMedidas = () => {
             <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-10 pb-32 max-w-[1400px] mx-auto w-full">
                 <Breadcrumbs
                     items={[
-                        { label: 'Inicio', path: '/' },
                         { label: 'Expedientes', path: '/expedientes' },
                         { label: 'Historial de Ingresos', path: `/expedientes/${ingreso?.expediente_id}/ingresos` },
                         { label: 'Detalle de Legajo', path: `/expedientes/${ingreso?.expediente_id}/ingresos/${ingresoId}` },

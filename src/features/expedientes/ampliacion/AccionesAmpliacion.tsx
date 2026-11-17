@@ -457,7 +457,6 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                 <div className="px-4 sm:px-6 pt-6 sm:pt-10 space-y-4">
                     <Breadcrumbs
                         items={[
-                            { label: 'Inicio', path: '/' },
                             { label: 'Expedientes', path: '/expedientes' },
                             { label: 'Historial de Ingresos', path: `/expedientes/${ingreso.expediente_id}/ingresos` },
                             { label: 'Detalle de Legajo', path: `/expedientes/${ingreso.expediente_id}/ingresos/${ingreso.id}` },
@@ -614,9 +613,9 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                                                         {format(new Date(item.fecha), "dd MMM yyyy", { locale: es })} • {item.hora}
                                                     </p>
                                                 </div>
-                                                <span className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border ${item.asistencia === 'Asistió' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                    item.asistencia === 'No asistió' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                                        'bg-amber-50 text-amber-600 border-amber-100'
+                                                <span className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border ${item.asistencia === 'Asistió' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    item.asistencia === 'No asistió' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                                        'bg-amber-50 text-amber-700 border-amber-200'
                                                     }`}>
                                                     {item.asistencia}
                                                 </span>
@@ -1517,7 +1516,7 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
                                         <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{selectedIntervencion.entrevistado_nombre}</h2>
-                                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${selectedIntervencion.asistencia === 'Asistió' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${selectedIntervencion.asistencia === 'Asistió' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
                                             {selectedIntervencion.asistencia}
                                         </span>
                                     </div>

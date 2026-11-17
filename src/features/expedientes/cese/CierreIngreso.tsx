@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import Breadcrumbs from '../../../components/ui/Breadcrumbs';
+import Button from '../../../components/ui/Button';
 
 const CierreIngreso = () => {
     const { expedienteId, ingresoId } = useParams<{ expedienteId: string; ingresoId: string }>();
@@ -42,11 +43,11 @@ const CierreIngreso = () => {
 
                 const { data: medidas } = await supabase
                     .from('medidas')
-                    .select('restituido')
+                    .select('estado')
                     .eq('ingreso_id', ingresoId);
 
                 const total = medidas?.length || 0;
-                const completed = medidas?.filter(m => m.restituido).length || 0;
+                const completed = medidas?.filter(m => m.estado === 'completa').length || 0;
                 setStats({ totalMedidas: total, completedMedidas: completed });
 
                 // Load existing cese data if available
@@ -199,7 +200,6 @@ const CierreIngreso = () => {
                 {/* Breadcrumbs */}
                 <Breadcrumbs
                     items={[
-                        { label: 'Inicio', path: '/' },
                         { label: 'Expedientes', path: '/expedientes' },
                         { label: 'Historial de Ingresos', path: `/expedientes/${expedienteId}/ingresos` },
                         { label: 'Detalle de Legajo', path: `/expedientes/${expedienteId}/ingresos/${ingresoId}` },
@@ -400,22 +400,27 @@ const CierreIngreso = () => {
 
                         {/* Final Action Section */}
                         <div className="flex flex-col gap-3">
-                            <button
+                            <Button
+                                variant="danger"
+                                size="lg"
+                                isLoading={isSaving}
                                 onClick={handleSubmit}
                                 disabled={(!formData.motivo_cese || isSaving) && !isLockedForRole}
-                                className={`w-full text-white font-bold py-3.5 sm:py-4 px-6 rounded-lg transition-all shadow-md flex items-center justify-center gap-3 ${((!formData.motivo_cese || isSaving) && !isLockedForRole) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#B3243F] hover:bg-[#B3243F]/90'}`}
+                                className="w-full flex items-center justify-center gap-3"
                             >
-                                <span className="material-symbols-outlined">{isSaving ? 'sync' : isLockedForRole ? 'rate_review' : 'assignment_turned_in'}</span>
+                                <span className="material-symbols-outlined">{isLockedForRole ? 'rate_review' : 'assignment_turned_in'}</span>
                                 {isSaving ? 'Guardando...' :
                                     isLockedForRole ? 'Revisar Solicitud a SENAF' :
                                         formData.motivo_cese === 'solicitud_medida_excepcional' ? 'Guardar y Continuar a SENAF' : 'Confirmar Cierre y Generar Informe'}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="md"
                                 onClick={() => navigate(-1)}
-                                className="w-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/5 text-[#658086] font-bold py-3 px-6 rounded-lg transition-all"
+                                className="w-full text-[#658086] font-bold"
                             >
                                 Cancelar y Volver
-                            </button>
+                            </Button>
                             <div className="p-4 border border-dashed border-[#dce3e5] dark:border-[#2d3a3d] rounded-lg">
                                 <p className="text-[11px] text-[#658086] text-center leading-relaxed">
                                     Al confirmar, se generará el <strong>Informe de Cese</strong> en formato PDF y el expediente quedará bloqueado para futuras ediciones.

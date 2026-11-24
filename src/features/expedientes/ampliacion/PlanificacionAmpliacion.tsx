@@ -25,11 +25,14 @@ const PlanificacionAmpliacion: React.FC<PlanificacionProps> = ({ ingreso, onPlan
 
     useEffect(() => {
         const fetchUsuarios = async () => {
-            const { data } = await supabase.from('usuarios').select('id, nombre_completo, email').eq('activo', true);
+            const spdId = ingreso?.expedientes?.servicio_proteccion_id;
+            let query = supabase.from('usuarios').select('id, nombre_completo, email').eq('activo', true);
+            if (spdId) query = query.eq('servicio_proteccion_id', spdId);
+            const { data } = await query;
             if (data) setUsuarios(data);
         };
         void fetchUsuarios();
-    }, []);
+    }, [ingreso?.expedientes?.servicio_proteccion_id]);
 
     const handleToggleUser = (userId: string) => {
         setFormData(prev => ({

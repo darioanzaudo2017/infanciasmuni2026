@@ -85,9 +85,27 @@ const InformeSintesis = () => {
                     setInforme(informData);
                 }
 
-                // Fetch Users for selection
-                const { data: usersData } = await supabase.from('usuarios').select('id, nombre_completo');
-                if (usersData) setUsers(usersData);
+                // Fetch Users for selection — solo del SPD dueño de este expediente
+                let usersQuery = supabase.from('usuarios').select('id, nombre_completo').eq('activo', true);
+                if (ingData?.expediente_id) {
+                    const { data: expData } = await supabase
+                        .from('expedientes')
+                        .select('servicio_proteccion_id')
+                        .eq('id', ingData.expediente_id)
+                        .single();
+                    if (expData?.servicio_proteccion_id) {
+                        usersQuery = usersQuery.eq('servicio_proteccion_id', expData.servicio_proteccion_id);
+                    }
+                }
+                const { data: usersData } = await usersQuery;
+                if (usersData) {
+                    setUsers(usersData);
+                    // Si es un informe nuevo (sin profesionales guardados todavía), preseleccionar
+                    // a todo el equipo del SPD por defecto — el usuario puede destildar a quien no corresponda.
+                    if (!informData || (informData.profesionales_ids || []).length === 0) {
+                        setInforme(prev => ({ ...prev, profesionales_ids: usersData.map(u => u.id) }));
+                    }
+                }
 
                 // Fetch Catalog for rights
                 const { data: catData } = await supabase.from('catalogo_derechos').select('id, categoria, subcategoria').order('categoria');

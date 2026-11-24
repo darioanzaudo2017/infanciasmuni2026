@@ -349,6 +349,13 @@ const DefinicionMedidas = () => {
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto">
                             <button
+                                onClick={() => navigate(`/expedientes/${expedienteId}/acta/${ingresoId}`)}
+                                className="w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3 bg-white dark:bg-zinc-800 border-2 border-secondary text-secondary rounded-xl font-bold text-sm hover:bg-secondary/5 transition-all shrink-0"
+                            >
+                                <span className="material-symbols-outlined">description</span>
+                                Acta de Compromiso
+                            </button>
+                            <button
                                 onClick={() => setShowModal(true)}
                                 className="w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all shrink-0"
                             >

@@ -158,7 +158,10 @@ const AccionesAmpliacion: React.FC<AccionesProps> = ({ ingreso, planificacion, o
     };
 
     const fetchUsuarios = async () => {
-        const { data } = await supabase.from('usuarios').select('id, nombre_completo').eq('activo', true);
+        const spdId = ingreso?.expedientes?.servicio_proteccion_id;
+        let query = supabase.from('usuarios').select('id, nombre_completo').eq('activo', true);
+        if (spdId) query = query.eq('servicio_proteccion_id', spdId);
+        const { data } = await query;
         if (data) setUsuarios(data);
     };
 

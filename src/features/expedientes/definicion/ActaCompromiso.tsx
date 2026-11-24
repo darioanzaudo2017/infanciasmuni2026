@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
@@ -16,9 +16,18 @@ const ActaCompromiso = () => {
     const [vulneraciones, setVulneraciones] = useState<any[]>([]);
     const [medidas, setMedidas] = useState<any[]>([]);
 
-    const [familyCompromise, setFamilyCompromise] = useState('[... completar aquí ...]');
-    const [institutionCompromise, setInstitutionCompromise] = useState('[... completar aquí ...]');
-    const [otherCompromise, setOtherCompromise] = useState('[... completar aquí ...]');
+    const [familyCompromise, setFamilyCompromise] = useState('');
+    const [institutionCompromise, setInstitutionCompromise] = useState('');
+    const [otherCompromise, setOtherCompromise] = useState('');
+
+    const [actaFirmada, setActaFirmada] = useState<{ id: number; nombre: string; url: string; created_at: string } | null>(null);
+    const [uploadingActa, setUploadingActa] = useState(false);
+    const actaFileInputRef = useRef<HTMLInputElement>(null);
+
+    const autoResizeTextarea = (el: HTMLTextAreaElement) => {
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+    };
 
     const toggleParticipant = (id: string) => {
         setParticipants(prev => prev.map(p =>
@@ -72,15 +81,18 @@ const ActaCompromiso = () => {
                 });
 
                 // Fetch Participants (Family & Referents)
-                const [familyRes, referentsRes, vulRes, medRes] = await Promise.all([
+                const [familyRes, referentsRes, vulRes, medRes, actaRes, responsablesRes] = await Promise.all([
                     supabase.from('grupo_conviviente').select('*').eq('ingreso_id', ingresoId),
                     supabase.from('referentes_comunitarios').select('*').eq('ingreso_id', ingresoId),
                     supabase.from('derechos_vulnerados').select('*, catalogo_derechos(categoria, subcategoria)').eq('ingreso_id', ingresoId),
-                    supabase.from('medidas').select('*').eq('ingreso_id', ingresoId)
+                    supabase.from('medidas').select('*').eq('ingreso_id', ingresoId),
+                    supabase.from('documentos').select('id, nombre, url, created_at').eq('ingreso_id', ingresoId).eq('subcategoria', 'Acta de Compromiso Firmada').order('created_at', { ascending: false }).limit(1),
+                    supabase.from('ingreso_responsables').select('usuario_id, usuarios!ingreso_responsables_usuario_id_fkey(nombre_completo)').eq('ingreso_id', ingresoId)
                 ]);
 
                 if (vulRes.data) setVulneraciones(vulRes.data);
                 if (medRes.data) setMedidas(medRes.data);
+                if (actaRes.data && actaRes.data.length > 0) setActaFirmada(actaRes.data[0] as any);
 
                 const mappedParticipants = [
                     ...(familyRes.data || []).map((f: any) => ({
@@ -103,9 +115,25 @@ const ActaCompromiso = () => {
                     }))
                 ];
 
-                // Add Professional if available
-                // Add Professional if available
-                if (ingData?.profesional_asignado_nombre) {
+                // Add Responsables del Caso (puede haber más de uno por SPD, tabla ingreso_responsables).
+                // Solo se listan los que el usuario actual puede ver (RLS puede ocultar nombres de otro SPD).
+                const responsablesConNombre = (responsablesRes.data || []).filter((r: any) => r.usuarios?.nombre_completo);
+
+                if (responsablesConNombre.length > 0) {
+                    responsablesConNombre.forEach((r: any) => {
+                        const nombre = r.usuarios.nombre_completo;
+                        mappedParticipants.push({
+                            id: `prof-${r.usuario_id}`,
+                            name: nombre,
+                            role: 'Responsable del Caso',
+                            type: 'professional',
+                            selected: true,
+                            dni: '',
+                            initials: nombre.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+                        });
+                    });
+                } else if (ingData?.profesional_asignado_nombre) {
+                    // Fallback para ingresos sin responsables asignados en ingreso_responsables
                     mappedParticipants.push({
                         id: 'prof-assigned',
                         name: ingData.profesional_asignado_nombre,
@@ -116,7 +144,7 @@ const ActaCompromiso = () => {
                         initials: ingData.profesional_asignado_nombre.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
                     });
                 } else {
-                    // Fallback or current user
+                    // Fallback o usuario actual
                     mappedParticipants.push({
                         id: 'prof-curr',
                         name: 'Lic. Profesional',
@@ -141,6 +169,50 @@ const ActaCompromiso = () => {
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleActaFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file || !ingresoId || !expedienteId) return;
+
+        setUploadingActa(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `acta_${ingresoId}_${Date.now()}.${fileExt}`;
+            const filePath = `${expedienteId}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('expedientes')
+                .upload(filePath, file);
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('expedientes')
+                .getPublicUrl(filePath);
+
+            const { data: inserted, error: dbError } = await supabase
+                .from('documentos')
+                .insert({
+                    ingreso_id: parseInt(ingresoId),
+                    nombre: file.name,
+                    tipo: fileExt?.toLowerCase() === 'pdf' ? 'PDF' : 'Imagen',
+                    url: publicUrl,
+                    origen: 'definicion',
+                    subcategoria: 'Acta de Compromiso Firmada'
+                })
+                .select('id, nombre, url, created_at')
+                .single();
+            if (dbError) throw dbError;
+
+            setActaFirmada(inserted as any);
+            alert('Acta firmada subida con éxito');
+        } catch (error) {
+            console.error('Error al subir el acta firmada:', error);
+            alert('Error al subir el acta. Verifique su conexión.');
+        } finally {
+            setUploadingActa(false);
+        }
     };
 
     if (loading) return <div className="flex h-screen items-center justify-center">Cargando acta...</div>;
@@ -287,7 +359,7 @@ const ActaCompromiso = () => {
                                             ) : (
                                                 <span className="italic text-gray-500"> [Sin otros participantes presentes]</span>
                                             )},
-                                            respectivamente, con domicilio en <strong>{childData?.nino_domicilio || '__________'}</strong> de la ciudad de Córdoba y el Servicio Municipal de Protección de Derechos con sede en el SPD <strong>Zona Norte</strong> de esta ciudad, representado en este acto por <strong>{participants.find(p => p.selected && p.type === 'professional')?.name || 'el profesional a cargo'}</strong>.
+                                            respectivamente, con domicilio en <strong>{childData?.nino_domicilio || '__________'}</strong> de la ciudad de Córdoba y el Servicio Municipal de Protección de Derechos con sede en el SPD <strong>Zona Norte</strong> de esta ciudad, representado en este acto por <strong>{participants.filter(p => p.selected && p.type === 'professional').map(p => p.name).join(', ') || 'el profesional a cargo'}</strong>.
                                         </p>
 
                                         <p>
@@ -335,62 +407,53 @@ const ActaCompromiso = () => {
                                         <div className="space-y-4">
                                             <div>
                                                 <p className="font-bold underline mb-2 text-[#411f89] dark:text-[#a78bfa]">El Servicio:</p>
-                                                <div
-                                                    className={`print:hidden p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
-                                                        ${institutionCompromise === '[... completar aquí ...]' 
-                                                            ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
-                                                             : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
-                                                    contentEditable={true}
-                                                    onFocus={(e) => { if (institutionCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setInstitutionCompromise(''); } }}
-                                                    onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setInstitutionCompromise('[... completar aquí ...]'); } }}
-                                                    onInput={(e) => setInstitutionCompromise(e.currentTarget.textContent || '')}
-                                                    suppressContentEditableWarning={true}
-                                                >
-                                                    {institutionCompromise}
-                                                </div>
+                                                <textarea
+                                                    className={`print:hidden w-full p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all resize-none overflow-hidden placeholder:italic placeholder:text-gray-400
+                                                        ${institutionCompromise
+                                                            ? 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'
+                                                            : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50'}`}
+                                                    rows={2}
+                                                    placeholder="[... completar aquí ...]"
+                                                    value={institutionCompromise}
+                                                    onChange={(e) => { setInstitutionCompromise(e.target.value); autoResizeTextarea(e.target); }}
+                                                />
                                                 <p className="hidden print:block text-justify border-b border-black/10 pb-2 min-h-[1.5em]">
-                                                    {institutionCompromise === '[... completar aquí ...]' ? '' : institutionCompromise}
+                                                    {institutionCompromise}
                                                 </p>
                                             </div>
 
                                             <div>
                                                 <p className="font-bold underline mb-2 text-[#411f89] dark:text-[#a78bfa]">La Familia:</p>
-                                                <div
-                                                    className={`print:hidden p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
-                                                        ${familyCompromise === '[... completar aquí ...]' 
-                                                            ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
-                                                             : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
-                                                    contentEditable={true}
-                                                    onFocus={(e) => { if (familyCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setFamilyCompromise(''); } }}
-                                                    onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setFamilyCompromise('[... completar aquí ...]'); } }}
-                                                    onInput={(e) => setFamilyCompromise(e.currentTarget.textContent || '')}
-                                                    suppressContentEditableWarning={true}
-                                                >
-                                                    {familyCompromise}
-                                                </div>
+                                                <textarea
+                                                    className={`print:hidden w-full p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all resize-none overflow-hidden placeholder:italic placeholder:text-gray-400
+                                                        ${familyCompromise
+                                                            ? 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'
+                                                            : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50'}`}
+                                                    rows={2}
+                                                    placeholder="[... completar aquí ...]"
+                                                    value={familyCompromise}
+                                                    onChange={(e) => { setFamilyCompromise(e.target.value); autoResizeTextarea(e.target); }}
+                                                />
                                                 <p className="hidden print:block text-justify border-b border-black/10 pb-2 min-h-[1.5em]">
-                                                    {familyCompromise === '[... completar aquí ...]' ? '' : familyCompromise}
+                                                    {familyCompromise}
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div>
                                             <p className="font-bold mb-2">Se deja constancia que por su parte la institución/organismo:</p>
-                                            <div
-                                                className={`print:hidden p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all cursor-text
-                                                    ${otherCompromise === '[... completar aquí ...]' 
-                                                        ? 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 italic' 
-                                                         : 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'}`}
-                                                contentEditable={true}
-                                                onFocus={(e) => { if (otherCompromise === '[... completar aquí ...]') { e.currentTarget.textContent = ''; setOtherCompromise(''); } }}
-                                                onBlur={(e) => { if (!e.currentTarget.textContent) { e.currentTarget.textContent = '[... completar aquí ...]'; setOtherCompromise('[... completar aquí ...]'); } }}
-                                                onInput={(e) => setOtherCompromise(e.currentTarget.textContent || '')}
-                                                suppressContentEditableWarning={true}
-                                            >
-                                                {otherCompromise}
-                                            </div>
+                                            <textarea
+                                                className={`print:hidden w-full p-3 sm:p-4 border-2 border-dashed rounded-xl text-sm outline-none transition-all resize-none overflow-hidden placeholder:italic placeholder:text-gray-400
+                                                    ${otherCompromise
+                                                        ? 'border-[#411f89]/30 dark:border-[#a78bfa]/30 bg-white dark:bg-[#1f1a29] text-[#131217] dark:text-white focus:border-[#411f89] focus:ring-4 focus:ring-[#411f89]/10'
+                                                        : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50'}`}
+                                                rows={2}
+                                                placeholder="[... completar aquí ...]"
+                                                value={otherCompromise}
+                                                onChange={(e) => { setOtherCompromise(e.target.value); autoResizeTextarea(e.target); }}
+                                            />
                                             <p className="hidden print:block text-justify mt-2 min-h-[1.5em]">
-                                                <span className="italic">{otherCompromise === '[... completar aquí ...]' ? '' : otherCompromise}</span>
+                                                <span className="italic">{otherCompromise}</span>
                                             </p>
                                         </div>
 
@@ -449,9 +512,43 @@ const ActaCompromiso = () => {
                                         <span className="material-symbols-outlined">picture_as_pdf</span>
                                         Generar PDF para Firma
                                     </button>
-                                    <button className="w-full flex items-center justify-center gap-2 bg-white dark:bg-[#1f1a29] border-2 border-[#411f89] text-[#411f89] py-3 rounded-xl font-bold hover:bg-[#411f89]/5 transition-all">
-                                        <span className="material-symbols-outlined">upload_file</span>
-                                        Subir Acta Firmada
+
+                                    {actaFirmada && (
+                                        <a
+                                            href={actaFirmada.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold hover:underline"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">check_circle</span>
+                                            <span className="truncate flex-1">{actaFirmada.nombre}</span>
+                                            <span className="material-symbols-outlined text-base">open_in_new</span>
+                                        </a>
+                                    )}
+
+                                    <input
+                                        ref={actaFileInputRef}
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        className="hidden"
+                                        onChange={handleActaFileSelected}
+                                    />
+                                    <button
+                                        onClick={() => actaFileInputRef.current?.click()}
+                                        disabled={uploadingActa}
+                                        className="w-full flex items-center justify-center gap-2 bg-white dark:bg-[#1f1a29] border-2 border-[#411f89] text-[#411f89] py-3 rounded-xl font-bold hover:bg-[#411f89]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {uploadingActa ? (
+                                            <>
+                                                <div className="size-4 border-2 border-[#411f89]/30 border-t-[#411f89] rounded-full animate-spin"></div>
+                                                Subiendo...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="material-symbols-outlined">upload_file</span>
+                                                {actaFirmada ? 'Reemplazar Acta Firmada' : 'Subir Acta Firmada'}
+                                            </>
+                                        )}
                                     </button>
                                     <div className="h-px bg-[#e5e4e9] dark:bg-[#2d2838] my-1"></div>
                                     <button className="w-full flex items-center justify-center gap-2 bg-[#22c55e] text-white py-3 rounded-xl font-bold hover:bg-[#16a34a] transition-all opacity-50 cursor-not-allowed">

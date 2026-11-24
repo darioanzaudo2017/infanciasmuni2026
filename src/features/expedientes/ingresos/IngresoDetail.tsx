@@ -1263,10 +1263,10 @@ return (
                                         <div className="flex gap-3">
                                             <button
                                                 onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/acta/${ingresoId}`)}
-                                                className="px-6 h-12 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-50 dark:hover:bg-zinc-700 transition-all text-sm flex items-center gap-2"
+                                                className="px-6 h-12 bg-white dark:bg-zinc-800 border-2 border-secondary text-secondary text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-secondary/5 transition-all text-sm flex items-center gap-2"
                                             >
                                                 <span className="material-symbols-outlined text-lg">description</span>
-                                                Acta
+                                                Acta de Compromiso
                                             </button>
                                             <button
                                                 onClick={() => navigate(`/expedientes/${ingreso.expediente_id}/definicion/${ingresoId}`)}

@@ -140,8 +140,8 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                     </div>
                 </div>
                 <div className="mt-2 px-2 flex flex-col gap-0.5">
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">Versión 1.0.0</p>
-                    <p className="text-xs text-slate-500">Actualizado: 08/08/2026 13:33</p>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">Versión 1.1.0</p>
+                    <p className="text-xs text-slate-500">Actualizado: 24/11/2026 12:54</p>
                 </div>
             </div>
         </aside>
